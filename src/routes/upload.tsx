@@ -11,14 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck } from "lucide-react";
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
     meta: [
-      { title: "Upload Active Employees — LockerOps" },
-      { name: "description", content: "Upload active employee file. The system flags missing badges as resigned." },
+      { title: "Upload Locker Data — LockerOps" },
+      { name: "description", content: "Upload locker data file. The system auto-detects columns and syncs records." },
     ],
   }),
   component: UploadPage,
@@ -33,10 +33,29 @@ interface UploadHistoryRow {
   created_at: string;
 }
 
+type LockerRow = {
+  locker_number: string;
+  location: string;
+  row_label: string | null;
+  unit_type: string | null;
+  key_lock: string | null;
+  badge_number: string | null;
+  employee_name: string | null;
+  status: "active" | "empty" | "repair" | "unknown";
+  physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
+  spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
+  remark: string | null;
+  batch_intake: string | null;
+};
+
 interface PreviewResult {
-  totalUploaded: number;
-  matchedActive: number;
+  totalRows: number;
+  toCreate: number;
+  toUpdate: number;
+  activeAfter: number;
   newlyResigned: { locker_number: string; employee_name: string | null; badge_number: string | null }[];
+  parsed: LockerRow[];
+  detectedColumns: Record<string, string>;
 }
 
 function UploadPage() {
@@ -46,7 +65,6 @@ function UploadPage() {
   const [parsing, setParsing] = useState(false);
   const [applying, setApplying] = useState(false);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
-  const [activeBadges, setActiveBadges] = useState<Set<string> | null>(null);
   const [history, setHistory] = useState<UploadHistoryRow[]>([]);
 
   useEffect(() => {
@@ -65,38 +83,69 @@ function UploadPage() {
   const handleFile = async (f: File) => {
     setFile(f);
     setPreview(null);
-    setActiveBadges(null);
     setParsing(true);
     try {
       const rows = await parseFile(f);
-      const badges = extractBadges(rows);
-      if (badges.size === 0) {
-        toast.error("No badge numbers detected. Make sure your file has a column named 'badge', 'badge_number', or 'badge no'.");
+      if (rows.length === 0) {
+        toast.error("File is empty.");
         setParsing(false);
         return;
       }
 
-      // Compare with current DB
-      const all: { id: string; locker_number: string; employee_name: string | null; badge_number: string | null; status: string }[] = [];
+      const detected = detectColumns(Object.keys(rows[0]));
+      if (!detected.locker_number) {
+        toast.error("Couldn't find a locker column. Expected something like 'Combine Locker' or 'Locker Number'.");
+        setParsing(false);
+        return;
+      }
+
+      const parsed: LockerRow[] = [];
+      for (const r of rows) {
+        const row = mapRow(r, detected);
+        if (row) parsed.push(row);
+      }
+
+      // Load existing lockers for diff
+      const existing: { id: string; locker_number: string; employee_name: string | null; badge_number: string | null; status: string }[] = [];
       let from = 0;
       while (true) {
         const { data } = await supabase.from("lockers").select("id, locker_number, employee_name, badge_number, status").range(from, from + 999);
-        if (!data) break;
-        all.push(...data);
+        if (!data || data.length === 0) break;
+        existing.push(...data);
         if (data.length < 1000) break;
         from += 1000;
       }
 
-      let matched = 0;
+      const existingMap = new Map(existing.map((l) => [l.locker_number.trim().toUpperCase(), l]));
+      const incomingKeys = new Set(parsed.map((p) => p.locker_number.trim().toUpperCase()));
+
+      let toCreate = 0;
+      let toUpdate = 0;
+      let activeAfter = 0;
+      for (const p of parsed) {
+        const k = p.locker_number.trim().toUpperCase();
+        if (existingMap.has(k)) toUpdate++;
+        else toCreate++;
+        if (p.status === "active") activeAfter++;
+      }
+
+      // Resigned = currently active in DB but not present in upload
       const resigned: PreviewResult["newlyResigned"] = [];
-      for (const l of all) {
-        if (l.status === "active" && l.badge_number) {
-          if (badges.has(normBadge(l.badge_number))) matched++;
-          else resigned.push({ locker_number: l.locker_number, employee_name: l.employee_name, badge_number: l.badge_number });
+      for (const l of existing) {
+        if (l.status === "active" && !incomingKeys.has(l.locker_number.trim().toUpperCase())) {
+          resigned.push({ locker_number: l.locker_number, employee_name: l.employee_name, badge_number: l.badge_number });
         }
       }
-      setActiveBadges(badges);
-      setPreview({ totalUploaded: badges.size, matchedActive: matched, newlyResigned: resigned });
+
+      setPreview({
+        totalRows: parsed.length,
+        toCreate,
+        toUpdate,
+        activeAfter,
+        newlyResigned: resigned,
+        parsed,
+        detectedColumns: detected,
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
     }
@@ -104,34 +153,40 @@ function UploadPage() {
   };
 
   const handleApply = async () => {
-    if (!preview || !activeBadges || !file || !user) return;
+    if (!preview || !file || !user) return;
     setApplying(true);
     try {
-      // Mark resigned lockers as empty + clear employee data
-      const badgesToEmpty = preview.newlyResigned.map((r) => r.locker_number);
-      if (badgesToEmpty.length > 0) {
-        const CHUNK = 200;
-        for (let i = 0; i < badgesToEmpty.length; i += CHUNK) {
-          const slice = badgesToEmpty.slice(i, i + CHUNK);
-          const { error } = await supabase
-            .from("lockers")
-            .update({ status: "empty", employee_name: null, badge_number: null, remark: "Auto-resigned via upload" })
-            .in("locker_number", slice);
-          if (error) throw error;
-        }
+      // Upsert rows in chunks
+      const CHUNK = 200;
+      for (let i = 0; i < preview.parsed.length; i += CHUNK) {
+        const slice = preview.parsed.slice(i, i + CHUNK);
+        const { error } = await supabase
+          .from("lockers")
+          .upsert(slice, { onConflict: "locker_number" });
+        if (error) throw error;
       }
+
+      // Mark resigned lockers (active in DB but missing from upload) as empty
+      const resignedKeys = preview.newlyResigned.map((r) => r.locker_number);
+      for (let i = 0; i < resignedKeys.length; i += CHUNK) {
+        const slice = resignedKeys.slice(i, i + CHUNK);
+        const { error } = await supabase
+          .from("lockers")
+          .update({ status: "empty", employee_name: null, badge_number: null, remark: "Auto-resigned via upload" })
+          .in("locker_number", slice);
+        if (error) throw error;
+      }
+
       await supabase.from("upload_history").insert({
         uploaded_by: user.id,
         filename: file.name,
-        rows_processed: preview.totalUploaded,
+        rows_processed: preview.totalRows,
         resigned_count: preview.newlyResigned.length,
-        active_count: preview.matchedActive,
+        active_count: preview.activeAfter,
       });
-      toast.success(`Sync complete — ${preview.newlyResigned.length} lockers freed.`);
+      toast.success(`Sync complete — ${preview.toCreate} created, ${preview.toUpdate} updated, ${preview.newlyResigned.length} freed.`);
       setPreview(null);
       setFile(null);
-      setActiveBadges(null);
-      // Refresh history
       const { data } = await supabase.from("upload_history").select("*").order("created_at", { ascending: false }).limit(10);
       setHistory((data as UploadHistoryRow[]) ?? []);
     } catch (e) {
@@ -146,15 +201,15 @@ function UploadPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="max-w-5xl mx-auto px-6 py-8">
-        <h1 className="font-display text-3xl font-bold">Upload Active Employees</h1>
+        <h1 className="font-display text-3xl font-bold">Upload Locker Data</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Upload a CSV or Excel file of currently active employees. Any locker assigned to a badge that is <strong>not</strong> in the file will be marked as resigned and freed.
+          Upload your CSV or Excel file. Columns are auto-detected — new lockers are added, existing ones are updated, and active lockers missing from the file are marked as resigned.
         </p>
 
         <Card className="mt-6 p-6">
           <Label htmlFor="file" className="text-base font-display">Choose file</Label>
           <p className="text-xs text-muted-foreground mt-1 mb-3">
-            Required column: <code className="bg-muted px-1 py-0.5 rounded">badge_number</code> (also accepts <code className="bg-muted px-1 py-0.5 rounded">badge</code> or <code className="bg-muted px-1 py-0.5 rounded">badge no</code>). Format: .csv, .xlsx, .xls
+            Recognized columns: <code className="bg-muted px-1 py-0.5 rounded text-xs">Combine Locker</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Locker Location by Row</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Types of Key Lock</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">badge_number</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Vlookup O+C Name</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status Available / Not Available</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Physical Key Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Remarks</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Batch Intake</code>.
           </p>
           <div className="flex gap-3 items-center">
             <Input id="file" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} className="cursor-pointer" />
@@ -168,30 +223,41 @@ function UploadPage() {
               <FileSpreadsheet className="h-5 w-5 text-primary" />
               <h2 className="font-display text-xl font-bold">Preview: {file?.name}</h2>
             </div>
-            <div className="grid md:grid-cols-3 gap-3 mb-6">
-              <Stat icon={UploadIcon} label="Badges in file" value={preview.totalUploaded} />
-              <Stat icon={UserCheck} label="Still active (matched)" value={preview.matchedActive} accent="text-success" />
-              <Stat icon={UserMinus} label="To mark as resigned" value={preview.newlyResigned.length} accent="text-destructive" />
+
+            <div className="grid md:grid-cols-4 gap-3 mb-4">
+              <Stat icon={UploadIcon} label="Rows in file" value={preview.totalRows} />
+              <Stat icon={Plus} label="New lockers" value={preview.toCreate} accent="text-success" />
+              <Stat icon={RefreshCw} label="Updates" value={preview.toUpdate} accent="text-primary" />
+              <Stat icon={UserMinus} label="To resign" value={preview.newlyResigned.length} accent="text-destructive" />
+            </div>
+
+            <div className="mb-4 rounded-md border p-3 bg-muted/30">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Detected column mapping</div>
+              <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {Object.entries(preview.detectedColumns).map(([k, v]) => (
+                  <div key={k}><span className="font-mono text-muted-foreground">{k}</span> ← <span className="font-medium">{v}</span></div>
+                ))}
+              </div>
             </div>
 
             {preview.newlyResigned.length > 0 ? (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>{preview.newlyResigned.length} locker(s) will be freed</AlertTitle>
+                <AlertTitle>{preview.newlyResigned.length} active locker(s) will be freed</AlertTitle>
                 <AlertDescription>
-                  These employees are no longer in the active list. Their lockers will be set to <strong>empty</strong>.
+                  These lockers are active in the system but missing from the upload. They will be set to <strong>empty</strong>.
                 </AlertDescription>
               </Alert>
             ) : (
               <Alert className="mb-4">
                 <CheckCircle2 className="h-4 w-4" />
-                <AlertTitle>All current active lockers match the file</AlertTitle>
-                <AlertDescription>No resignations detected.</AlertDescription>
+                <AlertTitle>No resignations detected</AlertTitle>
+                <AlertDescription>All currently active lockers are present in the upload.</AlertDescription>
               </Alert>
             )}
 
             {preview.newlyResigned.length > 0 && (
-              <div className="border rounded-md max-h-72 overflow-y-auto mb-4">
+              <div className="border rounded-md max-h-60 overflow-y-auto mb-4">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 sticky top-0">
                     <tr><Th>Locker</Th><Th>Employee</Th><Th>Badge</Th></tr>
@@ -201,7 +267,7 @@ function UploadPage() {
                       <tr key={r.locker_number} className="border-t">
                         <td className="px-3 py-2 font-medium">{r.locker_number}</td>
                         <td className="px-3 py-2">{r.employee_name ?? "—"}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{r.badge_number}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{r.badge_number ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -209,6 +275,26 @@ function UploadPage() {
                 {preview.newlyResigned.length > 200 && <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {preview.newlyResigned.length - 200} more</div>}
               </div>
             )}
+
+            <div className="border rounded-md max-h-72 overflow-auto mb-4">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50 sticky top-0">
+                  <tr><Th>Locker</Th><Th>Location</Th><Th>Badge</Th><Th>Name</Th><Th>Status</Th></tr>
+                </thead>
+                <tbody>
+                  {preview.parsed.slice(0, 50).map((p) => (
+                    <tr key={p.locker_number} className="border-t">
+                      <td className="px-3 py-2 font-medium">{p.locker_number}</td>
+                      <td className="px-3 py-2">{p.location}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{p.badge_number ?? "—"}</td>
+                      <td className="px-3 py-2">{p.employee_name ?? "—"}</td>
+                      <td className="px-3 py-2"><Badge variant="outline">{p.status}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {preview.parsed.length > 50 && <div className="p-2 text-xs text-center text-muted-foreground border-t">Showing 50 of {preview.parsed.length} rows</div>}
+            </div>
 
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => { setPreview(null); setFile(null); }}>Cancel</Button>
@@ -250,13 +336,13 @@ function UploadPage() {
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted-foreground">{children}</th>;
+  return <th className="px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted-foreground text-left">{children}</th>;
 }
 
 function Stat({ icon: Icon, label, value, accent }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; accent?: string }) {
   return (
     <Card className="p-4 flex items-center gap-3">
-      <Icon className={`h-8 w-8 ${accent ?? "text-muted-foreground"}`} />
+      <Icon className={`h-7 w-7 ${accent ?? "text-muted-foreground"}`} />
       <div>
         <div className="text-2xl font-bold font-display">{value.toLocaleString()}</div>
         <div className="text-xs text-muted-foreground">{label}</div>
@@ -266,10 +352,6 @@ function Stat({ icon: Icon, label, value, accent }: { icon: React.ComponentType<
 }
 
 // ---------- helpers ----------
-function normBadge(b: string): string {
-  return b.trim().toUpperCase();
-}
-
 async function parseFile(f: File): Promise<Record<string, unknown>[]> {
   const ext = f.name.split(".").pop()?.toLowerCase();
   if (ext === "csv") {
@@ -282,28 +364,99 @@ async function parseFile(f: File): Promise<Record<string, unknown>[]> {
       });
     });
   }
-  // xlsx / xls
   const buf = await f.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
   const sheet = wb.Sheets[wb.SheetNames[0]];
   return XLSX.utils.sheet_to_json(sheet, { defval: "" });
 }
 
-function extractBadges(rows: Record<string, unknown>[]): Set<string> {
-  const out = new Set<string>();
-  for (const row of rows) {
-    // Find badge column flexibly
-    let val: unknown;
-    for (const k of Object.keys(row)) {
-      const key = k.toLowerCase().replace(/[\s_-]/g, "");
-      if (key === "badge" || key === "badgenumber" || key === "badgeno" || key === "badgeid") {
-        val = row[k];
+function norm(s: string): string {
+  return s.toLowerCase().replace(/[\s_\-/+()]/g, "");
+}
+
+// Maps our internal field → matching column header from the file
+function detectColumns(headers: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  const aliases: Record<string, string[]> = {
+    locker_number: ["combinelocker", "lockernumber", "locker", "lockerno", "lockerid"],
+    location: ["lockerlocation", "lockerlocationbyrow", "location"],
+    row_label: ["row", "rowlabel", "lockerlocationbyrow"],
+    unit_type: ["typesofkeylock", "unittype", "type", "lockertype"],
+    key_lock: ["keylock", "typesofkeylock", "lock"],
+    badge_number: ["badgenumber", "badge", "badgeno", "badgeid"],
+    employee_name: ["vlookupocname", "vlookupocname", "employeename", "name", "fullname", "ocname"],
+    status: ["status"],
+    physical_key_status: ["physicalkeystatus", "physicalkey", "statusavailablenotavailable", "statusavailable"],
+    spare_key_status: ["sparekeystatus", "sparekey"],
+    remark: ["remarks", "remark", "notes", "note"],
+    batch_intake: ["batchintake", "batch", "intake", "intakedate"],
+  };
+
+  for (const [field, opts] of Object.entries(aliases)) {
+    for (const h of headers) {
+      const n = norm(h);
+      if (opts.includes(n)) {
+        out[field] = h;
         break;
       }
     }
-    if (val !== undefined && val !== null && String(val).trim() !== "") {
-      out.add(normBadge(String(val)));
-    }
   }
   return out;
+}
+
+function getStr(row: Record<string, unknown>, key: string | undefined): string | null {
+  if (!key) return null;
+  const v = row[key];
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+}
+
+function mapStatus(raw: string | null, hasBadge: boolean): LockerRow["status"] {
+  if (!raw) return hasBadge ? "active" : "empty";
+  const n = raw.toLowerCase();
+  if (n.includes("repair")) return "repair";
+  if (n.includes("empty") || n.includes("vacant") || n.includes("available")) return "empty";
+  if (n.includes("active") || n.includes("occupied") || n.includes("listing")) return "active";
+  if (n.includes("unknown")) return "unknown";
+  return hasBadge ? "active" : "empty";
+}
+
+function mapKeyStatus(raw: string | null): LockerRow["physical_key_status"] {
+  if (!raw) return "unknown";
+  const n = raw.toLowerCase();
+  if (n.includes("not available") || n.includes("missing")) return "missing";
+  if (n.includes("with employee") || n.includes("withemp")) return "with_employee";
+  if (n.includes("damage")) return "damaged";
+  if (n.includes("available") || n.includes("ok") || n.includes("yes")) return "available";
+  return "unknown";
+}
+
+function mapRow(row: Record<string, unknown>, cols: Record<string, string>): LockerRow | null {
+  const locker_number = getStr(row, cols.locker_number);
+  if (!locker_number) return null;
+
+  const badge_number = getStr(row, cols.badge_number);
+  const employee_name = getStr(row, cols.employee_name);
+  const statusRaw = getStr(row, cols.status);
+  const physRaw = getStr(row, cols.physical_key_status);
+
+  const hasBadge = !!badge_number;
+  const status = mapStatus(statusRaw, hasBadge);
+  const location = getStr(row, cols.location) ?? "Unassigned";
+
+  return {
+    locker_number,
+    location,
+    row_label: getStr(row, cols.row_label),
+    unit_type: getStr(row, cols.unit_type),
+    key_lock: getStr(row, cols.key_lock),
+    badge_number,
+    employee_name,
+    status,
+    physical_key_status: mapKeyStatus(physRaw),
+    spare_key_status: mapKeyStatus(getStr(row, cols.spare_key_status)),
+    remark: getStr(row, cols.remark),
+    batch_intake: getStr(row, cols.batch_intake),
+  };
 }
