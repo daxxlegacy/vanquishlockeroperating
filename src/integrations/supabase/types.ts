@@ -14,16 +14,151 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lockers: {
+        Row: {
+          badge_number: string | null
+          batch_intake: string | null
+          created_at: string
+          employee_name: string | null
+          id: string
+          key_lock: string | null
+          location: string
+          locker_number: string
+          physical_key_status: Database["public"]["Enums"]["key_status"] | null
+          remark: string | null
+          row_label: string | null
+          spare_key_status: Database["public"]["Enums"]["key_status"] | null
+          status: Database["public"]["Enums"]["locker_status"]
+          unit_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          badge_number?: string | null
+          batch_intake?: string | null
+          created_at?: string
+          employee_name?: string | null
+          id?: string
+          key_lock?: string | null
+          location: string
+          locker_number: string
+          physical_key_status?: Database["public"]["Enums"]["key_status"] | null
+          remark?: string | null
+          row_label?: string | null
+          spare_key_status?: Database["public"]["Enums"]["key_status"] | null
+          status?: Database["public"]["Enums"]["locker_status"]
+          unit_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          badge_number?: string | null
+          batch_intake?: string | null
+          created_at?: string
+          employee_name?: string | null
+          id?: string
+          key_lock?: string | null
+          location?: string
+          locker_number?: string
+          physical_key_status?: Database["public"]["Enums"]["key_status"] | null
+          remark?: string | null
+          row_label?: string | null
+          spare_key_status?: Database["public"]["Enums"]["key_status"] | null
+          status?: Database["public"]["Enums"]["locker_status"]
+          unit_type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      upload_history: {
+        Row: {
+          active_count: number | null
+          created_at: string
+          filename: string | null
+          id: string
+          resigned_count: number | null
+          rows_processed: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          active_count?: number | null
+          created_at?: string
+          filename?: string | null
+          id?: string
+          resigned_count?: number | null
+          rows_processed?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          active_count?: number | null
+          created_at?: string
+          filename?: string | null
+          id?: string
+          resigned_count?: number | null
+          rows_processed?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "viewer"
+      key_status:
+        | "available"
+        | "missing"
+        | "with_employee"
+        | "damaged"
+        | "unknown"
+      locker_status: "active" | "empty" | "repair" | "unknown"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +285,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "viewer"],
+      key_status: [
+        "available",
+        "missing",
+        "with_employee",
+        "damaged",
+        "unknown",
+      ],
+      locker_status: ["active", "empty", "repair", "unknown"],
+    },
   },
 } as const
