@@ -31,11 +31,12 @@ export const Route = createFileRoute("/")({
 });
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-destructive border-destructive/60 text-destructive-foreground",
-  empty: "bg-success border-success/60 text-success-foreground",
-  repair: "bg-warning border-warning/60 text-warning-foreground",
-  unknown: "bg-muted-foreground/40 border-muted-foreground/30 text-foreground",
+  active: "bg-destructive border-destructive text-destructive-foreground shadow-sm",
+  empty: "bg-success border-success text-success-foreground shadow-sm",
+  repair: "bg-warning border-warning text-warning-foreground shadow-sm",
+  unknown: "bg-muted border-border text-muted-foreground",
 };
+const NOT_IN_DB = "bg-background border-dashed border-border text-muted-foreground/70";
 
 function MapPage() {
   const { user, loading } = useAuth();
