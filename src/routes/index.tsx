@@ -31,11 +31,12 @@ export const Route = createFileRoute("/")({
 });
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-destructive border-destructive/60 text-destructive-foreground",
-  empty: "bg-success border-success/60 text-success-foreground",
-  repair: "bg-warning border-warning/60 text-warning-foreground",
-  unknown: "bg-muted-foreground/40 border-muted-foreground/30 text-foreground",
+  active: "bg-destructive border-destructive text-destructive-foreground shadow-sm",
+  empty: "bg-success border-success text-success-foreground shadow-sm",
+  repair: "bg-warning border-warning text-warning-foreground shadow-sm",
+  unknown: "bg-muted border-border text-muted-foreground",
 };
+const NOT_IN_DB = "bg-background border-dashed border-border text-muted-foreground/70";
 
 function MapPage() {
   const { user, loading } = useAuth();
@@ -157,23 +158,23 @@ function SheetGrid({
   byNumber: Map<string, Locker>;
   onSelect: (id: string) => void;
 }) {
-  const CELL = 36; // px
+  const CELL = 48; // bigger so number + row letter are readable
   const GAP = 3;
   const width = layout.cols * (CELL + GAP);
   const height = layout.rows * (CELL + GAP);
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div
-        className="relative mx-auto"
-        style={{ width, height, minWidth: width }}
-      >
+      <div className="relative mx-auto" style={{ width, height, minWidth: width }}>
         {layout.cells.map((cell) => {
           const locker = byNumber.get(cell.n.toUpperCase());
-          const status = locker?.status ?? "unknown";
-          const colorClass = STATUS_COLORS[status] ?? STATUS_COLORS.unknown;
+          const colorClass = locker
+            ? STATUS_COLORS[locker.status] ?? STATUS_COLORS.unknown
+            : NOT_IN_DB;
           const left = (cell.c - 1) * (CELL + GAP);
           const top = (cell.r - 1) * (CELL + GAP);
+          // Pull row letter (A/B/C/D/E/F) from row_label, e.g. "Nine Row A" -> "A"
+          const rowLetter = locker?.row_label?.match(/\b([A-F])\b/i)?.[1]?.toUpperCase();
           return (
             <Tooltip key={`${cell.r}-${cell.c}`}>
               <TooltipTrigger asChild>
@@ -182,16 +183,17 @@ function SheetGrid({
                   disabled={!locker}
                   aria-label={`Locker ${cell.n}`}
                   style={{ left, top, width: CELL, height: CELL }}
-                  className={`absolute rounded border ${colorClass} ${
-                    locker ? "cursor-pointer hover:ring-2 hover:ring-ring" : "cursor-not-allowed opacity-60"
-                  } text-[10px] font-semibold leading-none flex items-center justify-center transition-all`}
+                  className={`absolute rounded border-2 ${colorClass} ${
+                    locker ? "cursor-pointer hover:ring-2 hover:ring-ring hover:z-10" : "cursor-not-allowed"
+                  } font-bold flex flex-col items-center justify-center leading-none transition-all`}
                 >
-                  {cell.n}
+                  <span className="text-[11px] tracking-tight">{cell.n}</span>
+                  {rowLetter && <span className="text-[9px] opacity-80 mt-0.5">{rowLetter}</span>}
                 </button>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="text-xs space-y-0.5">
-                  <div className="font-semibold">Locker {cell.n}</div>
+                  <div className="font-semibold">Locker {cell.n}{rowLetter ? ` · Row ${rowLetter}` : ""}</div>
                   {locker ? (
                     <>
                       <div className="capitalize">Status: {locker.status}</div>
