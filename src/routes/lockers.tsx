@@ -338,3 +338,65 @@ function AddLockerDialog({
     </DialogContent>
   );
 }
+
+// ---------- Delete Location (bulk delete all lockers in a location) ----------
+function DeleteLocationButton({ locations, onDeleted }: { locations: string[]; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState<string>("");
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!target) return;
+    setDeleting(true);
+    const { error, count } = await supabase
+      .from("lockers")
+      .delete({ count: "exact" })
+      .eq("location", target);
+    setDeleting(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`Deleted ${count ?? 0} lockers from "${target}"`);
+    setOpen(false);
+    setTarget("");
+    onDeleted();
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" disabled={locations.length === 0}>
+          <Trash2 className="h-4 w-4 mr-1" /> Delete Location
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete an entire location</AlertDialogTitle>
+          <AlertDialogDescription>
+            Pick a location to permanently remove every locker assigned to it. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="py-2">
+          <Label>Location</Label>
+          <Select value={target} onValueChange={setTarget}>
+            <SelectTrigger><SelectValue placeholder="Select a location…" /></SelectTrigger>
+            <SelectContent>
+              {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!target || deleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={(e) => { e.preventDefault(); handleDelete(); }}
+          >
+            {deleting ? "Deleting…" : "Delete location"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
