@@ -6,13 +6,20 @@ import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
+import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
+
+const PAGE_SIZE = 500;
 
 export const Route = createFileRoute("/lockers")({
   head: () => ({
@@ -25,7 +32,7 @@ export const Route = createFileRoute("/lockers")({
 });
 
 function LockersPage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const navigate = useNavigate();
   const [lockers, setLockers] = useState<Locker[] | null>(null);
   const [search, setSearch] = useState("");
@@ -33,6 +40,8 @@ function LockersPage() {
   const [locFilter, setLocFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
+  const [page, setPage] = useState(1);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
@@ -42,12 +51,14 @@ function LockersPage() {
       const all: Locker[] = [];
       let from = 0;
       while (true) {
-        const { data } = await supabase.from("lockers").select("*").order("locker_number").range(from, from + 999);
+        const { data } = await supabase.from("lockers").select("*").range(from, from + 999);
         if (!data) break;
         all.push(...data);
         if (data.length < 1000) break;
         from += 1000;
       }
+      // Natural sort across all formats (1A → 6378F → A01 → Y40 → LK01 → AA01 → KKK18)
+      all.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
       setLockers(all);
     })();
   }, [user, refresh]);
@@ -72,7 +83,13 @@ function LockersPage() {
     });
   }, [lockers, search, statusFilter, locFilter]);
 
-  const visible = filtered.slice(0, 500);
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1); }, [search, statusFilter, locFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(startIdx, startIdx + PAGE_SIZE);
 
   if (loading || !user) return <div className="min-h-screen" />;
 
@@ -80,8 +97,26 @@ function LockersPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="max-w-[1600px] mx-auto px-6 py-8">
-        <h1 className="font-display text-3xl font-bold">Lockers</h1>
-        <p className="text-muted-foreground text-sm mt-1">{lockers?.length.toLocaleString() ?? "…"} total · showing {visible.length.toLocaleString()} of {filtered.length.toLocaleString()}</p>
+        <div className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="font-display text-3xl font-bold">Lockers</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              {lockers?.length.toLocaleString() ?? "…"} total · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
+            </p>
+          </div>
+          {role === "admin" && (
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-1" /> Add Locker</Button>
+              </DialogTrigger>
+              <AddLockerDialog
+                onClose={() => setAddOpen(false)}
+                onCreated={() => { setAddOpen(false); setRefresh((k) => k + 1); }}
+                existingLocations={locations}
+              />
+            </Dialog>
+          )}
+        </div>
 
         <Card className="p-4 mt-6 flex gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[240px]">
@@ -130,16 +165,26 @@ function LockersPage() {
                       <td className="px-3 py-2"><StatusBadge status={l.status} /></td>
                       <td className="px-3 py-2 text-xs capitalize text-muted-foreground">{l.physical_key_status?.replace(/_/g, " ")}</td>
                       <td className="px-3 py-2 text-xs capitalize text-muted-foreground">{l.spare_key_status?.replace(/_/g, " ")}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{l.batch_intake}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{formatBatchIntake(l.batch_intake)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {filtered.length > 500 && (
-                <div className="p-3 text-center text-xs text-muted-foreground border-t">
-                  Showing first 500 results. Refine your search to narrow down.
+
+              <div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-muted/20">
+                <div className="text-xs text-muted-foreground">
+                  Showing {filtered.length === 0 ? 0 : (startIdx + 1).toLocaleString()}–{(startIdx + visible.length).toLocaleString()} of {filtered.length.toLocaleString()}
                 </div>
-              )}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                  </Button>
+                  <span className="text-sm font-medium px-2">Page {safePage} / {totalPages}</span>
+                  <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </Card>
@@ -161,4 +206,128 @@ function StatusBadge({ status }: { status: string }) {
     unknown: "bg-muted text-muted-foreground border-border",
   };
   return <Badge variant="outline" className={`capitalize ${map[status]}`}>{status}</Badge>;
+}
+
+// ---------- Add Locker Dialog (manual entry) ----------
+function AddLockerDialog({
+  onClose,
+  onCreated,
+  existingLocations,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+  existingLocations: string[];
+}) {
+  const [form, setForm] = useState({
+    locker_number: "",
+    location: existingLocations[0] ?? "",
+    row_label: "",
+    unit_type: "",
+    key_lock: "",
+    badge_number: "",
+    employee_name: "",
+    status: "empty" as Database["public"]["Enums"]["locker_status"],
+    batch_intake: "",
+    remark: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.locker_number.trim()) {
+      toast.error("Locker number is required");
+      return;
+    }
+    if (!form.location.trim()) {
+      toast.error("Location is required");
+      return;
+    }
+    setSaving(true);
+    const hasBadge = !!form.badge_number.trim();
+    const { error } = await supabase.from("lockers").insert({
+      locker_number: form.locker_number.trim(),
+      location: form.location.trim(),
+      row_label: form.row_label.trim() || null,
+      unit_type: form.unit_type.trim() || null,
+      key_lock: form.key_lock.trim() || null,
+      badge_number: form.badge_number.trim() || null,
+      employee_name: form.employee_name.trim() || null,
+      status: hasBadge && form.status === "empty" ? "active" : form.status,
+      batch_intake: parseBatchIntake(form.batch_intake),
+      remark: form.remark.trim() || null,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "That locker number already exists" : error.message);
+      return;
+    }
+    toast.success(`Locker ${form.locker_number} added`);
+    onCreated();
+  };
+
+  return (
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle className="font-display">Add new locker</DialogTitle>
+      </DialogHeader>
+      <div className="grid grid-cols-2 gap-4 py-2">
+        <div>
+          <Label>Locker Number *</Label>
+          <Input value={form.locker_number} onChange={(e) => set("locker_number", e.target.value)} placeholder="e.g. 1A, A01, LK01, AA01" />
+        </div>
+        <div>
+          <Label>Location *</Label>
+          <Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Building A" list="loc-list" />
+          <datalist id="loc-list">
+            {existingLocations.map((l) => <option key={l} value={l} />)}
+          </datalist>
+        </div>
+        <div>
+          <Label>Row</Label>
+          <Input value={form.row_label} onChange={(e) => set("row_label", e.target.value)} placeholder="e.g. Nine Row" />
+        </div>
+        <div>
+          <Label>Unit Type</Label>
+          <Input value={form.unit_type} onChange={(e) => set("unit_type", e.target.value)} placeholder="e.g. Horizontal" />
+        </div>
+        <div>
+          <Label>Key Lock</Label>
+          <Input value={form.key_lock} onChange={(e) => set("key_lock", e.target.value)} placeholder="e.g. Round Lock Key" />
+        </div>
+        <div>
+          <Label>Badge Number</Label>
+          <Input value={form.badge_number} onChange={(e) => set("badge_number", e.target.value)} />
+        </div>
+        <div>
+          <Label>Employee Name</Label>
+          <Input value={form.employee_name} onChange={(e) => set("employee_name", e.target.value)} />
+        </div>
+        <div>
+          <Label>Status</Label>
+          <Select value={form.status} onValueChange={(v) => set("status", v as typeof form.status)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="empty">Empty</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="repair">Repair</SelectItem>
+              <SelectItem value="unknown">Unknown</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Batch Intake (dd/mm/yyyy)</Label>
+          <Input value={form.batch_intake} onChange={(e) => set("batch_intake", e.target.value)} placeholder="16/01/2026" />
+        </div>
+        <div className="col-span-2">
+          <Label>Remark</Label>
+          <Input value={form.remark} onChange={(e) => set("remark", e.target.value)} />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Add Locker"}</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
 }
