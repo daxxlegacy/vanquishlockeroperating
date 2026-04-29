@@ -102,13 +102,51 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          {isAdmin && (
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving…" : "Save changes"}
-            </Button>
-          )}
+        <DialogFooter className="gap-2 sm:justify-between">
+          {isAdmin ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={saving}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete locker {locker.locker_number}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently remove this locker record from the database. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      setSaving(true);
+                      const { error } = await supabase.from("lockers").delete().eq("id", locker.id);
+                      setSaving(false);
+                      if (error) toast.error(error.message);
+                      else {
+                        toast.success(`Locker ${locker.locker_number} deleted`);
+                        onUpdated?.();
+                        onClose();
+                      }
+                    }}
+                  >
+                    Delete locker
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : <span />}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Close</Button>
+            {isAdmin && (
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? "Saving…" : "Save changes"}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
