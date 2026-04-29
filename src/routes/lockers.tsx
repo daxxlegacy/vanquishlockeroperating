@@ -106,16 +106,22 @@ function LockersPage() {
             </p>
           </div>
           {role === "admin" && (
-            <Dialog open={addOpen} onOpenChange={setAddOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="h-4 w-4 mr-1" /> Add Locker</Button>
-              </DialogTrigger>
-              <AddLockerDialog
-                onClose={() => setAddOpen(false)}
-                onCreated={() => { setAddOpen(false); setRefresh((k) => k + 1); }}
-                existingLocations={locations}
+            <div className="flex gap-2 flex-wrap">
+              <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                <DialogTrigger asChild>
+                  <Button><Plus className="h-4 w-4 mr-1" /> Add Locker</Button>
+                </DialogTrigger>
+                <AddLockerDialog
+                  onClose={() => setAddOpen(false)}
+                  onCreated={() => { setAddOpen(false); setRefresh((k) => k + 1); }}
+                  existingLocations={locations}
+                />
+              </Dialog>
+              <DeleteLocationButton
+                locations={locations}
+                onDeleted={() => setRefresh((k) => k + 1)}
               />
-            </Dialog>
+            </div>
           )}
         </div>
 
