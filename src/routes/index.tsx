@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { compareLockerNumbers } from "@/lib/locker-utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -75,6 +76,12 @@ function MapPage() {
       const row = l.row_label || "—";
       if (!rowMap.has(row)) rowMap.set(row, []);
       rowMap.get(row)!.push(l);
+    }
+    // Sort each row's lockers in natural order (1A, 2A, ... 10A, AA01, ...)
+    for (const rowMap of byLoc.values()) {
+      for (const items of rowMap.values()) {
+        items.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+      }
     }
     return byLoc;
   }, [lockers]);

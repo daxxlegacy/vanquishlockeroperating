@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { parseBatchIntake } from "@/lib/locker-utils";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -365,9 +366,10 @@ async function parseFile(f: File): Promise<Record<string, unknown>[]> {
     });
   }
   const buf = await f.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array" });
+  // raw:true keeps Excel date serials as numbers so we can parse them as dd/mm/yyyy aware.
+  const wb = XLSX.read(buf, { type: "array", cellDates: false });
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet, { defval: "" });
+  return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
 }
 
 function norm(s: string): string {
@@ -457,6 +459,6 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
     physical_key_status: mapKeyStatus(physRaw),
     spare_key_status: mapKeyStatus(getStr(row, cols.spare_key_status)),
     remark: getStr(row, cols.remark),
-    batch_intake: getStr(row, cols.batch_intake),
+    batch_intake: cols.batch_intake ? parseBatchIntake(row[cols.batch_intake]) : null,
   };
 }
