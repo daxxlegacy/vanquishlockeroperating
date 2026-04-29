@@ -8,26 +8,33 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { compareLockerNumbers } from "@/lib/locker-utils";
+import layoutData from "@/data/locker-map-layout.json";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
+
+type SheetLayout = {
+  rows: number;
+  cols: number;
+  cells: { r: number; c: number; n: string }[];
+};
+const LAYOUT = layoutData as Record<string, SheetLayout>;
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Locker Map — LockerOps" },
-      { name: "description", content: "Live interactive map of all lockers grouped by location and row." },
+      { name: "description", content: "Interactive locker map mirroring the physical layout of each area." },
     ],
   }),
   component: MapPage,
 });
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-destructive border-destructive/60",      // occupied = red
-  empty: "bg-success border-success/60",                // empty = green
-  repair: "bg-warning border-warning/60",
-  unknown: "bg-muted-foreground/40 border-muted-foreground/30",
+  active: "bg-destructive border-destructive/60 text-destructive-foreground",
+  empty: "bg-success border-success/60 text-success-foreground",
+  repair: "bg-warning border-warning/60 text-warning-foreground",
+  unknown: "bg-muted-foreground/40 border-muted-foreground/30 text-foreground",
 };
 
 function MapPage() {
@@ -45,7 +52,6 @@ function MapPage() {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      // Fetch all (paginated to bypass 1000 row limit)
       const all: Locker[] = [];
       let from = 0;
       const PAGE = 1000;
@@ -53,9 +59,6 @@ function MapPage() {
         const { data, error } = await supabase
           .from("lockers")
           .select("*")
-          .order("location")
-          .order("row_label")
-          .order("locker_number")
           .range(from, from + PAGE - 1);
         if (error || !data) break;
         all.push(...data);
@@ -67,23 +70,11 @@ function MapPage() {
     return () => { cancelled = true; };
   }, [user, refreshKey]);
 
-  const grouped = useMemo(() => {
-    if (!lockers) return null;
-    const byLoc = new Map<string, Map<string, Locker[]>>();
-    for (const l of lockers) {
-      if (!byLoc.has(l.location)) byLoc.set(l.location, new Map());
-      const rowMap = byLoc.get(l.location)!;
-      const row = l.row_label || "—";
-      if (!rowMap.has(row)) rowMap.set(row, []);
-      rowMap.get(row)!.push(l);
-    }
-    // Sort each row's lockers in natural order (1A, 2A, ... 10A, AA01, ...)
-    for (const rowMap of byLoc.values()) {
-      for (const items of rowMap.values()) {
-        items.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
-      }
-    }
-    return byLoc;
+  // Index lockers by locker_number for fast lookup
+  const byNumber = useMemo(() => {
+    const m = new Map<string, Locker>();
+    if (lockers) for (const l of lockers) m.set(l.locker_number.toUpperCase(), l);
+    return m;
   }, [lockers]);
 
   const summary = useMemo(() => {
@@ -95,6 +86,8 @@ function MapPage() {
 
   if (loading || !user) return <FullPageLoader />;
 
+  const sheetNames = Object.keys(LAYOUT);
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -103,7 +96,7 @@ function MapPage() {
           <div>
             <h1 className="font-display text-3xl font-bold">Locker Map</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Click any locker to view or edit details. Red = occupied, Green = empty.
+              Layout mirrors the physical floor plan. Click any locker for details.
             </p>
           </div>
           <Legend />
@@ -119,50 +112,25 @@ function MapPage() {
           </div>
         )}
 
-        {!grouped ? (
+        {!lockers ? (
           <Skeleton className="h-96 w-full" />
-        ) : grouped.size === 0 ? (
-          <Card className="p-12 text-center text-muted-foreground">No lockers yet. Upload a file to get started.</Card>
         ) : (
-          <Tabs defaultValue={Array.from(grouped.keys())[0]}>
+          <Tabs defaultValue={sheetNames[0]}>
             <TabsList className="flex-wrap h-auto">
-              {Array.from(grouped.keys()).map((loc) => (
-                <TabsTrigger key={loc} value={loc}>{loc} ({Array.from(grouped.get(loc)!.values()).flat().length})</TabsTrigger>
+              {sheetNames.map((name) => (
+                <TabsTrigger key={name} value={name}>
+                  {name} ({LAYOUT[name].cells.length})
+                </TabsTrigger>
               ))}
             </TabsList>
-            {Array.from(grouped.entries()).map(([loc, rows]) => (
-              <TabsContent key={loc} value={loc} className="mt-4">
-                <Card className="p-6">
-                  <TooltipProvider delayDuration={150}>
-                    <div className="space-y-5">
-                      {Array.from(rows.entries()).map(([row, items]) => (
-                        <div key={row} className="flex items-start gap-4">
-                          <div className="w-20 shrink-0 text-sm font-medium text-muted-foreground pt-1.5">{row}</div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {items.map((l) => (
-                              <Tooltip key={l.id}>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    onClick={() => setSelected(l.id)}
-                                    aria-label={`Locker ${l.locker_number}`}
-                                    className={`locker-cell h-8 w-8 rounded border ${STATUS_COLORS[l.status]} cursor-pointer`}
-                                  />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <div className="text-xs space-y-0.5">
-                                    <div className="font-semibold">{l.locker_number}</div>
-                                    <div className="capitalize">Status: {l.status}</div>
-                                    {l.employee_name && <div>{l.employee_name}</div>}
-                                    {l.badge_number && <div className="text-muted-foreground">{l.badge_number}</div>}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </TooltipProvider>
+            {sheetNames.map((name) => (
+              <TabsContent key={name} value={name} className="mt-4">
+                <Card className="p-4 overflow-auto">
+                  <SheetGrid
+                    layout={LAYOUT[name]}
+                    byNumber={byNumber}
+                    onSelect={(id) => setSelected(id)}
+                  />
                 </Card>
               </TabsContent>
             ))}
@@ -180,14 +148,77 @@ function MapPage() {
   );
 }
 
+function SheetGrid({
+  layout,
+  byNumber,
+  onSelect,
+}: {
+  layout: SheetLayout;
+  byNumber: Map<string, Locker>;
+  onSelect: (id: string) => void;
+}) {
+  const CELL = 36; // px
+  const GAP = 3;
+  const width = layout.cols * (CELL + GAP);
+  const height = layout.rows * (CELL + GAP);
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div
+        className="relative mx-auto"
+        style={{ width, height, minWidth: width }}
+      >
+        {layout.cells.map((cell) => {
+          const locker = byNumber.get(cell.n.toUpperCase());
+          const status = locker?.status ?? "unknown";
+          const colorClass = STATUS_COLORS[status] ?? STATUS_COLORS.unknown;
+          const left = (cell.c - 1) * (CELL + GAP);
+          const top = (cell.r - 1) * (CELL + GAP);
+          return (
+            <Tooltip key={`${cell.r}-${cell.c}`}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => locker && onSelect(locker.id)}
+                  disabled={!locker}
+                  aria-label={`Locker ${cell.n}`}
+                  style={{ left, top, width: CELL, height: CELL }}
+                  className={`absolute rounded border ${colorClass} ${
+                    locker ? "cursor-pointer hover:ring-2 hover:ring-ring" : "cursor-not-allowed opacity-60"
+                  } text-[10px] font-semibold leading-none flex items-center justify-center transition-all`}
+                >
+                  {cell.n}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-xs space-y-0.5">
+                  <div className="font-semibold">Locker {cell.n}</div>
+                  {locker ? (
+                    <>
+                      <div className="capitalize">Status: {locker.status}</div>
+                      {locker.employee_name && <div>{locker.employee_name}</div>}
+                      {locker.badge_number && <div className="text-muted-foreground">{locker.badge_number}</div>}
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground">Not in database</div>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
+  );
+}
+
 function Legend() {
   return (
-    <div className="flex items-center gap-4 text-sm">
+    <div className="flex items-center gap-4 text-sm flex-wrap">
       {[
         { c: "bg-destructive", l: "Occupied" },
         { c: "bg-success", l: "Empty" },
         { c: "bg-warning", l: "Repair" },
-        { c: "bg-muted-foreground", l: "Unknown" },
+        { c: "bg-muted-foreground", l: "Unknown / not in DB" },
       ].map((i) => (
         <div key={i.l} className="flex items-center gap-1.5">
           <span className={`h-3 w-3 rounded ${i.c}`} />
