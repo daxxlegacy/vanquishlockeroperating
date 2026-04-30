@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
+import { CompartmentPopover } from "@/components/CompartmentPopover";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,14 +36,35 @@ const STATUS_COLORS: Record<string, string> = {
   empty: "bg-success border-success text-success-foreground shadow-sm",
   repair: "bg-warning border-warning text-warning-foreground shadow-sm",
   unknown: "bg-muted border-border text-muted-foreground",
+  mixed: "bg-gradient-to-br from-destructive via-warning to-success border-border text-foreground shadow-sm",
 };
 const NOT_IN_DB = "bg-background border-dashed border-border text-muted-foreground/70";
+
+/** Strip trailing letter to get the number prefix (e.g. "1A" -> "1", "6075B" -> "6075"). */
+function prefixOf(n: string): string {
+  const m = n.toUpperCase().match(/^(\d+|[A-Z]{1,3}\d+|LK\d+)/);
+  return (m?.[1] ?? n).toUpperCase();
+}
+
+/** Aggregate status across compartments: active > repair > empty. Returns "mixed" when both occupied + empty exist. */
+function aggregateStatus(group: Locker[]): string {
+  if (group.length === 0) return "unknown";
+  const set = new Set(group.map((l) => l.status));
+  if (set.size === 1) return [...set][0];
+  // Mixed: prefer to show that some are filled, some are not
+  if (set.has("active") && set.has("empty")) return "mixed";
+  if (set.has("active")) return "active";
+  if (set.has("repair")) return "repair";
+  if (set.has("empty")) return "empty";
+  return "unknown";
+}
 
 function MapPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [lockers, setLockers] = useState<Locker[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [compartmentNumber, setCompartmentNumber] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -60,6 +82,7 @@ function MapPage() {
         const { data, error } = await supabase
           .from("lockers")
           .select("*")
+          .is("deleted_at", null)
           .range(from, from + PAGE - 1);
         if (error || !data) break;
         all.push(...data);
@@ -71,10 +94,16 @@ function MapPage() {
     return () => { cancelled = true; };
   }, [user, refreshKey]);
 
-  // Index lockers by locker_number for fast lookup
-  const byNumber = useMemo(() => {
-    const m = new Map<string, Locker>();
-    if (lockers) for (const l of lockers) m.set(l.locker_number.toUpperCase(), l);
+  // Group lockers by their number prefix so map cell "1" finds 1A..1F
+  const byPrefix = useMemo(() => {
+    const m = new Map<string, Locker[]>();
+    if (lockers) {
+      for (const l of lockers) {
+        const p = prefixOf(l.locker_number);
+        if (!m.has(p)) m.set(p, []);
+        m.get(p)!.push(l);
+      }
+    }
     return m;
   }, [lockers]);
 
@@ -88,6 +117,7 @@ function MapPage() {
   if (loading || !user) return <FullPageLoader />;
 
   const sheetNames = Object.keys(LAYOUT);
+  const compartments = compartmentNumber ? byPrefix.get(prefixOf(compartmentNumber)) ?? [] : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,7 +127,7 @@ function MapPage() {
           <div>
             <h1 className="font-display text-3xl font-bold">Locker Map</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Layout mirrors the physical floor plan. Click any locker for details.
+              Click any locker number to see its A–F compartments.
             </p>
           </div>
           <Legend />
@@ -129,8 +159,8 @@ function MapPage() {
                 <Card className="p-4 overflow-auto">
                   <SheetGrid
                     layout={LAYOUT[name]}
-                    byNumber={byNumber}
-                    onSelect={(id) => setSelected(id)}
+                    byPrefix={byPrefix}
+                    onPick={(n) => setCompartmentNumber(n)}
                   />
                 </Card>
               </TabsContent>
@@ -138,6 +168,14 @@ function MapPage() {
           </Tabs>
         )}
       </main>
+
+      <CompartmentPopover
+        open={!!compartmentNumber}
+        onOpenChange={(v) => { if (!v) setCompartmentNumber(null); }}
+        number={compartmentNumber ?? ""}
+        compartments={compartments}
+        onSelectLocker={(id) => { setCompartmentNumber(null); setSelected(id); }}
+      />
 
       <LockerDetail
         lockerId={selected}
@@ -151,14 +189,14 @@ function MapPage() {
 
 function SheetGrid({
   layout,
-  byNumber,
-  onSelect,
+  byPrefix,
+  onPick,
 }: {
   layout: SheetLayout;
-  byNumber: Map<string, Locker>;
-  onSelect: (id: string) => void;
+  byPrefix: Map<string, Locker[]>;
+  onPick: (n: string) => void;
 }) {
-  const CELL = 48; // bigger so number + row letter are readable
+  const CELL = 48;
   const GAP = 3;
   const width = layout.cols * (CELL + GAP);
   const height = layout.rows * (CELL + GAP);
@@ -167,38 +205,40 @@ function SheetGrid({
     <TooltipProvider delayDuration={150}>
       <div className="relative mx-auto" style={{ width, height, minWidth: width }}>
         {layout.cells.map((cell) => {
-          const locker = byNumber.get(cell.n.toUpperCase());
-          const colorClass = locker
-            ? STATUS_COLORS[locker.status] ?? STATUS_COLORS.unknown
+          const group = byPrefix.get(prefixOf(cell.n)) ?? [];
+          const status = group.length > 0 ? aggregateStatus(group) : "notdb";
+          const colorClass = group.length > 0
+            ? STATUS_COLORS[status] ?? STATUS_COLORS.unknown
             : NOT_IN_DB;
           const left = (cell.c - 1) * (CELL + GAP);
           const top = (cell.r - 1) * (CELL + GAP);
-          // Pull row letter (A/B/C/D/E/F) from row_label, e.g. "Nine Row A" -> "A"
-          const rowLetter = locker?.row_label?.match(/\b([A-F])\b/i)?.[1]?.toUpperCase();
+          const occupied = group.filter((l) => l.status === "active").length;
+
           return (
             <Tooltip key={`${cell.r}-${cell.c}`}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => locker && onSelect(locker.id)}
-                  disabled={!locker}
+                  onClick={() => group.length > 0 && onPick(cell.n)}
+                  disabled={group.length === 0}
                   aria-label={`Locker ${cell.n}`}
                   style={{ left, top, width: CELL, height: CELL }}
                   className={`absolute rounded border-2 ${colorClass} ${
-                    locker ? "cursor-pointer hover:ring-2 hover:ring-ring hover:z-10" : "cursor-not-allowed"
+                    group.length > 0 ? "cursor-pointer hover:ring-2 hover:ring-ring hover:z-10" : "cursor-not-allowed"
                   } font-bold flex flex-col items-center justify-center leading-none transition-all`}
                 >
                   <span className="text-[11px] tracking-tight">{cell.n}</span>
-                  {rowLetter && <span className="text-[9px] opacity-80 mt-0.5">{rowLetter}</span>}
+                  {group.length > 0 && (
+                    <span className="text-[9px] opacity-80 mt-0.5">{occupied}/{group.length}</span>
+                  )}
                 </button>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="text-xs space-y-0.5">
-                  <div className="font-semibold">Locker {cell.n}{rowLetter ? ` · Row ${rowLetter}` : ""}</div>
-                  {locker ? (
+                  <div className="font-semibold">Locker {cell.n}</div>
+                  {group.length > 0 ? (
                     <>
-                      <div className="capitalize">Status: {locker.status}</div>
-                      {locker.employee_name && <div>{locker.employee_name}</div>}
-                      {locker.badge_number && <div className="text-muted-foreground">{locker.badge_number}</div>}
+                      <div>{group.length} compartment{group.length === 1 ? "" : "s"} · {occupied} occupied</div>
+                      <div className="text-muted-foreground">Click to view A–F</div>
                     </>
                   ) : (
                     <div className="text-muted-foreground">Not in database</div>
@@ -220,6 +260,7 @@ function Legend() {
         { c: "bg-destructive", l: "Occupied" },
         { c: "bg-success", l: "Empty" },
         { c: "bg-warning", l: "Repair" },
+        { c: "bg-gradient-to-br from-destructive via-warning to-success", l: "Mixed" },
         { c: "bg-muted-foreground", l: "Unknown / not in DB" },
       ].map((i) => (
         <div key={i.l} className="flex items-center gap-1.5">
