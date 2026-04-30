@@ -14,11 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      deletion_audit: {
+        Row: {
+          affected_count: number
+          affected_locker_numbers: string[] | null
+          created_at: string
+          deleted_by: string
+          deleted_by_email: string | null
+          deletion_kind: string
+          id: string
+          location: string
+          locker_id: string | null
+          locker_number: string | null
+          reason: string
+          undone_at: string | null
+          undone_by: string | null
+        }
+        Insert: {
+          affected_count?: number
+          affected_locker_numbers?: string[] | null
+          created_at?: string
+          deleted_by: string
+          deleted_by_email?: string | null
+          deletion_kind: string
+          id?: string
+          location: string
+          locker_id?: string | null
+          locker_number?: string | null
+          reason: string
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Update: {
+          affected_count?: number
+          affected_locker_numbers?: string[] | null
+          created_at?: string
+          deleted_by?: string
+          deleted_by_email?: string | null
+          deletion_kind?: string
+          id?: string
+          location?: string
+          locker_id?: string | null
+          locker_number?: string | null
+          reason?: string
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Relationships: []
+      }
       lockers: {
         Row: {
           badge_number: string | null
           batch_intake: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           employee_name: string | null
           id: string
           key_lock: string | null
@@ -36,6 +87,9 @@ export type Database = {
           badge_number?: string | null
           batch_intake?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           employee_name?: string | null
           id?: string
           key_lock?: string | null
@@ -53,6 +107,9 @@ export type Database = {
           badge_number?: string | null
           batch_intake?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           employee_name?: string | null
           id?: string
           key_lock?: string | null
@@ -86,6 +143,51 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+        }
+        Relationships: []
+      }
+      terminations: {
+        Row: {
+          badge_number: string | null
+          created_at: string
+          employee_name: string | null
+          id: string
+          location: string | null
+          locker_id: string | null
+          locker_number: string
+          reason: string | null
+          row_label: string | null
+          terminated_by: string
+          terminated_by_email: string | null
+          termination_date: string
+        }
+        Insert: {
+          badge_number?: string | null
+          created_at?: string
+          employee_name?: string | null
+          id?: string
+          location?: string | null
+          locker_id?: string | null
+          locker_number: string
+          reason?: string | null
+          row_label?: string | null
+          terminated_by: string
+          terminated_by_email?: string | null
+          termination_date: string
+        }
+        Update: {
+          badge_number?: string | null
+          created_at?: string
+          employee_name?: string | null
+          id?: string
+          location?: string | null
+          locker_id?: string | null
+          locker_number?: string
+          reason?: string | null
+          row_label?: string | null
+          terminated_by?: string
+          terminated_by_email?: string | null
+          termination_date?: string
         }
         Relationships: []
       }

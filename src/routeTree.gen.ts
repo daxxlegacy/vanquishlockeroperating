@@ -10,8 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as TerminationsRouteImport } from './routes/terminations'
 import { Route as LockersRouteImport } from './routes/lockers'
+import { Route as DuplicatesRouteImport } from './routes/duplicates'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
 
 const UploadRoute = UploadRouteImport.update({
@@ -19,14 +22,29 @@ const UploadRoute = UploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TerminationsRoute = TerminationsRouteImport.update({
+  id: '/terminations',
+  path: '/terminations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LockersRoute = LockersRouteImport.update({
   id: '/lockers',
   path: '/lockers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DuplicatesRoute = DuplicatesRouteImport.update({
+  id: '/duplicates',
+  path: '/duplicates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -37,35 +55,69 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
+  '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
+  '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
+  '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
+  '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
+  '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
+  '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/lockers' | '/upload'
+  fullPaths:
+    | '/'
+    | '/audit'
+    | '/auth'
+    | '/duplicates'
+    | '/lockers'
+    | '/terminations'
+    | '/upload'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/lockers' | '/upload'
-  id: '__root__' | '/' | '/auth' | '/lockers' | '/upload'
+  to:
+    | '/'
+    | '/audit'
+    | '/auth'
+    | '/duplicates'
+    | '/lockers'
+    | '/terminations'
+    | '/upload'
+  id:
+    | '__root__'
+    | '/'
+    | '/audit'
+    | '/auth'
+    | '/duplicates'
+    | '/lockers'
+    | '/terminations'
+    | '/upload'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuditRoute: typeof AuditRoute
   AuthRoute: typeof AuthRoute
+  DuplicatesRoute: typeof DuplicatesRoute
   LockersRoute: typeof LockersRoute
+  TerminationsRoute: typeof TerminationsRoute
   UploadRoute: typeof UploadRoute
 }
 
@@ -78,6 +130,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terminations': {
+      id: '/terminations'
+      path: '/terminations'
+      fullPath: '/terminations'
+      preLoaderRoute: typeof TerminationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lockers': {
       id: '/lockers'
       path: '/lockers'
@@ -85,11 +144,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LockersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/duplicates': {
+      id: '/duplicates'
+      path: '/duplicates'
+      fullPath: '/duplicates'
+      preLoaderRoute: typeof DuplicatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -104,8 +177,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuditRoute: AuditRoute,
   AuthRoute: AuthRoute,
+  DuplicatesRoute: DuplicatesRoute,
   LockersRoute: LockersRoute,
+  TerminationsRoute: TerminationsRoute,
   UploadRoute: UploadRoute,
 }
 export const routeTree = rootRouteImport

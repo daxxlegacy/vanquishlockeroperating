@@ -12,10 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Search, Plus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
+import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -52,7 +52,7 @@ function LockersPage() {
       const all: Locker[] = [];
       let from = 0;
       while (true) {
-        const { data } = await supabase.from("lockers").select("*").range(from, from + 999);
+        const { data } = await supabase.from("lockers").select("*").is("deleted_at", null).range(from, from + 999);
         if (!data) break;
         all.push(...data);
         if (data.length < 1000) break;
@@ -117,7 +117,7 @@ function LockersPage() {
                   existingLocations={locations}
                 />
               </Dialog>
-              <DeleteLocationButton
+              <DeleteLocationDialog
                 locations={locations}
                 onDeleted={() => setRefresh((k) => k + 1)}
               />
@@ -339,64 +339,3 @@ function AddLockerDialog({
   );
 }
 
-// ---------- Delete Location (bulk delete all lockers in a location) ----------
-function DeleteLocationButton({ locations, onDeleted }: { locations: string[]; onDeleted: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [target, setTarget] = useState<string>("");
-  const [deleting, setDeleting] = useState(false);
-
-  const handleDelete = async () => {
-    if (!target) return;
-    setDeleting(true);
-    const { error, count } = await supabase
-      .from("lockers")
-      .delete({ count: "exact" })
-      .eq("location", target);
-    setDeleting(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(`Deleted ${count ?? 0} lockers from "${target}"`);
-    setOpen(false);
-    setTarget("");
-    onDeleted();
-  };
-
-  return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" disabled={locations.length === 0}>
-          <Trash2 className="h-4 w-4 mr-1" /> Delete Location
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete an entire location</AlertDialogTitle>
-          <AlertDialogDescription>
-            Pick a location to permanently remove every locker assigned to it. This cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="py-2">
-          <Label>Location</Label>
-          <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger><SelectValue placeholder="Select a location…" /></SelectTrigger>
-            <SelectContent>
-              {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={!target || deleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onClick={(e) => { e.preventDefault(); handleDelete(); }}
-          >
-            {deleting ? "Deleting…" : "Delete location"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
