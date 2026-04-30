@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield } from "lucide-react";
+import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, History, UserMinus, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,9 @@ export function AppHeader() {
   const navItems = [
     { to: "/", label: "Map", icon: LayoutGrid },
     { to: "/lockers", label: "Lockers", icon: TableIcon },
+    { to: "/duplicates", label: "Duplicates", icon: Users },
+    { to: "/terminations", label: "Terminations", icon: UserMinus },
+    { to: "/audit", label: "Audit", icon: History },
     { to: "/upload", label: "Upload", icon: Upload, adminOnly: true },
   ];
 

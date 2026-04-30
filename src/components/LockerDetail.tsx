@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2 } from "lucide-react";
+import { Trash2, UserMinus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { DeleteLockerDialog } from "@/components/DeleteLockerDialog";
+import { TerminateUserDialog } from "@/components/TerminateUserDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -28,6 +29,8 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
   const { role } = useAuth();
   const [locker, setLocker] = useState<Locker | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [termOpen, setTermOpen] = useState(false);
   const isAdmin = role === "admin";
 
   useEffect(() => {
@@ -76,80 +79,76 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-display">Locker {locker.locker_number}</DialogTitle>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-2">
-          <Field label="Location" value={locker.location} onChange={(v) => update("location", v)} disabled={!isAdmin} />
-          <Field label="Row" value={locker.row_label ?? ""} onChange={(v) => update("row_label", v)} disabled={!isAdmin} />
-          <Field label="Unit Type" value={locker.unit_type ?? ""} onChange={(v) => update("unit_type", v)} disabled={!isAdmin} />
-          <Field label="Key Lock" value={locker.key_lock ?? ""} onChange={(v) => update("key_lock", v)} disabled={!isAdmin} />
-          <Field label="Badge Number" value={locker.badge_number ?? ""} onChange={(v) => update("badge_number", v)} disabled={!isAdmin} />
-          <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
-          <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
-          <Field label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
-          <SelectField label="Physical Key" value={locker.physical_key_status ?? "unknown"} options={KEYS} onChange={(v) => update("physical_key_status", v)} disabled={!isAdmin} />
-          <SelectField label="Spare Key" value={locker.spare_key_status ?? "unknown"} options={KEYS} onChange={(v) => update("spare_key_status", v)} disabled={!isAdmin} />
-          <div className="col-span-2">
-            <Label>Remark</Label>
-            <Textarea
-              value={locker.remark ?? ""}
-              onChange={(e) => update("remark", e.target.value)}
-              disabled={!isAdmin}
-              rows={2}
-            />
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Locker {locker.locker_number}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <Field label="Location" value={locker.location} onChange={(v) => update("location", v)} disabled={!isAdmin} />
+            <Field label="Row" value={locker.row_label ?? ""} onChange={(v) => update("row_label", v)} disabled={!isAdmin} />
+            <Field label="Unit Type" value={locker.unit_type ?? ""} onChange={(v) => update("unit_type", v)} disabled={!isAdmin} />
+            <Field label="Key Lock" value={locker.key_lock ?? ""} onChange={(v) => update("key_lock", v)} disabled={!isAdmin} />
+            <Field label="Badge Number" value={locker.badge_number ?? ""} onChange={(v) => update("badge_number", v)} disabled={!isAdmin} />
+            <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
+            <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
+            <Field label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
+            <SelectField label="Physical Key" value={locker.physical_key_status ?? "unknown"} options={KEYS} onChange={(v) => update("physical_key_status", v)} disabled={!isAdmin} />
+            <SelectField label="Spare Key" value={locker.spare_key_status ?? "unknown"} options={KEYS} onChange={(v) => update("spare_key_status", v)} disabled={!isAdmin} />
+            <div className="col-span-2">
+              <Label>Remark</Label>
+              <Textarea
+                value={locker.remark ?? ""}
+                onChange={(e) => update("remark", e.target.value)}
+                disabled={!isAdmin}
+                rows={2}
+              />
+            </div>
           </div>
-        </div>
-        <DialogFooter className="gap-2 sm:justify-between">
-          {isAdmin ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" disabled={saving}>
+          <DialogFooter className="gap-2 sm:justify-between">
+            {isAdmin ? (
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="destructive" size="sm" disabled={saving} onClick={() => setDeleteOpen(true)}>
                   <Trash2 className="h-4 w-4 mr-1" /> Delete
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete locker {locker.locker_number}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently remove this locker record from the database. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={async () => {
-                      setSaving(true);
-                      const { error } = await supabase.from("lockers").delete().eq("id", locker.id);
-                      setSaving(false);
-                      if (error) toast.error(error.message);
-                      else {
-                        toast.success(`Locker ${locker.locker_number} deleted`);
-                        onUpdated?.();
-                        onClose();
-                      }
-                    }}
+                {locker.employee_name && (
+                  <Button
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => setTermOpen(true)}
+                    className="bg-warning text-warning-foreground hover:bg-warning/90"
                   >
-                    Delete locker
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : <span />}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>Close</Button>
-            {isAdmin && (
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Save changes"}
-              </Button>
-            )}
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                    <UserMinus className="h-4 w-4 mr-1" /> Terminate user
+                  </Button>
+                )}
+              </div>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>Close</Button>
+              {isAdmin && (
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving…" : "Save changes"}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DeleteLockerDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        locker={{ id: locker.id, locker_number: locker.locker_number, location: locker.location }}
+        onDeleted={() => { onUpdated?.(); onClose(); }}
+      />
+      <TerminateUserDialog
+        open={termOpen}
+        onOpenChange={setTermOpen}
+        locker={locker}
+        onTerminated={() => { onUpdated?.(); onClose(); }}
+      />
+    </>
   );
 }
 
