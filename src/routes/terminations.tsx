@@ -38,12 +38,24 @@ type MatchedTermination = RosterPerson & {
   db_badge_number: string | null;
   reason: string | null;
 };
+type MatchedActive = RosterPerson & {
+  matchedBy: "badge" | "name";
+  locker_number: string;
+  location: string | null;
+  db_employee_name: string | null;
+  db_badge_number: string | null;
+  status: string;
+};
 interface CheckResult {
   filename: string;
   fileCount: number;
   terminatedCount: number;
+  activeCount: number;
+  notFoundCount: number;
   notTerminated: RosterPerson[];
   terminated: MatchedTermination[];
+  active: MatchedActive[];
+  notFound: RosterPerson[];
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -147,43 +159,79 @@ function TerminationsPage() {
         from += 1000;
       }
 
-      const byBadge = new Map<string, Term>();
-      const byName = new Map<string, Term>();
+      // Pull all currently-assigned (active) lockers — anyone with employee_name or badge_number set.
+      type LockerLite = { locker_number: string; location: string | null; employee_name: string | null; badge_number: string | null; status: string };
+      const allLockers: LockerLite[] = [];
+      from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number,location,employee_name,badge_number,status")
+          .is("deleted_at", null)
+          .or("employee_name.not.is.null,badge_number.not.is.null")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allLockers.push(...(data as LockerLite[]));
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+
+      const termByBadge = new Map<string, Term>();
+      const termByName = new Map<string, Term>();
       for (const t of allTerms) {
-        if (t.badge_number) byBadge.set(t.badge_number.toLowerCase().trim(), t);
-        if (t.employee_name) byName.set(t.employee_name.toLowerCase().trim(), t);
+        if (t.badge_number) termByBadge.set(t.badge_number.toLowerCase().trim(), t);
+        if (t.employee_name) termByName.set(t.employee_name.toLowerCase().trim(), t);
+      }
+      const lockByBadge = new Map<string, LockerLite>();
+      const lockByName = new Map<string, LockerLite>();
+      for (const l of allLockers) {
+        if (l.badge_number) lockByBadge.set(l.badge_number.toLowerCase().trim(), l);
+        if (l.employee_name) lockByName.set(l.employee_name.toLowerCase().trim(), l);
       }
 
       const terminated: MatchedTermination[] = [];
       const notTerminated: RosterPerson[] = [];
+      const active: MatchedActive[] = [];
+      const notFound: RosterPerson[] = [];
       for (const p of people) {
-        const bm = p.badge ? byBadge.get(p.badge.toLowerCase().trim()) : undefined;
-        const nm = !bm && p.name ? byName.get(p.name.toLowerCase().trim()) : undefined;
-        const m = bm ?? nm;
-        if (m) {
+        const tb = p.badge ? termByBadge.get(p.badge.toLowerCase().trim()) : undefined;
+        const tn = !tb && p.name ? termByName.get(p.name.toLowerCase().trim()) : undefined;
+        const tm = tb ?? tn;
+        if (tm) {
           terminated.push({
-            ...p,
-            matchedBy: bm ? "badge" : "name",
-            termination_date: m.termination_date,
-            locker_number: m.locker_number,
-            location: m.location,
-            db_employee_name: m.employee_name,
-            db_badge_number: m.badge_number,
-            reason: m.reason,
+            ...p, matchedBy: tb ? "badge" : "name",
+            termination_date: tm.termination_date, locker_number: tm.locker_number,
+            location: tm.location, db_employee_name: tm.employee_name,
+            db_badge_number: tm.badge_number, reason: tm.reason,
           });
         } else {
           notTerminated.push(p);
         }
+
+        const lb = p.badge ? lockByBadge.get(p.badge.toLowerCase().trim()) : undefined;
+        const ln = !lb && p.name ? lockByName.get(p.name.toLowerCase().trim()) : undefined;
+        const lm = lb ?? ln;
+        if (lm) {
+          active.push({
+            ...p, matchedBy: lb ? "badge" : "name",
+            locker_number: lm.locker_number, location: lm.location,
+            db_employee_name: lm.employee_name, db_badge_number: lm.badge_number,
+            status: lm.status,
+          });
+        }
+        if (!tm && !lm) notFound.push(p);
       }
 
       setCheckResult({
         filename: f.name,
         fileCount: people.length,
         terminatedCount: terminated.length,
-        terminated,
-        notTerminated,
+        activeCount: active.length,
+        notFoundCount: notFound.length,
+        terminated, notTerminated, active, notFound,
       });
-      toast.success(`Checked ${people.length} people — ${terminated.length} terminated, ${notTerminated.length} active.`);
+      toast.success(`Checked ${people.length} — ${terminated.length} terminated · ${active.length} active · ${notFound.length} not found.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Check failed");
     }
@@ -201,19 +249,28 @@ function TerminationsPage() {
       db_badge: p.db_badge_number ?? "", db_name: p.db_employee_name ?? "",
       reason: p.reason ?? "",
     }));
-    const notRows = checkResult.notTerminated.map((p) => ({
+    const activeRows = checkResult.active.map((p) => ({
+      file_badge: p.badge ?? "", file_name: p.name ?? "",
+      matched_by: p.matchedBy,
+      locker_number: p.locker_number, location: p.location ?? "",
+      db_badge: p.db_badge_number ?? "", db_name: p.db_employee_name ?? "",
+      status: p.status,
+    }));
+    const notFoundRows = checkResult.notFound.map((p) => ({
       file_badge: p.badge ?? "", file_name: p.name ?? "",
     }));
     if (fmt === "csv") {
       const csv = Papa.unparse([
         ...terminatedRows.map((r) => ({ section: "terminated", ...r })),
-        ...notRows.map((r) => ({ section: "not_terminated", ...r })),
+        ...activeRows.map((r) => ({ section: "active", ...r })),
+        ...notFoundRows.map((r) => ({ section: "not_found", ...r })),
       ]);
       downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `terminations-check-${stamp}.csv`);
     } else {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(terminatedRows.length ? terminatedRows : [{ note: "(empty)" }]), "Terminated");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(notRows.length ? notRows : [{ note: "(empty)" }]), "Not Terminated");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activeRows.length ? activeRows : [{ note: "(empty)" }]), "Active in Locker");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(notFoundRows.length ? notFoundRows : [{ note: "(empty)" }]), "Not Found");
       const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
       downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `terminations-check-${stamp}.xlsx`);
     }
@@ -239,9 +296,9 @@ function TerminationsPage() {
           <div className="flex items-start gap-3">
             <UploadIcon className="h-5 w-5 text-primary mt-1" />
             <div className="flex-1">
-              <Label className="font-display text-base">Check roster against terminations</Label>
+              <Label className="font-display text-base">Check roster against terminations & active lockers</Label>
               <p className="text-xs text-muted-foreground mt-1 mb-3">
-                Upload an Excel or CSV file with a badge number and/or employee name column. The system matches each person against the termination list and shows who is terminated and who is still active.
+                Upload an Excel or CSV file with a badge number and/or employee name column. Each person is matched against the termination list AND the currently-assigned lockers — so you see who is already terminated, who is still active in a locker, and who is missing from both.
               </p>
               <div className="flex gap-3 items-center flex-wrap">
                 <Input
@@ -266,11 +323,12 @@ function TerminationsPage() {
         </Card>
 
         {checkResult && (
-          <Card className="p-5 mb-6 space-y-4">
-            <div className="grid md:grid-cols-3 gap-3">
+          <Card className="p-5 mb-6 space-y-5">
+            <div className="grid md:grid-cols-4 gap-3">
               <Stat label="People in file" value={checkResult.fileCount} />
               <Stat label="Terminated" value={checkResult.terminatedCount} tone="warn" />
-              <Stat label="Not terminated" value={checkResult.notTerminated.length} tone="ok" />
+              <Stat label="Active in locker" value={checkResult.activeCount} tone="ok" />
+              <Stat label="Not found" value={checkResult.notFoundCount} />
             </div>
 
             <div>
@@ -301,7 +359,35 @@ function TerminationsPage() {
 
             <div>
               <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" /> Not terminated ({checkResult.notTerminated.length})
+                <CheckCircle2 className="h-4 w-4 text-primary" /> Active in locker ({checkResult.active.length})
+              </h3>
+              <div className="overflow-x-auto border rounded-md max-h-72 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-left sticky top-0">
+                    <tr><Th>File badge</Th><Th>File name</Th><Th>Locker</Th><Th>Location</Th><Th>Status</Th><Th>Match</Th></tr>
+                  </thead>
+                  <tbody>
+                    {checkResult.active.length === 0 ? (
+                      <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">None</td></tr>
+                    ) : checkResult.active.map((p, i) => (
+                      <tr key={i} className="border-t">
+                        <td className="px-3 py-2 font-mono">{p.badge ?? "—"}</td>
+                        <td className="px-3 py-2">{p.name ?? "—"}</td>
+                        <td className="px-3 py-2 font-mono">{p.locker_number}</td>
+                        <td className="px-3 py-2">{p.location ?? "—"}</td>
+                        <td className="px-3 py-2 text-xs"><Badge variant="outline">{p.status}</Badge></td>
+                        <td className="px-3 py-2 text-xs"><Badge variant="secondary">{p.matchedBy}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" /> Not found ({checkResult.notFound.length})
+                <span className="text-xs font-normal text-muted-foreground">— not in terminations and not assigned to any locker</span>
               </h3>
               <div className="overflow-x-auto border rounded-md max-h-72 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -309,9 +395,9 @@ function TerminationsPage() {
                     <tr><Th>Badge</Th><Th>Name</Th></tr>
                   </thead>
                   <tbody>
-                    {checkResult.notTerminated.length === 0 ? (
+                    {checkResult.notFound.length === 0 ? (
                       <tr><td colSpan={2} className="px-3 py-6 text-center text-muted-foreground">None</td></tr>
-                    ) : checkResult.notTerminated.map((p, i) => (
+                    ) : checkResult.notFound.map((p, i) => (
                       <tr key={i} className="border-t">
                         <td className="px-3 py-2 font-mono">{p.badge ?? "—"}</td>
                         <td className="px-3 py-2">{p.name ?? "—"}</td>
