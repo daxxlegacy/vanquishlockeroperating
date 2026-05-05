@@ -1,15 +1,10 @@
 // Click a locker number on the map → see all compartments (A–F) for that prefix.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { STATUS_CELL, STATUS_SWATCH, STATUS_LABEL, LOCKER_STATUSES, type LockerStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
-const SLOT_COLORS: Record<string, string> = {
-  active: "bg-destructive border-destructive text-destructive-foreground",
-  empty: "bg-success border-success text-success-foreground",
-  repair: "bg-warning border-warning text-warning-foreground",
-  unknown: "bg-muted border-border text-muted-foreground",
-};
 const NOT_PRESENT = "bg-background border-dashed border-border text-muted-foreground/70";
 
 const SLOTS = ["A", "B", "C", "D", "E", "F"] as const;
