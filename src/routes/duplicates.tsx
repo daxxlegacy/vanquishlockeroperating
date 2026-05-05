@@ -191,3 +191,43 @@ function DupList({ groups, keyLabel, onPick }: { groups: Locker[][]; keyLabel: "
     </div>
   );
 }
+
+function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
+  if (groups.length === 0) {
+    toast.error("Nothing to export");
+    return;
+  }
+  const rows = groups.flatMap((g, i) => {
+    const groupId = i + 1;
+    const groupKey = kind === "name"
+      ? (g[0].employee_name ?? "")
+      : (g[0].badge_number ?? "");
+    return g.map((l) => ({
+      "Group #": groupId,
+      "Duplicate Type": kind === "name" ? "Employee Name" : "Badge Number",
+      "Duplicate Value": groupKey,
+      "Locker Count": g.length,
+      "Locker Number": l.locker_number,
+      "Location": l.location,
+      "Row": l.row_label ?? "",
+      "Employee Name": l.employee_name ?? "",
+      "Badge Number": l.badge_number ?? "",
+      "Status": l.status,
+      "Unit Type": l.unit_type ?? "",
+      "Key Lock": l.key_lock ?? "",
+      "Batch Intake": l.batch_intake ?? "",
+      "Remark": l.remark ?? "",
+    }));
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  // Auto-fit column widths
+  const headers = Object.keys(rows[0]);
+  ws["!cols"] = headers.map((h) => ({
+    wch: Math.min(40, Math.max(h.length, ...rows.map((r) => String((r as Record<string, unknown>)[h] ?? "").length))) + 2,
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, kind === "name" ? "Duplicate Names" : "Duplicate Badges");
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `duplicate-${kind === "name" ? "names" : "badges"}-${stamp}.xlsx`);
+  toast.success(`Exported ${rows.length} rows across ${groups.length} groups`);
+}
