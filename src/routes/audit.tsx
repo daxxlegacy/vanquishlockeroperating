@@ -32,6 +32,7 @@ function AuditPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
   const [items, setItems] = useState<Audit[] | null>(null);
+  const [terms, setTerms] = useState<Term[] | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [now, setNow] = useState(Date.now());
 
@@ -41,6 +42,8 @@ function AuditPage() {
     if (!user) return;
     supabase.from("deletion_audit").select("*").order("created_at", { ascending: false }).limit(500)
       .then(({ data }) => setItems(data ?? []));
+    supabase.from("terminations").select("*").order("created_at", { ascending: false }).limit(500)
+      .then(({ data }) => setTerms(data ?? []));
   }, [user, refresh]);
 
   // tick every 10s so the "time left" countdown updates
