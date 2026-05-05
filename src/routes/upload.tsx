@@ -417,6 +417,10 @@ function getStr(row: Record<string, unknown>, key: string | undefined): string |
 function mapStatus(raw: string | null, hasBadge: boolean): LockerRow["status"] {
   if (!raw) return hasBadge ? "active" : "empty";
   const n = raw.toLowerCase();
+  if (n.includes("clean")) return "cleaning";
+  if (n.includes("broken") || n.includes("broken door") || n.includes("door")) return "broken_door";
+  if (n.includes("on hold") || n.includes("onhold") || n.includes("hold")) return "on_hold";
+  if (n.includes("reserve")) return "reserved";
   if (n.includes("repair")) return "repair";
   if (n.includes("empty") || n.includes("vacant") || n.includes("available")) return "empty";
   if (n.includes("active") || n.includes("occupied") || n.includes("listing")) return "active";
