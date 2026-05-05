@@ -135,10 +135,9 @@ function LockersPage() {
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="empty">Empty</SelectItem>
-              <SelectItem value="repair">Repair</SelectItem>
-              <SelectItem value="unknown">Unknown</SelectItem>
+              {LOCKER_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={locFilter} onValueChange={setLocFilter}>
