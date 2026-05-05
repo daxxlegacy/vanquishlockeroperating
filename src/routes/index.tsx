@@ -253,15 +253,14 @@ function SheetGrid({
 }
 
 function Legend() {
+  const items: { c: string; l: string }[] = [
+    ...LOCKER_STATUSES.map((s) => ({ c: STATUS_SWATCH[s as LockerStatus], l: STATUS_LABEL[s as LockerStatus] })),
+    { c: "bg-gradient-to-br from-destructive via-warning to-success", l: "Mixed" },
+    { c: "bg-background border border-dashed border-border", l: "Not in DB" },
+  ];
   return (
-    <div className="flex items-center gap-4 text-sm flex-wrap">
-      {[
-        { c: "bg-destructive", l: "Occupied" },
-        { c: "bg-success", l: "Empty" },
-        { c: "bg-warning", l: "Repair" },
-        { c: "bg-gradient-to-br from-destructive via-warning to-success", l: "Mixed" },
-        { c: "bg-muted-foreground", l: "Unknown / not in DB" },
-      ].map((i) => (
+    <div className="flex items-center gap-3 text-xs flex-wrap">
+      {items.map((i) => (
         <div key={i.l} className="flex items-center gap-1.5">
           <span className={`h-3 w-3 rounded ${i.c}`} />
           <span className="text-muted-foreground">{i.l}</span>
