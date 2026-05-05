@@ -41,7 +41,24 @@ function TerminatePage() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
-  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
+  // Strict dd/mm/yyyy validation with descriptive errors.
+  const dateError = (() => {
+    if (!date.trim()) return "Termination date is required";
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date.trim())) return "Format must be exactly dd/mm/yyyy (e.g. 05/05/2026)";
+    const [dd, mm, yyyy] = date.trim().split("/").map((n) => parseInt(n, 10));
+    if (mm < 1 || mm > 12) return `Month must be 01–12 (got ${String(mm).padStart(2, "0")})`;
+    const daysInMonth = new Date(yyyy, mm, 0).getDate();
+    if (dd < 1 || dd > daysInMonth) return `Day must be 01–${String(daysInMonth).padStart(2, "0")} for ${String(mm).padStart(2, "0")}/${yyyy}`;
+    if (yyyy < 2000 || yyyy > 2100) return "Year must be between 2000 and 2100";
+    const picked = new Date(yyyy, mm - 1, dd);
+    const oneYearAhead = new Date(); oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
+    if (picked > oneYearAhead) return "Date can't be more than 1 year in the future";
+    return null;
+  })();
+  const iso = !dateError ? (() => {
+    const [dd, mm, yyyy] = date.trim().split("/");
+    return `${yyyy}-${mm}-${dd}`;
+  })() : null;
 
   useEffect(() => {
     if (!user || !lockerId) return;
