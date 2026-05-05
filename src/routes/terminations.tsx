@@ -249,19 +249,28 @@ function TerminationsPage() {
       db_badge: p.db_badge_number ?? "", db_name: p.db_employee_name ?? "",
       reason: p.reason ?? "",
     }));
-    const notRows = checkResult.notTerminated.map((p) => ({
+    const activeRows = checkResult.active.map((p) => ({
+      file_badge: p.badge ?? "", file_name: p.name ?? "",
+      matched_by: p.matchedBy,
+      locker_number: p.locker_number, location: p.location ?? "",
+      db_badge: p.db_badge_number ?? "", db_name: p.db_employee_name ?? "",
+      status: p.status,
+    }));
+    const notFoundRows = checkResult.notFound.map((p) => ({
       file_badge: p.badge ?? "", file_name: p.name ?? "",
     }));
     if (fmt === "csv") {
       const csv = Papa.unparse([
         ...terminatedRows.map((r) => ({ section: "terminated", ...r })),
-        ...notRows.map((r) => ({ section: "not_terminated", ...r })),
+        ...activeRows.map((r) => ({ section: "active", ...r })),
+        ...notFoundRows.map((r) => ({ section: "not_found", ...r })),
       ]);
       downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `terminations-check-${stamp}.csv`);
     } else {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(terminatedRows.length ? terminatedRows : [{ note: "(empty)" }]), "Terminated");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(notRows.length ? notRows : [{ note: "(empty)" }]), "Not Terminated");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(activeRows.length ? activeRows : [{ note: "(empty)" }]), "Active in Locker");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(notFoundRows.length ? notFoundRows : [{ note: "(empty)" }]), "Not Found");
       const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
       downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `terminations-check-${stamp}.xlsx`);
     }
@@ -287,9 +296,9 @@ function TerminationsPage() {
           <div className="flex items-start gap-3">
             <UploadIcon className="h-5 w-5 text-primary mt-1" />
             <div className="flex-1">
-              <Label className="font-display text-base">Check roster against terminations</Label>
+              <Label className="font-display text-base">Check roster against terminations & active lockers</Label>
               <p className="text-xs text-muted-foreground mt-1 mb-3">
-                Upload an Excel or CSV file with a badge number and/or employee name column. The system matches each person against the termination list and shows who is terminated and who is still active.
+                Upload an Excel or CSV file with a badge number and/or employee name column. Each person is matched against the termination list AND the currently-assigned lockers — so you see who is already terminated, who is still active in a locker, and who is missing from both.
               </p>
               <div className="flex gap-3 items-center flex-wrap">
                 <Input
@@ -314,11 +323,12 @@ function TerminationsPage() {
         </Card>
 
         {checkResult && (
-          <Card className="p-5 mb-6 space-y-4">
-            <div className="grid md:grid-cols-3 gap-3">
+          <Card className="p-5 mb-6 space-y-5">
+            <div className="grid md:grid-cols-4 gap-3">
               <Stat label="People in file" value={checkResult.fileCount} />
               <Stat label="Terminated" value={checkResult.terminatedCount} tone="warn" />
-              <Stat label="Not terminated" value={checkResult.notTerminated.length} tone="ok" />
+              <Stat label="Active in locker" value={checkResult.activeCount} tone="ok" />
+              <Stat label="Not found" value={checkResult.notFoundCount} />
             </div>
 
             <div>
@@ -349,7 +359,35 @@ function TerminationsPage() {
 
             <div>
               <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" /> Not terminated ({checkResult.notTerminated.length})
+                <CheckCircle2 className="h-4 w-4 text-primary" /> Active in locker ({checkResult.active.length})
+              </h3>
+              <div className="overflow-x-auto border rounded-md max-h-72 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-left sticky top-0">
+                    <tr><Th>File badge</Th><Th>File name</Th><Th>Locker</Th><Th>Location</Th><Th>Status</Th><Th>Match</Th></tr>
+                  </thead>
+                  <tbody>
+                    {checkResult.active.length === 0 ? (
+                      <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">None</td></tr>
+                    ) : checkResult.active.map((p, i) => (
+                      <tr key={i} className="border-t">
+                        <td className="px-3 py-2 font-mono">{p.badge ?? "—"}</td>
+                        <td className="px-3 py-2">{p.name ?? "—"}</td>
+                        <td className="px-3 py-2 font-mono">{p.locker_number}</td>
+                        <td className="px-3 py-2">{p.location ?? "—"}</td>
+                        <td className="px-3 py-2 text-xs"><Badge variant="outline">{p.status}</Badge></td>
+                        <td className="px-3 py-2 text-xs"><Badge variant="secondary">{p.matchedBy}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" /> Not found ({checkResult.notFound.length})
+                <span className="text-xs font-normal text-muted-foreground">— not in terminations and not assigned to any locker</span>
               </h3>
               <div className="overflow-x-auto border rounded-md max-h-72 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -357,9 +395,9 @@ function TerminationsPage() {
                     <tr><Th>Badge</Th><Th>Name</Th></tr>
                   </thead>
                   <tbody>
-                    {checkResult.notTerminated.length === 0 ? (
+                    {checkResult.notFound.length === 0 ? (
                       <tr><td colSpan={2} className="px-3 py-6 text-center text-muted-foreground">None</td></tr>
-                    ) : checkResult.notTerminated.map((p, i) => (
+                    ) : checkResult.notFound.map((p, i) => (
                       <tr key={i} className="border-t">
                         <td className="px-3 py-2 font-mono">{p.badge ?? "—"}</td>
                         <td className="px-3 py-2">{p.name ?? "—"}</td>
