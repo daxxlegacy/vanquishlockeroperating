@@ -159,43 +159,79 @@ function TerminationsPage() {
         from += 1000;
       }
 
-      const byBadge = new Map<string, Term>();
-      const byName = new Map<string, Term>();
+      // Pull all currently-assigned (active) lockers — anyone with employee_name or badge_number set.
+      type LockerLite = { locker_number: string; location: string | null; employee_name: string | null; badge_number: string | null; status: string };
+      const allLockers: LockerLite[] = [];
+      from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number,location,employee_name,badge_number,status")
+          .is("deleted_at", null)
+          .or("employee_name.not.is.null,badge_number.not.is.null")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allLockers.push(...(data as LockerLite[]));
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+
+      const termByBadge = new Map<string, Term>();
+      const termByName = new Map<string, Term>();
       for (const t of allTerms) {
-        if (t.badge_number) byBadge.set(t.badge_number.toLowerCase().trim(), t);
-        if (t.employee_name) byName.set(t.employee_name.toLowerCase().trim(), t);
+        if (t.badge_number) termByBadge.set(t.badge_number.toLowerCase().trim(), t);
+        if (t.employee_name) termByName.set(t.employee_name.toLowerCase().trim(), t);
+      }
+      const lockByBadge = new Map<string, LockerLite>();
+      const lockByName = new Map<string, LockerLite>();
+      for (const l of allLockers) {
+        if (l.badge_number) lockByBadge.set(l.badge_number.toLowerCase().trim(), l);
+        if (l.employee_name) lockByName.set(l.employee_name.toLowerCase().trim(), l);
       }
 
       const terminated: MatchedTermination[] = [];
       const notTerminated: RosterPerson[] = [];
+      const active: MatchedActive[] = [];
+      const notFound: RosterPerson[] = [];
       for (const p of people) {
-        const bm = p.badge ? byBadge.get(p.badge.toLowerCase().trim()) : undefined;
-        const nm = !bm && p.name ? byName.get(p.name.toLowerCase().trim()) : undefined;
-        const m = bm ?? nm;
-        if (m) {
+        const tb = p.badge ? termByBadge.get(p.badge.toLowerCase().trim()) : undefined;
+        const tn = !tb && p.name ? termByName.get(p.name.toLowerCase().trim()) : undefined;
+        const tm = tb ?? tn;
+        if (tm) {
           terminated.push({
-            ...p,
-            matchedBy: bm ? "badge" : "name",
-            termination_date: m.termination_date,
-            locker_number: m.locker_number,
-            location: m.location,
-            db_employee_name: m.employee_name,
-            db_badge_number: m.badge_number,
-            reason: m.reason,
+            ...p, matchedBy: tb ? "badge" : "name",
+            termination_date: tm.termination_date, locker_number: tm.locker_number,
+            location: tm.location, db_employee_name: tm.employee_name,
+            db_badge_number: tm.badge_number, reason: tm.reason,
           });
         } else {
           notTerminated.push(p);
         }
+
+        const lb = p.badge ? lockByBadge.get(p.badge.toLowerCase().trim()) : undefined;
+        const ln = !lb && p.name ? lockByName.get(p.name.toLowerCase().trim()) : undefined;
+        const lm = lb ?? ln;
+        if (lm) {
+          active.push({
+            ...p, matchedBy: lb ? "badge" : "name",
+            locker_number: lm.locker_number, location: lm.location,
+            db_employee_name: lm.employee_name, db_badge_number: lm.badge_number,
+            status: lm.status,
+          });
+        }
+        if (!tm && !lm) notFound.push(p);
       }
 
       setCheckResult({
         filename: f.name,
         fileCount: people.length,
         terminatedCount: terminated.length,
-        terminated,
-        notTerminated,
+        activeCount: active.length,
+        notFoundCount: notFound.length,
+        terminated, notTerminated, active, notFound,
       });
-      toast.success(`Checked ${people.length} people — ${terminated.length} terminated, ${notTerminated.length} active.`);
+      toast.success(`Checked ${people.length} — ${terminated.length} terminated · ${active.length} active · ${notFound.length} not found.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Check failed");
     }
