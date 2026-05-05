@@ -247,6 +247,124 @@ function UploadPage() {
     }
   };
 
+  const runRosterCheck = async (f: File) => {
+    setCheckBusy(true);
+    setCheckResult(null);
+    try {
+      const rows = await parseFile(f);
+      if (rows.length === 0) { toast.error("Roster file is empty."); setCheckBusy(false); return; }
+      const detected = detectColumns(Object.keys(rows[0]));
+      const badgeKey = detected.badge_number;
+      const nameKey = detected.employee_name;
+      if (!badgeKey && !nameKey) {
+        toast.error("Couldn't find a badge or name column in the file.");
+        setCheckBusy(false);
+        return;
+      }
+
+      const peopleInFile: RosterPerson[] = [];
+      const fileBadges = new Set<string>();
+      const fileNames = new Set<string>();
+      for (const r of rows) {
+        const badge = badgeKey ? (getStr(r, badgeKey) ?? null) : null;
+        const name = nameKey ? (getStr(r, nameKey) ?? null) : null;
+        if (!badge && !name) continue;
+        peopleInFile.push({ badge, name });
+        if (badge) fileBadges.add(badge.toLowerCase().trim());
+        if (name) fileNames.add(name.toLowerCase().trim());
+      }
+
+      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number, employee_name, badge_number")
+          .is("deleted_at", null)
+          .or("employee_name.not.is.null,badge_number.not.is.null")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        dbPeople.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+
+      const dbByBadge = new Map<string, typeof dbPeople[number]>();
+      const dbByName = new Map<string, typeof dbPeople[number]>();
+      for (const p of dbPeople) {
+        if (p.badge_number) dbByBadge.set(p.badge_number.toLowerCase().trim(), p);
+        if (p.employee_name) dbByName.set(p.employee_name.toLowerCase().trim(), p);
+      }
+
+      const inFileNotInDb: RosterPerson[] = [];
+      const badgeMatchedNameDiffers: RosterCheckResult["badgeMatchedNameDiffers"] = [];
+      for (const p of peopleInFile) {
+        const bMatch = p.badge ? dbByBadge.get(p.badge.toLowerCase().trim()) : undefined;
+        const nMatch = p.name ? dbByName.get(p.name.toLowerCase().trim()) : undefined;
+        if (!bMatch && !nMatch) inFileNotInDb.push(p);
+        if (bMatch && p.name && bMatch.employee_name &&
+            bMatch.employee_name.toLowerCase().trim() !== p.name.toLowerCase().trim()) {
+          badgeMatchedNameDiffers.push({
+            badge: p.badge!,
+            fileName: p.name,
+            dbName: bMatch.employee_name,
+            locker_number: bMatch.locker_number,
+          });
+        }
+      }
+
+      const inDbNotInFile = dbPeople.filter((p) => {
+        const badgeIn = p.badge_number && fileBadges.has(p.badge_number.toLowerCase().trim());
+        const nameIn = p.employee_name && fileNames.has(p.employee_name.toLowerCase().trim());
+        return !badgeIn && !nameIn;
+      });
+
+      setCheckResult({
+        filename: f.name,
+        fileCount: peopleInFile.length,
+        dbCount: dbPeople.length,
+        inFileNotInDb,
+        inDbNotInFile,
+        badgeMatchedNameDiffers,
+      });
+      toast.success(`Roster compared — ${inFileNotInDb.length} not in DB, ${inDbNotInFile.length} not in file.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Roster check failed");
+    }
+    setCheckBusy(false);
+  };
+
+  const exportRosterCheck = (fmt: "xlsx" | "csv") => {
+    if (!checkResult) return;
+    const sheets: Record<string, Record<string, unknown>[]> = {
+      "In file NOT in DB": checkResult.inFileNotInDb.map((p) => ({ badge: p.badge ?? "", name: p.name ?? "" })),
+      "In DB NOT in file": checkResult.inDbNotInFile.map((p) => ({
+        locker_number: p.locker_number,
+        badge: p.badge_number ?? "",
+        name: p.employee_name ?? "",
+      })),
+      "Badge matched, name differs": checkResult.badgeMatchedNameDiffers as unknown as Record<string, unknown>[],
+    };
+    const stamp = new Date().toISOString().slice(0, 10);
+    if (fmt === "csv") {
+      const csv = Papa.unparse([
+        ...checkResult.inFileNotInDb.map((p) => ({ section: "in_file_not_in_db", locker_number: "", badge: p.badge ?? "", name: p.name ?? "" })),
+        ...checkResult.inDbNotInFile.map((p) => ({ section: "in_db_not_in_file", locker_number: p.locker_number, badge: p.badge_number ?? "", name: p.employee_name ?? "" })),
+        ...checkResult.badgeMatchedNameDiffers.map((p) => ({ section: "badge_matched_name_differs", locker_number: p.locker_number, badge: p.badge, name: `${p.fileName} (file) / ${p.dbName} (db)` })),
+      ]);
+      downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `roster-check-${stamp}.csv`);
+    } else {
+      const wb = XLSX.utils.book_new();
+      for (const [name, rows] of Object.entries(sheets)) {
+        const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ note: "(empty)" }]);
+        XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
+      }
+      const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `roster-check-${stamp}.xlsx`);
+    }
+    toast.success("Roster check exported.");
+  };
 
   return (
     <div className="min-h-screen bg-background">
