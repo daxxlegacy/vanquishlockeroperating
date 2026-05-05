@@ -154,6 +154,7 @@ function AuditPage() {
               );
             })}
           </div>
+        )}
           </TabsContent>
           <TabsContent value="terminations" className="mt-4">
             {!terms ? (
