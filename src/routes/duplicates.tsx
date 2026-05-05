@@ -92,45 +92,38 @@ function DuplicatesPage() {
         <div className="flex items-center gap-3 mb-6">
           <Users className="h-6 w-6" />
           <div>
-            <h1 className="font-display text-3xl font-bold">Duplicate Employees</h1>
+            <h1 className="font-display text-3xl font-bold">Duplicates</h1>
             <p className="text-muted-foreground text-sm">
-              Same employee name assigned to more than one locker. Click a locker to review or fix.
+              Same employee or badge number on more than one locker. Click a locker to review or fix.
             </p>
           </div>
         </div>
 
         {!lockers ? (
           <Skeleton className="h-96 w-full" />
-        ) : groups.length === 0 ? (
-          <Card className="p-12 text-center text-muted-foreground">No duplicates found. 🎉</Card>
         ) : (
-          <div className="space-y-3">
-            {groups.map((g) => (
-              <Card key={g[0].id} className="p-4">
-                <div className="flex items-center gap-3 flex-wrap mb-3">
-                  <span className="font-display font-bold text-lg">{g[0].employee_name}</span>
-                  <Badge variant="destructive">{g.length} lockers</Badge>
-                </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {g.map((l) => (
-                    <button
-                      key={l.id}
-                      onClick={() => setSelected(l.id)}
-                      className="text-left rounded border p-2.5 hover:border-primary hover:bg-muted/40 transition-colors"
-                    >
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="font-mono font-semibold">{l.locker_number}</span>
-                        <span className="text-xs text-muted-foreground">{l.location}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Badge: {l.badge_number ?? "—"} · {l.row_label ?? "—"}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </Card>
-            ))}
-          </div>
+          <Tabs defaultValue="names">
+            <TabsList>
+              <TabsTrigger value="names" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Names ({nameGroups.length})</TabsTrigger>
+              <TabsTrigger value="badges" className="gap-1.5"><BadgeAlert className="h-3.5 w-3.5" /> Badges ({badgeGroups.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="names" className="mt-4">
+              {nameGroups.length === 0 ? (
+                <Card className="p-12 text-center text-muted-foreground">No duplicate names. 🎉</Card>
+              ) : (
+                <DupList groups={nameGroups} keyLabel="employee_name" onPick={setSelected} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="badges" className="mt-4">
+              {badgeGroups.length === 0 ? (
+                <Card className="p-12 text-center text-muted-foreground">No duplicate badges. 🎉</Card>
+              ) : (
+                <DupList groups={badgeGroups} keyLabel="badge_number" onPick={setSelected} />
+              )}
+            </TabsContent>
+          </Tabs>
         )}
       </main>
       <LockerDetail
