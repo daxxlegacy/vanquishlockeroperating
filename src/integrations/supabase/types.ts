@@ -14,6 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_run_items: {
+        Row: {
+          badge_number: string | null
+          created_at: string
+          employee_name: string | null
+          id: string
+          location: string | null
+          locker_id: string | null
+          locker_number: string | null
+          prior_status: string | null
+          row_label: string | null
+          run_id: string
+          succeeded: boolean
+          termination_id: string | null
+        }
+        Insert: {
+          badge_number?: string | null
+          created_at?: string
+          employee_name?: string | null
+          id?: string
+          location?: string | null
+          locker_id?: string | null
+          locker_number?: string | null
+          prior_status?: string | null
+          row_label?: string | null
+          run_id: string
+          succeeded?: boolean
+          termination_id?: string | null
+        }
+        Update: {
+          badge_number?: string | null
+          created_at?: string
+          employee_name?: string | null
+          id?: string
+          location?: string | null
+          locker_id?: string | null
+          locker_number?: string | null
+          prior_status?: string | null
+          row_label?: string | null
+          run_id?: string
+          succeeded?: boolean
+          termination_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_run_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_runs: {
+        Row: {
+          candidates_count: number
+          created_at: string
+          dry_run: boolean
+          executed_by: string
+          executed_by_email: string | null
+          failed_count: number
+          filename: string | null
+          id: string
+          reason: string | null
+          task_type: string
+          terminated_count: number
+          termination_date: string | null
+          undone_at: string | null
+          undone_by: string | null
+        }
+        Insert: {
+          candidates_count?: number
+          created_at?: string
+          dry_run?: boolean
+          executed_by: string
+          executed_by_email?: string | null
+          failed_count?: number
+          filename?: string | null
+          id?: string
+          reason?: string | null
+          task_type?: string
+          terminated_count?: number
+          termination_date?: string | null
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Update: {
+          candidates_count?: number
+          created_at?: string
+          dry_run?: boolean
+          executed_by?: string
+          executed_by_email?: string | null
+          failed_count?: number
+          filename?: string | null
+          id?: string
+          reason?: string | null
+          task_type?: string
+          terminated_count?: number
+          termination_date?: string | null
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Relationships: []
+      }
       deletion_audit: {
         Row: {
           affected_count: number
@@ -236,6 +340,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          permission: Database["public"]["Enums"]["app_permission"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          permission: Database["public"]["Enums"]["app_permission"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["app_permission"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -259,6 +387,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_permission: {
+        Args: {
+          _permission: Database["public"]["Enums"]["app_permission"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -268,6 +403,11 @@ export type Database = {
       }
     }
     Enums: {
+      app_permission:
+        | "locker_management"
+        | "termination_actions"
+        | "upload_roster"
+        | "run_automation"
       app_role: "admin" | "viewer"
       key_status:
         | "available"
@@ -411,6 +551,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_permission: [
+        "locker_management",
+        "termination_actions",
+        "upload_roster",
+        "run_automation",
+      ],
       app_role: ["admin", "viewer"],
       key_status: [
         "available",
