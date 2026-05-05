@@ -17,6 +17,7 @@ export function AppHeader() {
     { to: "/duplicates", label: "Duplicates", icon: Users },
     { to: "/terminations", label: "Terminations", icon: UserMinus },
     { to: "/audit", label: "Audit", icon: History },
+    { to: "/automation", label: "Automation", icon: Zap, adminOnly: true },
     { to: "/upload", label: "Upload", icon: Upload, adminOnly: true },
   ];
 
