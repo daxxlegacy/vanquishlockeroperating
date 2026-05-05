@@ -59,6 +59,16 @@ interface PreviewResult {
   detectedColumns: Record<string, string>;
 }
 
+type RosterPerson = { badge: string | null; name: string | null };
+interface RosterCheckResult {
+  filename: string;
+  fileCount: number;
+  dbCount: number;
+  inFileNotInDb: RosterPerson[];   // employees on the uploaded list with no badge/name match in DB
+  inDbNotInFile: { locker_number: string; employee_name: string | null; badge_number: string | null }[];
+  badgeMatchedNameDiffers: { badge: string; fileName: string; dbName: string; locker_number: string }[];
+}
+
 function UploadPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
