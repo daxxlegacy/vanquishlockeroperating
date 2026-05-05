@@ -62,9 +62,17 @@ function AuditPage() {
           <History className="h-6 w-6" />
           <div>
             <h1 className="font-display text-3xl font-bold">Audit Log</h1>
-            <p className="text-muted-foreground text-sm">Deletion history. Items can be restored within 15 minutes of deletion.</p>
+            <p className="text-muted-foreground text-sm">Deletions and terminations. Deletions can be restored within 15 minutes.</p>
           </div>
         </div>
+
+        <Tabs defaultValue="deletions">
+          <TabsList>
+            <TabsTrigger value="deletions">Deletions ({items?.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="terminations">Terminations ({terms?.length ?? 0})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="deletions" className="mt-4">
+        {/* deletions block start */}
 
         {!items ? (
           <Skeleton className="h-96 w-full" />
