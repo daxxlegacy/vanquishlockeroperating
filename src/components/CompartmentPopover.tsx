@@ -41,7 +41,8 @@ export function CompartmentPopover({ open, onOpenChange, number, compartments, o
         <div className="grid grid-cols-3 gap-3 py-3">
           {SLOTS.map((slot) => {
             const l = bySlot.get(slot);
-            const cls = l ? SLOT_COLORS[l.status] ?? SLOT_COLORS.unknown : NOT_PRESENT;
+            const cls = l ? STATUS_CELL[l.status as LockerStatus] ?? STATUS_CELL.unknown : NOT_PRESENT;
+            const fullCode = `${number}${slot}`;
             return (
               <button
                 key={slot}
@@ -49,11 +50,11 @@ export function CompartmentPopover({ open, onOpenChange, number, compartments, o
                 disabled={!l}
                 className={`rounded-md border-2 ${cls} ${
                   l ? "cursor-pointer hover:ring-2 hover:ring-ring" : "cursor-not-allowed"
-                } p-3 text-left transition-all min-h-[80px] flex flex-col justify-between`}
+                } p-3 text-left transition-all min-h-[88px] flex flex-col justify-between`}
               >
-                <div className="flex items-baseline justify-between">
-                  <span className="font-display font-bold text-lg">{slot}</span>
-                  {l && <span className="text-[10px] uppercase tracking-wide opacity-90">{l.status}</span>}
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-display font-bold text-lg leading-none">{fullCode}</span>
+                  {l && <span className="text-[10px] uppercase tracking-wide opacity-90">{STATUS_LABEL[l.status as LockerStatus]}</span>}
                 </div>
                 <div className="text-[11px] leading-tight mt-1 break-words">
                   {l ? (
@@ -67,11 +68,11 @@ export function CompartmentPopover({ open, onOpenChange, number, compartments, o
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground pt-2 border-t">
-          <Legend c="bg-destructive" l="Occupied" />
-          <Legend c="bg-success" l="Empty" />
-          <Legend c="bg-warning" l="Repair" />
-          <Legend c="bg-muted-foreground" l="Unknown / not in DB" />
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground pt-2 border-t">
+          {LOCKER_STATUSES.map((s) => (
+            <Legend key={s} c={STATUS_SWATCH[s as LockerStatus]} l={STATUS_LABEL[s as LockerStatus]} />
+          ))}
+          <Legend c="bg-background border border-dashed border-border" l="Not in DB" />
         </div>
       </DialogContent>
     </Dialog>
