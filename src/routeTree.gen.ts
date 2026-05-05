@@ -16,6 +16,7 @@ import { Route as DuplicatesRouteImport } from './routes/duplicates'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TerminateLockerIdRouteImport } from './routes/terminate.$lockerId'
 
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
@@ -52,6 +53,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TerminateLockerIdRoute = TerminateLockerIdRouteImport.update({
+  id: '/terminate/$lockerId',
+  path: '/terminate/$lockerId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/lockers': typeof LockersRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
+  '/terminate/$lockerId': typeof TerminateLockerIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/lockers': typeof LockersRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
+  '/terminate/$lockerId': typeof TerminateLockerIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/lockers': typeof LockersRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
+  '/terminate/$lockerId': typeof TerminateLockerIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/lockers'
     | '/terminations'
     | '/upload'
+    | '/terminate/$lockerId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/lockers'
     | '/terminations'
     | '/upload'
+    | '/terminate/$lockerId'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/lockers'
     | '/terminations'
     | '/upload'
+    | '/terminate/$lockerId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   LockersRoute: typeof LockersRoute
   TerminationsRoute: typeof TerminationsRoute
   UploadRoute: typeof UploadRoute
+  TerminateLockerIdRoute: typeof TerminateLockerIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terminate/$lockerId': {
+      id: '/terminate/$lockerId'
+      path: '/terminate/$lockerId'
+      fullPath: '/terminate/$lockerId'
+      preLoaderRoute: typeof TerminateLockerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   LockersRoute: LockersRoute,
   TerminationsRoute: TerminationsRoute,
   UploadRoute: UploadRoute,
+  TerminateLockerIdRoute: TerminateLockerIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
