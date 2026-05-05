@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { Database } from "@/integrations/supabase/types";
 
 type Audit = Database["public"]["Tables"]["deletion_audit"]["Row"];
+type Term = Database["public"]["Tables"]["terminations"]["Row"];
 
 export const Route = createFileRoute("/audit")({
   head: () => ({
