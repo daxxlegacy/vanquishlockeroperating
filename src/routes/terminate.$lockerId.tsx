@@ -162,8 +162,21 @@ function TerminatePage() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="td">Termination date (dd/mm/yyyy) *</Label>
-                <Input id="td" value={date} onChange={(e) => setDate(e.target.value)} className="font-mono" placeholder="16/01/2026" />
-                {!dateOk && date && <p className="text-xs text-destructive mt-1">Use format dd/mm/yyyy</p>}
+                <Input
+                  id="td"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={`font-mono ${dateError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                  placeholder="16/01/2026"
+                  inputMode="numeric"
+                  maxLength={10}
+                  aria-invalid={!!dateError}
+                />
+                {dateError ? (
+                  <p className="text-xs text-destructive mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{dateError}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">Looks good — will save as {iso}.</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="tr">Reason (optional)</Label>
