@@ -154,7 +154,41 @@ function AuditPage() {
               );
             })}
           </div>
-        )}
+          </TabsContent>
+          <TabsContent value="terminations" className="mt-4">
+            {!terms ? (
+              <Skeleton className="h-96 w-full" />
+            ) : terms.length === 0 ? (
+              <Card className="p-12 text-center text-muted-foreground">No terminations yet.</Card>
+            ) : (
+              <div className="space-y-3">
+                {terms.map((t) => (
+                  <Card key={t.id} className="p-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="bg-warning/15 text-warning-foreground border-warning/40 gap-1">
+                        <UserMinus className="h-3 w-3" /> Termination
+                      </Badge>
+                      <span className="font-mono font-semibold">{t.locker_number}</span>
+                      <span className="text-muted-foreground text-sm">·</span>
+                      <span className="text-sm font-medium">{t.employee_name ?? "—"}</span>
+                      {t.badge_number && <span className="text-xs text-muted-foreground">Badge {t.badge_number}</span>}
+                    </div>
+                    <p className="text-sm mt-2">
+                      <span className="text-muted-foreground">Reason:</span> {t.reason ?? "—"}
+                    </p>
+                    <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5">
+                      <span>Termination date: <span className="font-medium text-foreground">{formatBatchIntake(t.termination_date)}</span></span>
+                      <span>By: {t.terminated_by_email ?? t.terminated_by.slice(0, 8)}</span>
+                      <span>Logged: {new Date(t.created_at).toLocaleString()}</span>
+                      <span>Location: {t.location ?? "—"}</span>
+                      {t.row_label && <span>Row: {t.row_label}</span>}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
