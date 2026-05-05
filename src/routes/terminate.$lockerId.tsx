@@ -59,6 +59,8 @@ function TerminatePage() {
     return `${yyyy}-${mm}-${dd}`;
   })() : null;
 
+  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
+
   useEffect(() => {
     if (!user || !lockerId) return;
     supabase.from("lockers").select("*").eq("id", lockerId).maybeSingle().then(({ data }) => setLocker(data));
