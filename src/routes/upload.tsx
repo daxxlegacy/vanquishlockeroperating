@@ -208,13 +208,26 @@ function UploadPage() {
         </p>
 
         <Card className="mt-6 p-6">
-          <Label htmlFor="file" className="text-base font-display">Choose file</Label>
-          <p className="text-xs text-muted-foreground mt-1 mb-3">
-            Recognized columns: <code className="bg-muted px-1 py-0.5 rounded text-xs">Combine Locker</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Locker Location by Row</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Types of Key Lock</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">badge_number</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Vlookup O+C Name</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status Available / Not Available</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Physical Key Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Remarks</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Batch Intake</code>.
-          </p>
-          <div className="flex gap-3 items-center">
-            <Input id="file" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} className="cursor-pointer" />
-            {parsing && <Badge variant="secondary">Parsing…</Badge>}
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-[260px]">
+              <Label htmlFor="file" className="text-base font-display">Choose file</Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-3">
+                Recognized columns: <code className="bg-muted px-1 py-0.5 rounded text-xs">Combine Locker</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Locker Location by Row</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Types of Key Lock</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">badge_number</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Vlookup O+C Name</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status Available / Not Available</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Physical Key Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Remarks</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Batch Intake</code>.
+              </p>
+              <div className="flex gap-3 items-center">
+                <Input id="file" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} className="cursor-pointer" />
+                {parsing && <Badge variant="secondary">Parsing…</Badge>}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 min-w-[180px]">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Export current data</Label>
+              <Button variant="outline" size="sm" onClick={() => exportLockers("xlsx")}>
+                <Download className="h-4 w-4 mr-1" /> Export as Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => exportLockers("csv")}>
+                <Download className="h-4 w-4 mr-1" /> Export as CSV
+              </Button>
+            </div>
           </div>
         </Card>
 
