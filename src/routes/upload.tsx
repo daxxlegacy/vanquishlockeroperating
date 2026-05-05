@@ -196,7 +196,43 @@ function UploadPage() {
     setApplying(false);
   };
 
-  if (loading || !user) return <div className="min-h-screen" />;
+  const exportLockers = async (fmt: "xlsx" | "csv") => {
+    try {
+      toast.info("Preparing export…");
+      const all: Record<string, unknown>[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number, location, row_label, unit_type, key_lock, badge_number, employee_name, status, physical_key_status, spare_key_status, remark, batch_intake, deleted_at, created_at, updated_at")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      const cleaned = all.map((r) => ({
+        ...r,
+        batch_intake: typeof r.batch_intake === "string" ? formatBatchIntake(r.batch_intake) : r.batch_intake,
+      }));
+      const stamp = new Date().toISOString().slice(0, 10);
+      if (fmt === "csv") {
+        const csv = Papa.unparse(cleaned);
+        downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `lockers-${stamp}.csv`);
+      } else {
+        const ws = XLSX.utils.json_to_sheet(cleaned);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Lockers");
+        const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+        downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `lockers-${stamp}.xlsx`);
+      }
+      toast.success(`Exported ${cleaned.length.toLocaleString()} lockers.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
