@@ -488,6 +488,111 @@ function UploadPage() {
         )}
 
         <Card className="mt-6 p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Search className="h-5 w-5 text-primary" />
+            <h2 className="font-display text-xl font-bold">Roster check (VLOOKUP)</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Upload a roster Excel/CSV with badge numbers and/or names. We'll compare it to the locker database and show:
+            people in the file but missing from the DB, people assigned to lockers but missing from the file, and badges where the name doesn't match.
+            Nothing is changed — this is a report.
+          </p>
+          <div className="flex gap-3 items-center flex-wrap">
+            <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { setCheckFile(f); runRosterCheck(f); } }} />
+            {checkBusy && <Badge variant="secondary">Comparing…</Badge>}
+            {checkFile && !checkBusy && <span className="text-xs text-muted-foreground">{checkFile.name}</span>}
+          </div>
+
+          {checkResult && (
+            <div className="mt-5 space-y-4">
+              <div className="grid md:grid-cols-3 gap-3">
+                <Stat icon={UserCheck} label="People in file" value={checkResult.fileCount} />
+                <Stat icon={UserMinus} label="In file, NOT in DB" value={checkResult.inFileNotInDb.length} accent="text-warning" />
+                <Stat icon={UserMinus} label="In DB, NOT in file" value={checkResult.inDbNotInFile.length} accent="text-destructive" />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => exportRosterCheck("xlsx")}>
+                  <Download className="h-4 w-4 mr-1" /> Export Excel
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => exportRosterCheck("csv")}>
+                  <Download className="h-4 w-4 mr-1" /> Export CSV
+                </Button>
+              </div>
+
+              <details open className="rounded-md border">
+                <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                  In file but NOT in DB ({checkResult.inFileNotInDb.length})
+                </summary>
+                <div className="max-h-64 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th></tr></thead>
+                    <tbody>
+                      {checkResult.inFileNotInDb.slice(0, 200).map((p, i) => (
+                        <tr key={i} className="border-t">
+                          <td className="px-3 py-1.5 font-mono">{p.badge ?? "—"}</td>
+                          <td className="px-3 py-1.5">{p.name ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {checkResult.inFileNotInDb.length > 200 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {checkResult.inFileNotInDb.length - 200} more</div>
+                  )}
+                </div>
+              </details>
+
+              <details open className="rounded-md border">
+                <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                  Assigned in DB but NOT in file ({checkResult.inDbNotInFile.length})
+                </summary>
+                <div className="max-h-64 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th></tr></thead>
+                    <tbody>
+                      {checkResult.inDbNotInFile.slice(0, 200).map((p) => (
+                        <tr key={p.locker_number} className="border-t">
+                          <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
+                          <td className="px-3 py-1.5 font-mono text-muted-foreground">{p.badge_number ?? "—"}</td>
+                          <td className="px-3 py-1.5">{p.employee_name ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {checkResult.inDbNotInFile.length > 200 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {checkResult.inDbNotInFile.length - 200} more</div>
+                  )}
+                </div>
+              </details>
+
+              {checkResult.badgeMatchedNameDiffers.length > 0 && (
+                <details className="rounded-md border">
+                  <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                    Badge matched but name differs ({checkResult.badgeMatchedNameDiffers.length})
+                  </summary>
+                  <div className="max-h-64 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Locker</Th><Th>Name in file</Th><Th>Name in DB</Th></tr></thead>
+                      <tbody>
+                        {checkResult.badgeMatchedNameDiffers.map((p, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-1.5 font-mono">{p.badge}</td>
+                            <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
+                            <td className="px-3 py-1.5">{p.fileName}</td>
+                            <td className="px-3 py-1.5 text-muted-foreground">{p.dbName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </Card>
+
+        <Card className="mt-6 p-6">
           <h2 className="font-display text-xl font-bold mb-4">Upload history</h2>
           {history.length === 0 ? (
             <p className="text-sm text-muted-foreground">No uploads yet.</p>
