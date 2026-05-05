@@ -67,6 +67,10 @@ function UploadPage() {
   const [applying, setApplying] = useState(false);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [history, setHistory] = useState<UploadHistoryRow[]>([]);
+  // Roster check (VLOOKUP-style)
+  const [checkFile, setCheckFile] = useState<File | null>(null);
+  const [checkBusy, setCheckBusy] = useState(false);
+  const [checkResult, setCheckResult] = useState<RosterCheckResult | null>(null);
 
   useEffect(() => {
     if (!loading) {
