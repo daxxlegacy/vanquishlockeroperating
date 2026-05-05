@@ -206,13 +206,14 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    active: "bg-destructive/15 text-destructive border-destructive/30",
-    empty: "bg-success/15 text-success border-success/30",
-    repair: "bg-warning/20 text-warning-foreground border-warning/40",
-    unknown: "bg-muted text-muted-foreground border-border",
-  };
-  return <Badge variant="outline" className={`capitalize ${map[status]}`}>{status}</Badge>;
+  const swatch = STATUS_SWATCH[status as LockerStatus] ?? "bg-muted-foreground";
+  const label = STATUS_LABEL[status as LockerStatus] ?? status;
+  return (
+    <Badge variant="outline" className="gap-1.5 capitalize">
+      <span className={`h-2 w-2 rounded-full ${swatch}`} />
+      {label}
+    </Badge>
+  );
 }
 
 // ---------- Add Locker Dialog (manual entry) ----------
