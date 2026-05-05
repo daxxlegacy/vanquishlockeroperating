@@ -108,9 +108,10 @@ function MapPage() {
 
   const summary = useMemo(() => {
     if (!lockers) return null;
-    const s = { total: lockers.length, active: 0, empty: 0, repair: 0, unknown: 0 };
-    for (const l of lockers) s[l.status as keyof typeof s]++;
-    return s;
+    const counts: Record<string, number> = { total: lockers.length };
+    for (const s of LOCKER_STATUSES) counts[s] = 0;
+    for (const l of lockers) counts[l.status] = (counts[l.status] ?? 0) + 1;
+    return counts;
   }, [lockers]);
 
   if (loading || !user) return <FullPageLoader />;
@@ -133,12 +134,11 @@ function MapPage() {
         </div>
 
         {summary && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3 mb-6">
             <SummaryCard label="Total" value={summary.total} accent="bg-primary" />
-            <SummaryCard label="Occupied" value={summary.active} accent="bg-destructive" />
-            <SummaryCard label="Empty" value={summary.empty} accent="bg-success" />
-            <SummaryCard label="Repair" value={summary.repair} accent="bg-warning" />
-            <SummaryCard label="Unknown" value={summary.unknown} accent="bg-muted-foreground" />
+            {LOCKER_STATUSES.map((s) => (
+              <SummaryCard key={s} label={STATUS_LABEL[s]} value={summary[s] ?? 0} accent={STATUS_SWATCH[s]} />
+            ))}
           </div>
         )}
 
