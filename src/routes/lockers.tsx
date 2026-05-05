@@ -16,6 +16,7 @@ import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
+import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -134,10 +135,9 @@ function LockersPage() {
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="empty">Empty</SelectItem>
-              <SelectItem value="repair">Repair</SelectItem>
-              <SelectItem value="unknown">Unknown</SelectItem>
+              {LOCKER_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={locFilter} onValueChange={setLocFilter}>
@@ -206,13 +206,14 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    active: "bg-destructive/15 text-destructive border-destructive/30",
-    empty: "bg-success/15 text-success border-success/30",
-    repair: "bg-warning/20 text-warning-foreground border-warning/40",
-    unknown: "bg-muted text-muted-foreground border-border",
-  };
-  return <Badge variant="outline" className={`capitalize ${map[status]}`}>{status}</Badge>;
+  const swatch = STATUS_SWATCH[status as LockerStatus] ?? "bg-muted-foreground";
+  const label = STATUS_LABEL[status as LockerStatus] ?? status;
+  return (
+    <Badge variant="outline" className="gap-1.5 capitalize">
+      <span className={`h-2 w-2 rounded-full ${swatch}`} />
+      {label}
+    </Badge>
+  );
 }
 
 // ---------- Add Locker Dialog (manual entry) ----------
@@ -315,10 +316,9 @@ function AddLockerDialog({
           <Select value={form.status} onValueChange={(v) => set("status", v as typeof form.status)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="empty">Empty</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="repair">Repair</SelectItem>
-              <SelectItem value="unknown">Unknown</SelectItem>
+              {LOCKER_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
