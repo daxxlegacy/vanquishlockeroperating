@@ -38,12 +38,24 @@ type MatchedTermination = RosterPerson & {
   db_badge_number: string | null;
   reason: string | null;
 };
+type MatchedActive = RosterPerson & {
+  matchedBy: "badge" | "name";
+  locker_number: string;
+  location: string | null;
+  db_employee_name: string | null;
+  db_badge_number: string | null;
+  status: string;
+};
 interface CheckResult {
   filename: string;
   fileCount: number;
   terminatedCount: number;
+  activeCount: number;
+  notFoundCount: number;
   notTerminated: RosterPerson[];
   terminated: MatchedTermination[];
+  active: MatchedActive[];
+  notFound: RosterPerson[];
 }
 
 function downloadBlob(blob: Blob, filename: string) {
