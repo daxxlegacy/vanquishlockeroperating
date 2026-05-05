@@ -11,9 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw } from "lucide-react";
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download } from "lucide-react";
 import { toast } from "sonner";
-import { parseBatchIntake } from "@/lib/locker-utils";
+import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
