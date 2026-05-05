@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, History, UserMinus, Users, Zap } from "lucide-react";
+import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, History, UserMinus, Users, Zap, UserCog } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ export function AppHeader() {
     { to: "/audit", label: "Audit", icon: History },
     { to: "/automation", label: "Automation", icon: Zap, adminOnly: true },
     { to: "/upload", label: "Upload", icon: Upload, adminOnly: true },
+    { to: "/admin", label: "Admin", icon: UserCog, adminOnly: true },
   ];
 
   return (

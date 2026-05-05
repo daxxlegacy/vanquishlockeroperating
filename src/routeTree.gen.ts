@@ -13,9 +13,11 @@ import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TerminationsRouteImport } from './routes/terminations'
 import { Route as LockersRouteImport } from './routes/lockers'
 import { Route as DuplicatesRouteImport } from './routes/duplicates'
+import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
 import { Route as AutomationRouteImport } from './routes/automation'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuditRouteImport } from './routes/audit'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TerminateLockerIdRouteImport } from './routes/terminate.$lockerId'
 
@@ -39,6 +41,11 @@ const DuplicatesRoute = DuplicatesRouteImport.update({
   path: '/duplicates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AutomationHistoryRoute = AutomationHistoryRouteImport.update({
+  id: '/automation-history',
+  path: '/automation-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AutomationRoute = AutomationRouteImport.update({
   id: '/automation',
   path: '/automation',
@@ -54,6 +61,11 @@ const AuditRoute = AuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -67,9 +79,11 @@ const TerminateLockerIdRoute = TerminateLockerIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
+  '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/terminations': typeof TerminationsRoute
@@ -78,9 +92,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
+  '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/terminations': typeof TerminationsRoute
@@ -90,9 +106,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
+  '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/terminations': typeof TerminationsRoute
@@ -103,9 +121,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/audit'
     | '/auth'
     | '/automation'
+    | '/automation-history'
     | '/duplicates'
     | '/lockers'
     | '/terminations'
@@ -114,9 +134,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/audit'
     | '/auth'
     | '/automation'
+    | '/automation-history'
     | '/duplicates'
     | '/lockers'
     | '/terminations'
@@ -125,9 +147,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/audit'
     | '/auth'
     | '/automation'
+    | '/automation-history'
     | '/duplicates'
     | '/lockers'
     | '/terminations'
@@ -137,9 +161,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AuditRoute: typeof AuditRoute
   AuthRoute: typeof AuthRoute
   AutomationRoute: typeof AutomationRoute
+  AutomationHistoryRoute: typeof AutomationHistoryRoute
   DuplicatesRoute: typeof DuplicatesRoute
   LockersRoute: typeof LockersRoute
   TerminationsRoute: typeof TerminationsRoute
@@ -177,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DuplicatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/automation-history': {
+      id: '/automation-history'
+      path: '/automation-history'
+      fullPath: '/automation-history'
+      preLoaderRoute: typeof AutomationHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/automation': {
       id: '/automation'
       path: '/automation'
@@ -198,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -217,9 +257,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AuditRoute: AuditRoute,
   AuthRoute: AuthRoute,
   AutomationRoute: AutomationRoute,
+  AutomationHistoryRoute: AutomationHistoryRoute,
   DuplicatesRoute: DuplicatesRoute,
   LockersRoute: LockersRoute,
   TerminationsRoute: TerminationsRoute,
@@ -229,12 +271,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
