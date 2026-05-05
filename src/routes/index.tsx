@@ -31,11 +31,10 @@ export const Route = createFileRoute("/")({
   component: MapPage,
 });
 
+import { STATUS_CELL, STATUS_SWATCH, STATUS_LABEL, LOCKER_STATUSES, type LockerStatus } from "@/lib/locker-status";
+
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-destructive border-destructive text-destructive-foreground shadow-sm",
-  empty: "bg-success border-success text-success-foreground shadow-sm",
-  repair: "bg-warning border-warning text-warning-foreground shadow-sm",
-  unknown: "bg-muted border-border text-muted-foreground",
+  ...STATUS_CELL,
   mixed: "bg-gradient-to-br from-destructive via-warning to-success border-border text-foreground shadow-sm",
 };
 const NOT_IN_DB = "bg-background border-dashed border-border text-muted-foreground/70";
