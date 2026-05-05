@@ -22,7 +22,8 @@ interface Props {
   onUpdated?: () => void;
 }
 
-const STATUSES = ["active", "empty", "repair", "unknown"] as const;
+import { LOCKER_STATUSES } from "@/lib/locker-status";
+const STATUSES = LOCKER_STATUSES;
 const KEYS = ["available", "missing", "with_employee", "damaged", "unknown"] as const;
 
 export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
