@@ -135,3 +135,44 @@ function DuplicatesPage() {
     </div>
   );
 }
+
+function DupList({ groups, keyLabel, onPick }: { groups: Locker[][]; keyLabel: "employee_name" | "badge_number"; onPick: (id: string) => void }) {
+  return (
+    <div className="space-y-3">
+      {groups.map((g) => (
+        <Card key={g[0].id} className="p-4">
+          <div className="flex items-center gap-3 flex-wrap mb-3">
+            <span className="font-display font-bold text-lg">
+              {keyLabel === "employee_name" ? g[0].employee_name : <span className="font-mono">Badge {g[0].badge_number}</span>}
+            </span>
+            <Badge variant="destructive">{g.length} lockers</Badge>
+            {keyLabel === "badge_number" && (
+              <span className="text-sm text-muted-foreground">
+                {Array.from(new Set(g.map((l) => l.employee_name).filter(Boolean))).join(", ") || "(no name)"}
+              </span>
+            )}
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {g.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => onPick(l.id)}
+                className="text-left rounded border p-2.5 hover:border-primary hover:bg-muted/40 transition-colors"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-mono font-semibold">{l.locker_number}</span>
+                  <span className="text-xs text-muted-foreground">{l.location}</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {keyLabel === "employee_name"
+                    ? <>Badge: {l.badge_number ?? "—"} · {l.row_label ?? "—"}</>
+                    : <>{l.employee_name ?? "—"} · {l.row_label ?? "—"}</>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
