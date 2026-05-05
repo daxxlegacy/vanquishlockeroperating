@@ -316,10 +316,9 @@ function AddLockerDialog({
           <Select value={form.status} onValueChange={(v) => set("status", v as typeof form.status)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="empty">Empty</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="repair">Repair</SelectItem>
-              <SelectItem value="unknown">Unknown</SelectItem>
+              {LOCKER_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
