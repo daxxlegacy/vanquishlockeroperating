@@ -53,7 +53,7 @@ function DuplicatesPage() {
     })();
   }, [user, refresh]);
 
-  const groups = useMemo(() => {
+  const nameGroups = useMemo(() => {
     if (!lockers) return [];
     const map = new Map<string, Locker[]>();
     for (const l of lockers) {
@@ -66,6 +66,21 @@ function DuplicatesPage() {
       .filter((g) => g.length > 1)
       .map((g) => g.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number)))
       .sort((a, b) => b.length - a.length || (a[0].employee_name ?? "").localeCompare(b[0].employee_name ?? ""));
+  }, [lockers]);
+
+  const badgeGroups = useMemo(() => {
+    if (!lockers) return [];
+    const map = new Map<string, Locker[]>();
+    for (const l of lockers) {
+      const k = (l.badge_number ?? "").trim().toLowerCase();
+      if (!k) continue;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(l);
+    }
+    return Array.from(map.values())
+      .filter((g) => g.length > 1)
+      .map((g) => g.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number)))
+      .sort((a, b) => b.length - a.length || (a[0].badge_number ?? "").localeCompare(b[0].badge_number ?? ""));
   }, [lockers]);
 
   if (loading || !user) return <div className="min-h-screen" />;
