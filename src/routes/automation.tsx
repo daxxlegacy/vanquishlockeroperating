@@ -1,10 +1,12 @@
-// Automation tab — bulk auto-terminate active lockers whose employees aren't in an uploaded roster.
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+// Automation tab — dry-run preview, CSV export, run logging, permission-gated.
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { usePermissions } from "@/lib/permissions";
+import { downloadCsv } from "@/lib/csv-export";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,22 +14,17 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Zap, Upload as UploadIcon, AlertCircle, CheckCircle2, UserMinus, Play } from "lucide-react";
+import { Zap, Upload as UploadIcon, AlertCircle, CheckCircle2, UserMinus, Play, Download, History, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/automation")({
-  head: () => ({
-    meta: [
-      { title: "Automation — LockerOps" },
-      { name: "description", content: "Run automated locker tasks like bulk auto-termination from a roster file." },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Automation — LockerOps" }] }),
   component: AutomationPage,
 });
 
 type LockerLite = { id: string; locker_number: string; location: string | null; row_label: string | null; employee_name: string | null; badge_number: string | null; status: string };
-type RosterPerson = { badge: string | null; name: string | null };
 type Candidate = LockerLite & { reason: "no_badge_match" | "no_name_match" };
 
 function detectCols(keys: string[]): { badge?: string; name?: string } {
@@ -52,9 +49,10 @@ async function parseRoster(f: File): Promise<Record<string, unknown>[]> {
 }
 
 function AutomationPage() {
-  const { user, role, loading } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const isAdmin = role === "admin";
+  const { has, isAdmin } = usePermissions();
+  const canRunAutomation = has("run_automation");
 
   const [busy, setBusy] = useState(false);
   const [rosterName, setRosterName] = useState<string | null>(null);
@@ -65,6 +63,7 @@ function AutomationPage() {
   const today = new Date();
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
+  const [dryRun, setDryRun] = useState(true);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0, failed: 0 });
   const [confirmText, setConfirmText] = useState("");
@@ -83,34 +82,28 @@ function AutomationPage() {
   const iso = !dateError ? (() => { const [dd, mm, yyyy] = date.trim().split("/"); return `${yyyy}-${mm}-${dd}`; })() : null;
 
   const runPreview = async (f: File) => {
-    setBusy(true);
-    setCandidates(null);
-    setRosterName(f.name);
+    setBusy(true); setCandidates(null); setRosterName(f.name);
     try {
       const rows = await parseRoster(f);
       if (rows.length === 0) throw new Error("Roster file is empty");
       const cols = detectCols(Object.keys(rows[0]));
       if (!cols.badge && !cols.name) throw new Error("Couldn't find a badge or name column");
-
-      const badges = new Set<string>();
-      const names = new Set<string>();
+      const badges = new Set<string>(); const names = new Set<string>();
       for (const r of rows) {
         const b = cols.badge ? getStr(r, cols.badge) : undefined;
         const n = cols.name ? getStr(r, cols.name) : undefined;
         if (b) badges.add(b.toLowerCase().trim());
         if (n) names.add(n.toLowerCase().trim());
       }
-      setRosterCount(badges.size + names.size > 0 ? rows.length : 0);
+      setRosterCount(rows.length);
 
-      // Pull all currently-assigned active lockers
       const all: LockerLite[] = [];
       let from = 0;
       while (true) {
         const { data, error } = await supabase
           .from("lockers")
           .select("id,locker_number,location,row_label,employee_name,badge_number,status")
-          .is("deleted_at", null)
-          .eq("status", "active")
+          .is("deleted_at", null).eq("status", "active")
           .or("employee_name.not.is.null,badge_number.not.is.null")
           .range(from, from + 999);
         if (error) throw error;
@@ -127,9 +120,7 @@ function AutomationPage() {
         const n = l.employee_name?.toLowerCase().trim();
         const badgeMatch = b ? badges.has(b) : false;
         const nameMatch = n ? names.has(n) : false;
-        if (!badgeMatch && !nameMatch) {
-          cands.push({ ...l, reason: b ? "no_badge_match" : "no_name_match" });
-        }
+        if (!badgeMatch && !nameMatch) cands.push({ ...l, reason: b ? "no_badge_match" : "no_name_match" });
       }
       setCandidates(cands);
       toast.success(`Found ${cands.length} active lockers not in the roster.`);
@@ -140,46 +131,84 @@ function AutomationPage() {
     setBusy(false);
   };
 
-  const canRun = isAdmin && candidates && candidates.length > 0 && !dateError && confirmText.trim() === "TERMINATE";
+  const exportPreviewCsv = () => {
+    if (!candidates) return;
+    downloadCsv(`automation-preview-${Date.now()}.csv`, candidates.map((c) => ({
+      locker: c.locker_number, location: c.location ?? "", row: c.row_label ?? "",
+      employee: c.employee_name ?? "", badge: c.badge_number ?? "", reason: c.reason,
+    })));
+  };
 
-  const runBulkTerminate = async () => {
-    if (!canRun || !candidates || !iso || !user) return;
+  const canCommit = canRunAutomation && candidates && candidates.length > 0 && !dateError && (dryRun || confirmText.trim() === "TERMINATE");
+
+  const runBatch = async () => {
+    if (!canCommit || !candidates || !iso || !user) return;
     setRunning(true);
     setProgress({ done: 0, total: candidates.length, failed: 0 });
+
+    // Create the run record up front
+    const { data: runRow, error: runErr } = await supabase.from("automation_runs").insert({
+      task_type: "auto_terminate",
+      filename: rosterName,
+      candidates_count: candidates.length,
+      terminated_count: 0, failed_count: 0,
+      dry_run: dryRun,
+      reason: reason.trim() || null,
+      termination_date: iso,
+      executed_by: user.id,
+      executed_by_email: user.email ?? null,
+    }).select().single();
+    if (runErr || !runRow) {
+      toast.error(runErr?.message ?? "Failed to create run record");
+      setRunning(false); return;
+    }
+
     let done = 0, failed = 0;
     for (const l of candidates) {
       try {
-        const { error: e1 } = await supabase.from("terminations").insert([{
-          locker_id: l.id,
-          locker_number: l.locker_number,
-          location: l.location,
-          row_label: l.row_label,
-          employee_name: l.employee_name,
-          badge_number: l.badge_number,
-          termination_date: iso,
-          reason: reason.trim() || null,
-          terminated_by: user.id,
-          terminated_by_email: user.email ?? null,
-          prior_status: l.status as "active",
-          prior_employee_name: l.employee_name,
-          prior_badge_number: l.badge_number,
-        }]);
-        if (e1) throw e1;
-        const { error: e2 } = await supabase
-          .from("lockers")
-          .update({ employee_name: null, badge_number: null, status: "empty" })
-          .eq("id", l.id);
-        if (e2) throw e2;
+        let terminationId: string | null = null;
+        if (!dryRun) {
+          const { data: t, error: e1 } = await supabase.from("terminations").insert([{
+            locker_id: l.id, locker_number: l.locker_number, location: l.location, row_label: l.row_label,
+            employee_name: l.employee_name, badge_number: l.badge_number,
+            termination_date: iso, reason: reason.trim() || null,
+            terminated_by: user.id, terminated_by_email: user.email ?? null,
+            prior_status: l.status as "active",
+            prior_employee_name: l.employee_name, prior_badge_number: l.badge_number,
+          }]).select().single();
+          if (e1) throw e1;
+          terminationId = t?.id ?? null;
+          const { error: e2 } = await supabase.from("lockers")
+            .update({ employee_name: null, badge_number: null, status: "empty" }).eq("id", l.id);
+          if (e2) throw e2;
+        }
+        await supabase.from("automation_run_items").insert({
+          run_id: runRow.id, termination_id: terminationId,
+          locker_id: l.id, locker_number: l.locker_number, location: l.location, row_label: l.row_label,
+          employee_name: l.employee_name, badge_number: l.badge_number,
+          prior_status: l.status, succeeded: true,
+        });
         done++;
       } catch {
         failed++;
+        await supabase.from("automation_run_items").insert({
+          run_id: runRow.id, locker_id: l.id, locker_number: l.locker_number,
+          employee_name: l.employee_name, badge_number: l.badge_number,
+          prior_status: l.status, succeeded: false,
+        });
       }
       setProgress({ done: done + failed, total: candidates.length, failed });
     }
+
+    await supabase.from("automation_runs").update({
+      terminated_count: dryRun ? 0 : done, failed_count: failed,
+    }).eq("id", runRow.id);
+
     setRunning(false);
-    setCandidates(null);
-    setConfirmText("");
-    toast.success(`Auto-termination complete — ${done} terminated, ${failed} failed.`);
+    setCandidates(null); setConfirmText("");
+    toast.success(dryRun
+      ? `Dry run logged — ${done} would be terminated.`
+      : `Auto-termination complete — ${done} terminated, ${failed} failed.`);
   };
 
   if (loading || !user) return <div className="min-h-screen" />;
@@ -188,19 +217,24 @@ function AutomationPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="max-w-5xl mx-auto px-6 py-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Zap className="h-6 w-6 text-warning" />
-          <h1 className="font-display text-3xl font-bold">Automation</h1>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <Zap className="h-6 w-6 text-warning" />
+            <h1 className="font-display text-3xl font-bold">Automation</h1>
+          </div>
+          <Link to="/automation-history">
+            <Button variant="outline" size="sm"><History className="h-4 w-4 mr-1" />Run History</Button>
+          </Link>
         </div>
         <p className="text-muted-foreground text-sm mb-6">
-          Run on-demand automated tasks. Currently: bulk auto-terminate active lockers whose employees are missing from an uploaded roster file.
+          Bulk auto-terminate active lockers whose employees are missing from an uploaded roster. Dry-run mode lets you preview without changes.
         </p>
 
-        {!isAdmin && (
+        {!canRunAutomation && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Admin only</AlertTitle>
-            <AlertDescription>Only admins can run automation tasks.</AlertDescription>
+            <AlertTitle>Permission required</AlertTitle>
+            <AlertDescription>You need the “Run automation tasks” permission. Ask an admin to grant it.</AlertDescription>
           </Alert>
         )}
 
@@ -211,15 +245,13 @@ function AutomationPage() {
               <div>
                 <Label className="font-display text-base">Step 1 — Upload current employee roster</Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Excel or CSV with a badge number and/or employee name column. Anyone in the database who is NOT in this file will be flagged for termination.
+                  Excel or CSV with badge number and/or employee name column.
                 </p>
               </div>
-              <Input
-                type="file" accept=".csv,.xlsx,.xls"
-                disabled={busy || running}
+              <Input type="file" accept=".csv,.xlsx,.xls"
+                disabled={busy || running || !canRunAutomation}
                 onChange={(e) => e.target.files?.[0] && runPreview(e.target.files[0])}
-                className="cursor-pointer max-w-md"
-              />
+                className="cursor-pointer max-w-md" />
               {rosterName && (
                 <div className="flex flex-wrap gap-2 text-xs">
                   <Badge variant="secondary">{rosterName}</Badge>
@@ -233,24 +265,29 @@ function AutomationPage() {
 
         {candidates && (
           <Card className="p-5 mb-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <UserMinus className="h-5 w-5 text-destructive" />
-              <h2 className="font-display text-lg font-bold">Step 2 — Review candidates ({candidates.length})</h2>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <UserMinus className="h-5 w-5 text-destructive" />
+                <h2 className="font-display text-lg font-bold">Step 2 — Review candidates ({candidates.length})</h2>
+              </div>
+              {candidates.length > 0 && (
+                <Button size="sm" variant="outline" onClick={exportPreviewCsv}>
+                  <Download className="h-4 w-4 mr-1" />Export CSV
+                </Button>
+              )}
             </div>
             {candidates.length === 0 ? (
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertTitle>Nothing to do</AlertTitle>
-                <AlertDescription>Every active locker user is in the roster. No terminations needed.</AlertDescription>
+                <AlertDescription>Every active locker user is in the roster.</AlertDescription>
               </Alert>
             ) : (
               <>
                 <div className="overflow-x-auto border rounded-md max-h-96 overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 text-left sticky top-0">
-                      <tr>
-                        <Th>Locker</Th><Th>Location</Th><Th>Employee</Th><Th>Badge</Th>
-                      </tr>
+                      <tr><Th>Locker</Th><Th>Location</Th><Th>Employee</Th><Th>Badge</Th></tr>
                     </thead>
                     <tbody>
                       {candidates.map((c) => (
@@ -265,38 +302,41 @@ function AutomationPage() {
                   </table>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4 pt-2">
+                <div className="flex items-center gap-3 p-3 rounded-md bg-muted/30 border">
+                  <Switch id="dry-run" checked={dryRun} onCheckedChange={setDryRun} disabled={running} />
+                  <Label htmlFor="dry-run" className="cursor-pointer flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    Dry run mode {dryRun
+                      ? <Badge variant="outline" className="ml-1">ON — nothing will change</Badge>
+                      : <Badge variant="destructive" className="ml-1">OFF — will commit terminations</Badge>}
+                  </Label>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="auto-date">Termination date (dd/mm/yyyy) *</Label>
-                    <Input
-                      id="auto-date" value={date} onChange={(e) => setDate(e.target.value)}
-                      className={`font-mono ${dateError ? "border-destructive" : ""}`} maxLength={10}
-                    />
-                    {dateError ? (
-                      <p className="text-xs text-destructive mt-1">{dateError}</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1">Will save as {iso} for all {candidates.length} records.</p>
-                    )}
+                    <Input id="auto-date" value={date} onChange={(e) => setDate(e.target.value)}
+                      className={`font-mono ${dateError ? "border-destructive" : ""}`} maxLength={10} />
+                    {dateError ? <p className="text-xs text-destructive mt-1">{dateError}</p>
+                      : <p className="text-xs text-muted-foreground mt-1">Will save as {iso}.</p>}
                   </div>
                   <div>
-                    <Label htmlFor="auto-reason">Reason (logged on every termination)</Label>
+                    <Label htmlFor="auto-reason">Reason</Label>
                     <Textarea id="auto-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value.slice(0, 500))} />
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="auto-confirm">
-                    Type <span className="font-mono font-semibold">TERMINATE</span> to confirm bulk action
-                  </Label>
-                  <Input id="auto-confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className="font-mono max-w-xs" />
-                </div>
+                {!dryRun && (
+                  <div>
+                    <Label htmlFor="auto-confirm">Type <span className="font-mono font-semibold">TERMINATE</span> to confirm</Label>
+                    <Input id="auto-confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className="font-mono max-w-xs" />
+                  </div>
+                )}
 
                 {running && (
                   <Alert>
                     <AlertTitle>Running… {progress.done}/{progress.total}</AlertTitle>
-                    <AlertDescription>
-                      {progress.failed > 0 ? `${progress.failed} failed so far.` : "All good so far."}
-                    </AlertDescription>
+                    <AlertDescription>{progress.failed > 0 ? `${progress.failed} failed so far.` : "All good so far."}</AlertDescription>
                   </Alert>
                 )}
 
@@ -304,18 +344,23 @@ function AutomationPage() {
                   <Button variant="outline" onClick={() => { setCandidates(null); setRosterName(null); setConfirmText(""); }} disabled={running}>
                     Cancel
                   </Button>
-                  <Button
-                    onClick={runBulkTerminate}
-                    disabled={!canRun || running}
-                    className="bg-warning text-warning-foreground hover:bg-warning/90"
-                  >
+                  <Button onClick={runBatch} disabled={!canCommit || running}
+                    className={dryRun ? "" : "bg-warning text-warning-foreground hover:bg-warning/90"}>
                     <Play className="h-4 w-4 mr-1" />
-                    {running ? "Running…" : `Terminate ${candidates.length} users`}
+                    {running ? "Running…" : dryRun
+                      ? `Log dry run for ${candidates.length}`
+                      : `Terminate ${candidates.length} users`}
                   </Button>
                 </div>
               </>
             )}
           </Card>
+        )}
+
+        {isAdmin && (
+          <p className="text-xs text-muted-foreground">
+            Tip: Manage who can run automation in the <Link to="/admin" className="underline">Admin</Link> page.
+          </p>
         )}
       </main>
     </div>
