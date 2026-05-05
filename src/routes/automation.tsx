@@ -149,7 +149,7 @@ function AutomationPage() {
     let done = 0, failed = 0;
     for (const l of candidates) {
       try {
-        const { error: e1 } = await supabase.from("terminations").insert({
+        const { error: e1 } = await supabase.from("terminations").insert([{
           locker_id: l.id,
           locker_number: l.locker_number,
           location: l.location,
@@ -160,10 +160,10 @@ function AutomationPage() {
           reason: reason.trim() || null,
           terminated_by: user.id,
           terminated_by_email: user.email ?? null,
-          prior_status: l.status,
+          prior_status: l.status as "active",
           prior_employee_name: l.employee_name,
           prior_badge_number: l.badge_number,
-        });
+        }]);
         if (e1) throw e1;
         const { error: e2 } = await supabase
           .from("lockers")
