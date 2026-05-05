@@ -112,6 +112,12 @@ function DuplicatesPage() {
             </TabsList>
 
             <TabsContent value="names" className="mt-4">
+              <div className="flex justify-end mb-3">
+                <Button size="sm" variant="outline" disabled={nameGroups.length === 0}
+                  onClick={() => exportDuplicates(nameGroups, "name")}>
+                  <Download className="h-4 w-4 mr-1.5" /> Export to Excel
+                </Button>
+              </div>
               {nameGroups.length === 0 ? (
                 <Card className="p-12 text-center text-muted-foreground">No duplicate names. 🎉</Card>
               ) : (
@@ -120,6 +126,12 @@ function DuplicatesPage() {
             </TabsContent>
 
             <TabsContent value="badges" className="mt-4">
+              <div className="flex justify-end mb-3">
+                <Button size="sm" variant="outline" disabled={badgeGroups.length === 0}
+                  onClick={() => exportDuplicates(badgeGroups, "badge")}>
+                  <Download className="h-4 w-4 mr-1.5" /> Export to Excel
+                </Button>
+              </div>
               {badgeGroups.length === 0 ? (
                 <Card className="p-12 text-center text-muted-foreground">No duplicate badges. 🎉</Card>
               ) : (
