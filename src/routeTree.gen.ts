@@ -13,75 +13,31 @@ import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TerminationsRouteImport } from './routes/terminations'
 import { Route as LockersRouteImport } from './routes/lockers'
 import { Route as DuplicatesRouteImport } from './routes/duplicates'
-import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
 import { Route as AutomationRouteImport } from './routes/automation'
+import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuditRouteImport } from './routes/audit'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TerminateLockerIdRouteImport } from './routes/terminate.$lockerId'
 
-const UploadRoute = UploadRouteImport.update({
-  id: '/upload',
-  path: '/upload',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TerminationsRoute = TerminationsRouteImport.update({
-  id: '/terminations',
-  path: '/terminations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LockersRoute = LockersRouteImport.update({
-  id: '/lockers',
-  path: '/lockers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DuplicatesRoute = DuplicatesRouteImport.update({
-  id: '/duplicates',
-  path: '/duplicates',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationHistoryRoute = AutomationHistoryRouteImport.update({
-  id: '/automation-history',
-  path: '/automation-history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationRoute = AutomationRouteImport.update({
-  id: '/automation',
-  path: '/automation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuditRoute = AuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TerminateLockerIdRoute = TerminateLockerIdRouteImport.update({
-  id: '/terminate/$lockerId',
-  path: '/terminate/$lockerId',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const UploadRoute = UploadRouteImport.update({ id: '/upload', path: '/upload', getParentRoute: () => rootRouteImport } as any)
+const TerminationsRoute = TerminationsRouteImport.update({ id: '/terminations', path: '/terminations', getParentRoute: () => rootRouteImport } as any)
+const LockersRoute = LockersRouteImport.update({ id: '/lockers', path: '/lockers', getParentRoute: () => rootRouteImport } as any)
+const DuplicatesRoute = DuplicatesRouteImport.update({ id: '/duplicates', path: '/duplicates', getParentRoute: () => rootRouteImport } as any)
+const AutomationRoute = AutomationRouteImport.update({ id: '/automation', path: '/automation', getParentRoute: () => rootRouteImport } as any)
+const AutomationHistoryRoute = AutomationHistoryRouteImport.update({ id: '/automation-history', path: '/automation-history', getParentRoute: () => rootRouteImport } as any)
+const AdminRoute = AdminRouteImport.update({ id: '/admin', path: '/admin', getParentRoute: () => rootRouteImport } as any)
+const AuthRoute = AuthRouteImport.update({ id: '/auth', path: '/auth', getParentRoute: () => rootRouteImport } as any)
+const AuditRoute = AuditRouteImport.update({ id: '/audit', path: '/audit', getParentRoute: () => rootRouteImport } as any)
+const IndexRoute = IndexRouteImport.update({ id: '/', path: '/', getParentRoute: () => rootRouteImport } as any)
+const TerminateLockerIdRoute = TerminateLockerIdRouteImport.update({ id: '/terminate/$lockerId', path: '/terminate/$lockerId', getParentRoute: () => rootRouteImport } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AdminRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
@@ -92,9 +48,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AdminRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
@@ -106,9 +62,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AdminRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
@@ -119,51 +75,17 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/admin'
-    | '/audit'
-    | '/auth'
-    | '/automation'
-    | '/automation-history'
-    | '/duplicates'
-    | '/lockers'
-    | '/terminations'
-    | '/upload'
-    | '/terminate/$lockerId'
+  fullPaths: '/' | '/audit' | '/auth' | '/admin' | '/automation' | '/automation-history' | '/duplicates' | '/lockers' | '/terminations' | '/upload' | '/terminate/$lockerId'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/admin'
-    | '/audit'
-    | '/auth'
-    | '/automation'
-    | '/automation-history'
-    | '/duplicates'
-    | '/lockers'
-    | '/terminations'
-    | '/upload'
-    | '/terminate/$lockerId'
-  id:
-    | '__root__'
-    | '/'
-    | '/admin'
-    | '/audit'
-    | '/auth'
-    | '/automation'
-    | '/automation-history'
-    | '/duplicates'
-    | '/lockers'
-    | '/terminations'
-    | '/upload'
-    | '/terminate/$lockerId'
+  to: '/' | '/audit' | '/auth' | '/admin' | '/automation' | '/automation-history' | '/duplicates' | '/lockers' | '/terminations' | '/upload' | '/terminate/$lockerId'
+  id: '__root__' | '/' | '/audit' | '/auth' | '/admin' | '/automation' | '/automation-history' | '/duplicates' | '/lockers' | '/terminations' | '/upload' | '/terminate/$lockerId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
   AuditRoute: typeof AuditRoute
   AuthRoute: typeof AuthRoute
+  AdminRoute: typeof AdminRoute
   AutomationRoute: typeof AutomationRoute
   AutomationHistoryRoute: typeof AutomationHistoryRoute
   DuplicatesRoute: typeof DuplicatesRoute
@@ -175,98 +97,23 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/upload': {
-      id: '/upload'
-      path: '/upload'
-      fullPath: '/upload'
-      preLoaderRoute: typeof UploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terminations': {
-      id: '/terminations'
-      path: '/terminations'
-      fullPath: '/terminations'
-      preLoaderRoute: typeof TerminationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lockers': {
-      id: '/lockers'
-      path: '/lockers'
-      fullPath: '/lockers'
-      preLoaderRoute: typeof LockersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/duplicates': {
-      id: '/duplicates'
-      path: '/duplicates'
-      fullPath: '/duplicates'
-      preLoaderRoute: typeof DuplicatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automation-history': {
-      id: '/automation-history'
-      path: '/automation-history'
-      fullPath: '/automation-history'
-      preLoaderRoute: typeof AutomationHistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automation': {
-      id: '/automation'
-      path: '/automation'
-      fullPath: '/automation'
-      preLoaderRoute: typeof AutomationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/audit': {
-      id: '/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terminate/$lockerId': {
-      id: '/terminate/$lockerId'
-      path: '/terminate/$lockerId'
-      fullPath: '/terminate/$lockerId'
-      preLoaderRoute: typeof TerminateLockerIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    '/upload': { id: '/upload'; path: '/upload'; fullPath: '/upload'; preLoaderRoute: typeof UploadRouteImport; parentRoute: typeof rootRouteImport }
+    '/terminations': { id: '/terminations'; path: '/terminations'; fullPath: '/terminations'; preLoaderRoute: typeof TerminationsRouteImport; parentRoute: typeof rootRouteImport }
+    '/lockers': { id: '/lockers'; path: '/lockers'; fullPath: '/lockers'; preLoaderRoute: typeof LockersRouteImport; parentRoute: typeof rootRouteImport }
+    '/duplicates': { id: '/duplicates'; path: '/duplicates'; fullPath: '/duplicates'; preLoaderRoute: typeof DuplicatesRouteImport; parentRoute: typeof rootRouteImport }
+    '/automation': { id: '/automation'; path: '/automation'; fullPath: '/automation'; preLoaderRoute: typeof AutomationRouteImport; parentRoute: typeof rootRouteImport }
+    '/automation-history': { id: '/automation-history'; path: '/automation-history'; fullPath: '/automation-history'; preLoaderRoute: typeof AutomationHistoryRouteImport; parentRoute: typeof rootRouteImport }
+    '/admin': { id: '/admin'; path: '/admin'; fullPath: '/admin'; preLoaderRoute: typeof AdminRouteImport; parentRoute: typeof rootRouteImport }
+    '/auth': { id: '/auth'; path: '/auth'; fullPath: '/auth'; preLoaderRoute: typeof AuthRouteImport; parentRoute: typeof rootRouteImport }
+    '/audit': { id: '/audit'; path: '/audit'; fullPath: '/audit'; preLoaderRoute: typeof AuditRouteImport; parentRoute: typeof rootRouteImport }
+    '/': { id: '/'; path: '/'; fullPath: '/'; preLoaderRoute: typeof IndexRouteImport; parentRoute: typeof rootRouteImport }
+    '/terminate/$lockerId': { id: '/terminate/$lockerId'; path: '/terminate/$lockerId'; fullPath: '/terminate/$lockerId'; preLoaderRoute: typeof TerminateLockerIdRouteImport; parentRoute: typeof rootRouteImport }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
-  AuditRoute: AuditRoute,
-  AuthRoute: AuthRoute,
-  AutomationRoute: AutomationRoute,
-  AutomationHistoryRoute: AutomationHistoryRoute,
-  DuplicatesRoute: DuplicatesRoute,
-  LockersRoute: LockersRoute,
-  TerminationsRoute: TerminationsRoute,
-  UploadRoute: UploadRoute,
-  TerminateLockerIdRoute: TerminateLockerIdRoute,
+  IndexRoute, AuditRoute, AuthRoute, AdminRoute, AutomationRoute, AutomationHistoryRoute,
+  DuplicatesRoute, LockersRoute, TerminationsRoute, UploadRoute, TerminateLockerIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
