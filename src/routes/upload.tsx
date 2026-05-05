@@ -42,7 +42,7 @@ type LockerRow = {
   key_lock: string | null;
   badge_number: string | null;
   employee_name: string | null;
-  status: "active" | "empty" | "repair" | "unknown";
+  status: "active" | "empty" | "repair" | "cleaning" | "broken_door" | "on_hold" | "reserved" | "unknown";
   physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
   spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
   remark: string | null;
