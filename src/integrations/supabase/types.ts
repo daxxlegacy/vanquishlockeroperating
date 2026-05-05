@@ -155,11 +155,16 @@ export type Database = {
           location: string | null
           locker_id: string | null
           locker_number: string
+          prior_badge_number: string | null
+          prior_employee_name: string | null
+          prior_status: Database["public"]["Enums"]["locker_status"] | null
           reason: string | null
           row_label: string | null
           terminated_by: string
           terminated_by_email: string | null
           termination_date: string
+          undone_at: string | null
+          undone_by: string | null
         }
         Insert: {
           badge_number?: string | null
@@ -169,11 +174,16 @@ export type Database = {
           location?: string | null
           locker_id?: string | null
           locker_number: string
+          prior_badge_number?: string | null
+          prior_employee_name?: string | null
+          prior_status?: Database["public"]["Enums"]["locker_status"] | null
           reason?: string | null
           row_label?: string | null
           terminated_by: string
           terminated_by_email?: string | null
           termination_date: string
+          undone_at?: string | null
+          undone_by?: string | null
         }
         Update: {
           badge_number?: string | null
@@ -183,11 +193,16 @@ export type Database = {
           location?: string | null
           locker_id?: string | null
           locker_number?: string
+          prior_badge_number?: string | null
+          prior_employee_name?: string | null
+          prior_status?: Database["public"]["Enums"]["locker_status"] | null
           reason?: string | null
           row_label?: string | null
           terminated_by?: string
           terminated_by_email?: string | null
           termination_date?: string
+          undone_at?: string | null
+          undone_by?: string | null
         }
         Relationships: []
       }

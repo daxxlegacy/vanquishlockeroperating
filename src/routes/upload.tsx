@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download } from "lucide-react";
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 
@@ -59,6 +59,16 @@ interface PreviewResult {
   detectedColumns: Record<string, string>;
 }
 
+type RosterPerson = { badge: string | null; name: string | null };
+interface RosterCheckResult {
+  filename: string;
+  fileCount: number;
+  dbCount: number;
+  inFileNotInDb: RosterPerson[];   // employees on the uploaded list with no badge/name match in DB
+  inDbNotInFile: { locker_number: string; employee_name: string | null; badge_number: string | null }[];
+  badgeMatchedNameDiffers: { badge: string; fileName: string; dbName: string; locker_number: string }[];
+}
+
 function UploadPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
@@ -67,6 +77,10 @@ function UploadPage() {
   const [applying, setApplying] = useState(false);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [history, setHistory] = useState<UploadHistoryRow[]>([]);
+  // Roster check (VLOOKUP-style)
+  const [checkFile, setCheckFile] = useState<File | null>(null);
+  const [checkBusy, setCheckBusy] = useState(false);
+  const [checkResult, setCheckResult] = useState<RosterCheckResult | null>(null);
 
   useEffect(() => {
     if (!loading) {
@@ -233,6 +247,124 @@ function UploadPage() {
     }
   };
 
+  const runRosterCheck = async (f: File) => {
+    setCheckBusy(true);
+    setCheckResult(null);
+    try {
+      const rows = await parseFile(f);
+      if (rows.length === 0) { toast.error("Roster file is empty."); setCheckBusy(false); return; }
+      const detected = detectColumns(Object.keys(rows[0]));
+      const badgeKey = detected.badge_number;
+      const nameKey = detected.employee_name;
+      if (!badgeKey && !nameKey) {
+        toast.error("Couldn't find a badge or name column in the file.");
+        setCheckBusy(false);
+        return;
+      }
+
+      const peopleInFile: RosterPerson[] = [];
+      const fileBadges = new Set<string>();
+      const fileNames = new Set<string>();
+      for (const r of rows) {
+        const badge = badgeKey ? (getStr(r, badgeKey) ?? null) : null;
+        const name = nameKey ? (getStr(r, nameKey) ?? null) : null;
+        if (!badge && !name) continue;
+        peopleInFile.push({ badge, name });
+        if (badge) fileBadges.add(badge.toLowerCase().trim());
+        if (name) fileNames.add(name.toLowerCase().trim());
+      }
+
+      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number, employee_name, badge_number")
+          .is("deleted_at", null)
+          .or("employee_name.not.is.null,badge_number.not.is.null")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        dbPeople.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+
+      const dbByBadge = new Map<string, typeof dbPeople[number]>();
+      const dbByName = new Map<string, typeof dbPeople[number]>();
+      for (const p of dbPeople) {
+        if (p.badge_number) dbByBadge.set(p.badge_number.toLowerCase().trim(), p);
+        if (p.employee_name) dbByName.set(p.employee_name.toLowerCase().trim(), p);
+      }
+
+      const inFileNotInDb: RosterPerson[] = [];
+      const badgeMatchedNameDiffers: RosterCheckResult["badgeMatchedNameDiffers"] = [];
+      for (const p of peopleInFile) {
+        const bMatch = p.badge ? dbByBadge.get(p.badge.toLowerCase().trim()) : undefined;
+        const nMatch = p.name ? dbByName.get(p.name.toLowerCase().trim()) : undefined;
+        if (!bMatch && !nMatch) inFileNotInDb.push(p);
+        if (bMatch && p.name && bMatch.employee_name &&
+            bMatch.employee_name.toLowerCase().trim() !== p.name.toLowerCase().trim()) {
+          badgeMatchedNameDiffers.push({
+            badge: p.badge!,
+            fileName: p.name,
+            dbName: bMatch.employee_name,
+            locker_number: bMatch.locker_number,
+          });
+        }
+      }
+
+      const inDbNotInFile = dbPeople.filter((p) => {
+        const badgeIn = p.badge_number && fileBadges.has(p.badge_number.toLowerCase().trim());
+        const nameIn = p.employee_name && fileNames.has(p.employee_name.toLowerCase().trim());
+        return !badgeIn && !nameIn;
+      });
+
+      setCheckResult({
+        filename: f.name,
+        fileCount: peopleInFile.length,
+        dbCount: dbPeople.length,
+        inFileNotInDb,
+        inDbNotInFile,
+        badgeMatchedNameDiffers,
+      });
+      toast.success(`Roster compared — ${inFileNotInDb.length} not in DB, ${inDbNotInFile.length} not in file.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Roster check failed");
+    }
+    setCheckBusy(false);
+  };
+
+  const exportRosterCheck = (fmt: "xlsx" | "csv") => {
+    if (!checkResult) return;
+    const sheets: Record<string, Record<string, unknown>[]> = {
+      "In file NOT in DB": checkResult.inFileNotInDb.map((p) => ({ badge: p.badge ?? "", name: p.name ?? "" })),
+      "In DB NOT in file": checkResult.inDbNotInFile.map((p) => ({
+        locker_number: p.locker_number,
+        badge: p.badge_number ?? "",
+        name: p.employee_name ?? "",
+      })),
+      "Badge matched, name differs": checkResult.badgeMatchedNameDiffers as unknown as Record<string, unknown>[],
+    };
+    const stamp = new Date().toISOString().slice(0, 10);
+    if (fmt === "csv") {
+      const csv = Papa.unparse([
+        ...checkResult.inFileNotInDb.map((p) => ({ section: "in_file_not_in_db", locker_number: "", badge: p.badge ?? "", name: p.name ?? "" })),
+        ...checkResult.inDbNotInFile.map((p) => ({ section: "in_db_not_in_file", locker_number: p.locker_number, badge: p.badge_number ?? "", name: p.employee_name ?? "" })),
+        ...checkResult.badgeMatchedNameDiffers.map((p) => ({ section: "badge_matched_name_differs", locker_number: p.locker_number, badge: p.badge, name: `${p.fileName} (file) / ${p.dbName} (db)` })),
+      ]);
+      downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `roster-check-${stamp}.csv`);
+    } else {
+      const wb = XLSX.utils.book_new();
+      for (const [name, rows] of Object.entries(sheets)) {
+        const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ note: "(empty)" }]);
+        XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
+      }
+      const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `roster-check-${stamp}.xlsx`);
+    }
+    toast.success("Roster check exported.");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -354,6 +486,111 @@ function UploadPage() {
             </div>
           </Card>
         )}
+
+        <Card className="mt-6 p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Search className="h-5 w-5 text-primary" />
+            <h2 className="font-display text-xl font-bold">Roster check (VLOOKUP)</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Upload a roster Excel/CSV with badge numbers and/or names. We'll compare it to the locker database and show:
+            people in the file but missing from the DB, people assigned to lockers but missing from the file, and badges where the name doesn't match.
+            Nothing is changed — this is a report.
+          </p>
+          <div className="flex gap-3 items-center flex-wrap">
+            <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { setCheckFile(f); runRosterCheck(f); } }} />
+            {checkBusy && <Badge variant="secondary">Comparing…</Badge>}
+            {checkFile && !checkBusy && <span className="text-xs text-muted-foreground">{checkFile.name}</span>}
+          </div>
+
+          {checkResult && (
+            <div className="mt-5 space-y-4">
+              <div className="grid md:grid-cols-3 gap-3">
+                <Stat icon={UserCheck} label="People in file" value={checkResult.fileCount} />
+                <Stat icon={UserMinus} label="In file, NOT in DB" value={checkResult.inFileNotInDb.length} accent="text-warning" />
+                <Stat icon={UserMinus} label="In DB, NOT in file" value={checkResult.inDbNotInFile.length} accent="text-destructive" />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => exportRosterCheck("xlsx")}>
+                  <Download className="h-4 w-4 mr-1" /> Export Excel
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => exportRosterCheck("csv")}>
+                  <Download className="h-4 w-4 mr-1" /> Export CSV
+                </Button>
+              </div>
+
+              <details open className="rounded-md border">
+                <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                  In file but NOT in DB ({checkResult.inFileNotInDb.length})
+                </summary>
+                <div className="max-h-64 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th></tr></thead>
+                    <tbody>
+                      {checkResult.inFileNotInDb.slice(0, 200).map((p, i) => (
+                        <tr key={i} className="border-t">
+                          <td className="px-3 py-1.5 font-mono">{p.badge ?? "—"}</td>
+                          <td className="px-3 py-1.5">{p.name ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {checkResult.inFileNotInDb.length > 200 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {checkResult.inFileNotInDb.length - 200} more</div>
+                  )}
+                </div>
+              </details>
+
+              <details open className="rounded-md border">
+                <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                  Assigned in DB but NOT in file ({checkResult.inDbNotInFile.length})
+                </summary>
+                <div className="max-h-64 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th></tr></thead>
+                    <tbody>
+                      {checkResult.inDbNotInFile.slice(0, 200).map((p) => (
+                        <tr key={p.locker_number} className="border-t">
+                          <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
+                          <td className="px-3 py-1.5 font-mono text-muted-foreground">{p.badge_number ?? "—"}</td>
+                          <td className="px-3 py-1.5">{p.employee_name ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {checkResult.inDbNotInFile.length > 200 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {checkResult.inDbNotInFile.length - 200} more</div>
+                  )}
+                </div>
+              </details>
+
+              {checkResult.badgeMatchedNameDiffers.length > 0 && (
+                <details className="rounded-md border">
+                  <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                    Badge matched but name differs ({checkResult.badgeMatchedNameDiffers.length})
+                  </summary>
+                  <div className="max-h-64 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Locker</Th><Th>Name in file</Th><Th>Name in DB</Th></tr></thead>
+                      <tbody>
+                        {checkResult.badgeMatchedNameDiffers.map((p, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-1.5 font-mono">{p.badge}</td>
+                            <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
+                            <td className="px-3 py-1.5">{p.fileName}</td>
+                            <td className="px-3 py-1.5 text-muted-foreground">{p.dbName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </Card>
 
         <Card className="mt-6 p-6">
           <h2 className="font-display text-xl font-bold mb-4">Upload history</h2>

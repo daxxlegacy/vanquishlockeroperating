@@ -19,6 +19,9 @@ interface Props {
 }
 
 function rowLetter(l: Locker): string | undefined {
+  // Prefer the trailing letter of the locker_number itself (e.g. "6019B" -> "B").
+  const fromNumber = l.locker_number?.toUpperCase().match(/([A-F])$/)?.[1];
+  if (fromNumber) return fromNumber;
   return l.row_label?.match(/\b([A-F])\b/i)?.[1]?.toUpperCase();
 }
 
