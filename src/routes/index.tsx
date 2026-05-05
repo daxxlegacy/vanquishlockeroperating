@@ -90,7 +90,35 @@ function MapPage() {
       }
       if (!cancelled) setLockers(all);
     })();
-    return () => { cancelled = true; };
+
+    // Live sync: any change to a locker (status, employee, etc.) reflects on the map immediately.
+    const channel = supabase
+      .channel("lockers-map-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "lockers" }, (payload) => {
+        setLockers((prev) => {
+          if (!prev) return prev;
+          const next = [...prev];
+          if (payload.eventType === "INSERT") {
+            const row = payload.new as Locker;
+            if (!row.deleted_at) next.push(row);
+          } else if (payload.eventType === "UPDATE") {
+            const row = payload.new as Locker;
+            const idx = next.findIndex((l) => l.id === row.id);
+            if (row.deleted_at) {
+              if (idx >= 0) next.splice(idx, 1);
+            } else if (idx >= 0) next[idx] = row;
+            else next.push(row);
+          } else if (payload.eventType === "DELETE") {
+            const old = payload.old as Partial<Locker>;
+            const idx = next.findIndex((l) => l.id === old.id);
+            if (idx >= 0) next.splice(idx, 1);
+          }
+          return next;
+        });
+      })
+      .subscribe();
+
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, [user, refreshKey]);
 
   // Group lockers by their number prefix so map cell "1" finds 1A..1F
