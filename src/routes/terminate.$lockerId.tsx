@@ -84,10 +84,8 @@ function TerminatePage() {
     );
   }
 
-  const iso = parseBatchIntake(date);
-  const dateOk = !!iso;
   const isAdmin = role === "admin";
-  const canSubmit = dateOk && !busy && !!locker.employee_name && confirmText.trim() === locker.locker_number && isAdmin;
+  const canSubmit = !dateError && !busy && !!locker.employee_name && confirmText.trim() === locker.locker_number && isAdmin;
 
   const handleTerminate = async () => {
     if (!canSubmit || !iso) return;
