@@ -103,6 +103,9 @@ function TerminatePage() {
         reason: reason.trim() || null,
         terminated_by: user.id,
         terminated_by_email: user.email ?? null,
+        prior_status: locker.status,
+        prior_employee_name: locker.employee_name,
+        prior_badge_number: locker.badge_number,
       });
       if (e1) throw e1;
 
