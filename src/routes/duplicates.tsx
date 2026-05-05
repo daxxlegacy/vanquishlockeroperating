@@ -43,7 +43,7 @@ function DuplicatesPage() {
       const all: Locker[] = [];
       let from = 0;
       while (true) {
-        const { data } = await supabase.from("lockers").select("*").not("employee_name", "is", null).range(from, from + 999);
+        const { data } = await supabase.from("lockers").select("*").range(from, from + 999);
         if (!data) break;
         all.push(...data);
         if (data.length < 1000) break;
