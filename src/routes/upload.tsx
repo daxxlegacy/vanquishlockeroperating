@@ -11,9 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw } from "lucide-react";
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download } from "lucide-react";
 import { toast } from "sonner";
-import { parseBatchIntake } from "@/lib/locker-utils";
+import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -42,7 +42,7 @@ type LockerRow = {
   key_lock: string | null;
   badge_number: string | null;
   employee_name: string | null;
-  status: "active" | "empty" | "repair" | "unknown";
+  status: "active" | "empty" | "repair" | "cleaning" | "broken_door" | "on_hold" | "reserved" | "unknown";
   physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
   spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
   remark: string | null;
@@ -196,7 +196,43 @@ function UploadPage() {
     setApplying(false);
   };
 
-  if (loading || !user) return <div className="min-h-screen" />;
+  const exportLockers = async (fmt: "xlsx" | "csv") => {
+    try {
+      toast.info("Preparing export…");
+      const all: Record<string, unknown>[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number, location, row_label, unit_type, key_lock, badge_number, employee_name, status, physical_key_status, spare_key_status, remark, batch_intake, deleted_at, created_at, updated_at")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      const cleaned = all.map((r) => ({
+        ...r,
+        batch_intake: typeof r.batch_intake === "string" ? formatBatchIntake(r.batch_intake) : r.batch_intake,
+      }));
+      const stamp = new Date().toISOString().slice(0, 10);
+      if (fmt === "csv") {
+        const csv = Papa.unparse(cleaned);
+        downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `lockers-${stamp}.csv`);
+      } else {
+        const ws = XLSX.utils.json_to_sheet(cleaned);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Lockers");
+        const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+        downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `lockers-${stamp}.xlsx`);
+      }
+      toast.success(`Exported ${cleaned.length.toLocaleString()} lockers.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,13 +244,26 @@ function UploadPage() {
         </p>
 
         <Card className="mt-6 p-6">
-          <Label htmlFor="file" className="text-base font-display">Choose file</Label>
-          <p className="text-xs text-muted-foreground mt-1 mb-3">
-            Recognized columns: <code className="bg-muted px-1 py-0.5 rounded text-xs">Combine Locker</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Locker Location by Row</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Types of Key Lock</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">badge_number</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Vlookup O+C Name</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status Available / Not Available</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Physical Key Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Remarks</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Batch Intake</code>.
-          </p>
-          <div className="flex gap-3 items-center">
-            <Input id="file" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} className="cursor-pointer" />
-            {parsing && <Badge variant="secondary">Parsing…</Badge>}
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-[260px]">
+              <Label htmlFor="file" className="text-base font-display">Choose file</Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-3">
+                Recognized columns: <code className="bg-muted px-1 py-0.5 rounded text-xs">Combine Locker</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Locker Location by Row</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Types of Key Lock</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">badge_number</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Vlookup O+C Name</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status Available / Not Available</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Physical Key Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Remarks</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Batch Intake</code>.
+              </p>
+              <div className="flex gap-3 items-center">
+                <Input id="file" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} className="cursor-pointer" />
+                {parsing && <Badge variant="secondary">Parsing…</Badge>}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 min-w-[180px]">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Export current data</Label>
+              <Button variant="outline" size="sm" onClick={() => exportLockers("xlsx")}>
+                <Download className="h-4 w-4 mr-1" /> Export as Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => exportLockers("csv")}>
+                <Download className="h-4 w-4 mr-1" /> Export as CSV
+              </Button>
+            </div>
           </div>
         </Card>
 
@@ -372,6 +421,17 @@ async function parseFile(f: File): Promise<Record<string, unknown>[]> {
   return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function norm(s: string): string {
   return s.toLowerCase().replace(/[\s_\-/+()]/g, "");
 }
@@ -417,6 +477,10 @@ function getStr(row: Record<string, unknown>, key: string | undefined): string |
 function mapStatus(raw: string | null, hasBadge: boolean): LockerRow["status"] {
   if (!raw) return hasBadge ? "active" : "empty";
   const n = raw.toLowerCase();
+  if (n.includes("clean")) return "cleaning";
+  if (n.includes("broken") || n.includes("broken door") || n.includes("door")) return "broken_door";
+  if (n.includes("on hold") || n.includes("onhold") || n.includes("hold")) return "on_hold";
+  if (n.includes("reserve")) return "reserved";
   if (n.includes("repair")) return "repair";
   if (n.includes("empty") || n.includes("vacant") || n.includes("available")) return "empty";
   if (n.includes("active") || n.includes("occupied") || n.includes("listing")) return "active";

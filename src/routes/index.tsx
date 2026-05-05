@@ -31,11 +31,10 @@ export const Route = createFileRoute("/")({
   component: MapPage,
 });
 
+import { STATUS_CELL, STATUS_SWATCH, STATUS_LABEL, LOCKER_STATUSES, type LockerStatus } from "@/lib/locker-status";
+
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-destructive border-destructive text-destructive-foreground shadow-sm",
-  empty: "bg-success border-success text-success-foreground shadow-sm",
-  repair: "bg-warning border-warning text-warning-foreground shadow-sm",
-  unknown: "bg-muted border-border text-muted-foreground",
+  ...STATUS_CELL,
   mixed: "bg-gradient-to-br from-destructive via-warning to-success border-border text-foreground shadow-sm",
 };
 const NOT_IN_DB = "bg-background border-dashed border-border text-muted-foreground/70";
@@ -109,9 +108,10 @@ function MapPage() {
 
   const summary = useMemo(() => {
     if (!lockers) return null;
-    const s = { total: lockers.length, active: 0, empty: 0, repair: 0, unknown: 0 };
-    for (const l of lockers) s[l.status as keyof typeof s]++;
-    return s;
+    const counts: Record<string, number> = { total: lockers.length };
+    for (const s of LOCKER_STATUSES) counts[s] = 0;
+    for (const l of lockers) counts[l.status] = (counts[l.status] ?? 0) + 1;
+    return counts;
   }, [lockers]);
 
   if (loading || !user) return <FullPageLoader />;
@@ -134,12 +134,11 @@ function MapPage() {
         </div>
 
         {summary && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3 mb-6">
             <SummaryCard label="Total" value={summary.total} accent="bg-primary" />
-            <SummaryCard label="Occupied" value={summary.active} accent="bg-destructive" />
-            <SummaryCard label="Empty" value={summary.empty} accent="bg-success" />
-            <SummaryCard label="Repair" value={summary.repair} accent="bg-warning" />
-            <SummaryCard label="Unknown" value={summary.unknown} accent="bg-muted-foreground" />
+            {LOCKER_STATUSES.map((s) => (
+              <SummaryCard key={s} label={STATUS_LABEL[s]} value={summary[s] ?? 0} accent={STATUS_SWATCH[s]} />
+            ))}
           </div>
         )}
 
@@ -254,15 +253,14 @@ function SheetGrid({
 }
 
 function Legend() {
+  const items: { c: string; l: string }[] = [
+    ...LOCKER_STATUSES.map((s) => ({ c: STATUS_SWATCH[s as LockerStatus], l: STATUS_LABEL[s as LockerStatus] })),
+    { c: "bg-gradient-to-br from-destructive via-warning to-success", l: "Mixed" },
+    { c: "bg-background border border-dashed border-border", l: "Not in DB" },
+  ];
   return (
-    <div className="flex items-center gap-4 text-sm flex-wrap">
-      {[
-        { c: "bg-destructive", l: "Occupied" },
-        { c: "bg-success", l: "Empty" },
-        { c: "bg-warning", l: "Repair" },
-        { c: "bg-gradient-to-br from-destructive via-warning to-success", l: "Mixed" },
-        { c: "bg-muted-foreground", l: "Unknown / not in DB" },
-      ].map((i) => (
+    <div className="flex items-center gap-3 text-xs flex-wrap">
+      {items.map((i) => (
         <div key={i.l} className="flex items-center gap-1.5">
           <span className={`h-3 w-3 rounded ${i.c}`} />
           <span className="text-muted-foreground">{i.l}</span>

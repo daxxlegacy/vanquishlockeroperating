@@ -8,12 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { History, Undo2, CheckCircle2, Clock } from "lucide-react";
+import { History, Undo2, CheckCircle2, Clock, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { undoDeletion, UNDO_WINDOW_MS } from "@/lib/delete-actions";
+import { formatBatchIntake } from "@/lib/locker-utils";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { Database } from "@/integrations/supabase/types";
 
 type Audit = Database["public"]["Tables"]["deletion_audit"]["Row"];
+type Term = Database["public"]["Tables"]["terminations"]["Row"];
 
 export const Route = createFileRoute("/audit")({
   head: () => ({
@@ -29,6 +32,7 @@ function AuditPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
   const [items, setItems] = useState<Audit[] | null>(null);
+  const [terms, setTerms] = useState<Term[] | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [now, setNow] = useState(Date.now());
 
@@ -38,6 +42,8 @@ function AuditPage() {
     if (!user) return;
     supabase.from("deletion_audit").select("*").order("created_at", { ascending: false }).limit(500)
       .then(({ data }) => setItems(data ?? []));
+    supabase.from("terminations").select("*").order("created_at", { ascending: false }).limit(500)
+      .then(({ data }) => setTerms(data ?? []));
   }, [user, refresh]);
 
   // tick every 10s so the "time left" countdown updates
@@ -56,9 +62,17 @@ function AuditPage() {
           <History className="h-6 w-6" />
           <div>
             <h1 className="font-display text-3xl font-bold">Audit Log</h1>
-            <p className="text-muted-foreground text-sm">Deletion history. Items can be restored within 15 minutes of deletion.</p>
+            <p className="text-muted-foreground text-sm">Deletions and terminations. Deletions can be restored within 15 minutes.</p>
           </div>
         </div>
+
+        <Tabs defaultValue="deletions">
+          <TabsList>
+            <TabsTrigger value="deletions">Deletions ({items?.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="terminations">Terminations ({terms?.length ?? 0})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="deletions" className="mt-4">
+        {/* deletions block start */}
 
         {!items ? (
           <Skeleton className="h-96 w-full" />
@@ -141,6 +155,41 @@ function AuditPage() {
             })}
           </div>
         )}
+          </TabsContent>
+          <TabsContent value="terminations" className="mt-4">
+            {!terms ? (
+              <Skeleton className="h-96 w-full" />
+            ) : terms.length === 0 ? (
+              <Card className="p-12 text-center text-muted-foreground">No terminations yet.</Card>
+            ) : (
+              <div className="space-y-3">
+                {terms.map((t) => (
+                  <Card key={t.id} className="p-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="bg-warning/15 text-warning-foreground border-warning/40 gap-1">
+                        <UserMinus className="h-3 w-3" /> Termination
+                      </Badge>
+                      <span className="font-mono font-semibold">{t.locker_number}</span>
+                      <span className="text-muted-foreground text-sm">·</span>
+                      <span className="text-sm font-medium">{t.employee_name ?? "—"}</span>
+                      {t.badge_number && <span className="text-xs text-muted-foreground">Badge {t.badge_number}</span>}
+                    </div>
+                    <p className="text-sm mt-2">
+                      <span className="text-muted-foreground">Reason:</span> {t.reason ?? "—"}
+                    </p>
+                    <div className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5">
+                      <span>Termination date: <span className="font-medium text-foreground">{formatBatchIntake(t.termination_date)}</span></span>
+                      <span>By: {t.terminated_by_email ?? t.terminated_by.slice(0, 8)}</span>
+                      <span>Logged: {new Date(t.created_at).toLocaleString()}</span>
+                      <span>Location: {t.location ?? "—"}</span>
+                      {t.row_label && <span>Row: {t.row_label}</span>}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

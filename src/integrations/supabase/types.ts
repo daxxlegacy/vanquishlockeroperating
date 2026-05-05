@@ -260,7 +260,15 @@ export type Database = {
         | "with_employee"
         | "damaged"
         | "unknown"
-      locker_status: "active" | "empty" | "repair" | "unknown"
+      locker_status:
+        | "active"
+        | "empty"
+        | "repair"
+        | "unknown"
+        | "cleaning"
+        | "broken_door"
+        | "on_hold"
+        | "reserved"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -396,7 +404,16 @@ export const Constants = {
         "damaged",
         "unknown",
       ],
-      locker_status: ["active", "empty", "repair", "unknown"],
+      locker_status: [
+        "active",
+        "empty",
+        "repair",
+        "unknown",
+        "cleaning",
+        "broken_door",
+        "on_hold",
+        "reserved",
+      ],
     },
   },
 } as const

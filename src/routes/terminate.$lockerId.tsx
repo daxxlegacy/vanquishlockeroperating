@@ -1,0 +1,192 @@
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { AppHeader } from "@/components/AppHeader";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { UserMinus, ArrowLeft, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+import { parseBatchIntake } from "@/lib/locker-utils";
+import type { Database } from "@/integrations/supabase/types";
+
+type Locker = Database["public"]["Tables"]["lockers"]["Row"];
+
+export const Route = createFileRoute("/terminate/$lockerId")({
+  head: () => ({
+    meta: [
+      { title: "Terminate user — LockerOps" },
+      { name: "description", content: "Confirm termination of a locker user with date and reason." },
+    ],
+  }),
+  component: TerminatePage,
+});
+
+function TerminatePage() {
+  const { lockerId } = useParams({ from: "/terminate/$lockerId" });
+  const { user, role, loading } = useAuth();
+  const navigate = useNavigate();
+  const [locker, setLocker] = useState<Locker | null | undefined>(undefined);
+
+  const today = new Date();
+  const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+  const [date, setDate] = useState(todayStr);
+  const [reason, setReason] = useState("");
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user || !lockerId) return;
+    supabase.from("lockers").select("*").eq("id", lockerId).maybeSingle().then(({ data }) => setLocker(data));
+  }, [user, lockerId]);
+
+  if (loading || !user || locker === undefined) {
+    return <div className="min-h-screen"><AppHeader /><main className="max-w-2xl mx-auto px-6 py-8"><Skeleton className="h-96" /></main></div>;
+  }
+
+  if (!locker) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppHeader />
+        <main className="max-w-2xl mx-auto px-6 py-8">
+          <Card className="p-8 text-center">
+            <AlertCircle className="h-10 w-10 mx-auto text-destructive mb-3" />
+            <h1 className="font-display text-xl font-bold">Locker not found</h1>
+            <p className="text-muted-foreground text-sm mt-2">It may have been deleted.</p>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  const iso = parseBatchIntake(date);
+  const dateOk = !!iso;
+  const isAdmin = role === "admin";
+  const canSubmit = dateOk && !busy && !!locker.employee_name && confirmText.trim() === locker.locker_number && isAdmin;
+
+  const handleTerminate = async () => {
+    if (!canSubmit || !iso) return;
+    setBusy(true);
+    try {
+      const { error: e1 } = await supabase.from("terminations").insert({
+        locker_id: locker.id,
+        locker_number: locker.locker_number,
+        location: locker.location,
+        row_label: locker.row_label,
+        employee_name: locker.employee_name,
+        badge_number: locker.badge_number,
+        termination_date: iso,
+        reason: reason.trim() || null,
+        terminated_by: user.id,
+        terminated_by_email: user.email ?? null,
+      });
+      if (e1) throw e1;
+
+      const { error: e2 } = await supabase
+        .from("lockers")
+        .update({ employee_name: null, badge_number: null, status: "empty" })
+        .eq("id", locker.id);
+      if (e2) throw e2;
+
+      toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
+      setDone(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Termination failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+      <main className="max-w-2xl mx-auto px-6 py-8">
+        <Button variant="ghost" size="sm" onClick={() => window.close()} className="mb-3">
+          <ArrowLeft className="h-4 w-4 mr-1" /> Close tab
+        </Button>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-1">
+            <UserMinus className="h-6 w-6 text-warning" />
+            <h1 className="font-display text-2xl font-bold">Terminate user</h1>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Review the details below, then confirm to release the user from this locker. The action is logged in the audit log.
+          </p>
+
+          <div className="grid grid-cols-2 gap-4 rounded-md border p-4 bg-muted/30 mb-4">
+            <Detail label="Locker #" value={locker.locker_number} mono />
+            <Detail label="Location" value={locker.location} />
+            <Detail label="Row" value={locker.row_label ?? "—"} />
+            <Detail label="Status">
+              <Badge variant="outline">{locker.status}</Badge>
+            </Detail>
+            <Detail label="Employee" value={locker.employee_name ?? "—"} />
+            <Detail label="Badge" value={locker.badge_number ?? "—"} mono />
+          </div>
+
+          {!locker.employee_name ? (
+            <Card className="p-4 bg-muted/40 text-sm text-muted-foreground text-center">
+              This locker has no assigned user — nothing to terminate.
+            </Card>
+          ) : done ? (
+            <Card className="p-6 text-center bg-success/10 border-success">
+              <div className="font-display text-lg font-bold text-success">User terminated</div>
+              <p className="text-sm text-muted-foreground mt-1">Recorded in the termination log and audit trail.</p>
+              <Button className="mt-4" onClick={() => window.close()}>Close tab</Button>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="td">Termination date (dd/mm/yyyy) *</Label>
+                <Input id="td" value={date} onChange={(e) => setDate(e.target.value)} className="font-mono" placeholder="16/01/2026" />
+                {!dateOk && date && <p className="text-xs text-destructive mt-1">Use format dd/mm/yyyy</p>}
+              </div>
+              <div>
+                <Label htmlFor="tr">Reason (optional)</Label>
+                <Textarea id="tr" rows={3} value={reason} onChange={(e) => setReason(e.target.value.slice(0, 500))} />
+              </div>
+              <div>
+                <Label htmlFor="tc">Type the locker number <span className="font-mono font-semibold">{locker.locker_number}</span> to confirm *</Label>
+                <Input id="tc" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className="font-mono" />
+              </div>
+
+              {!isAdmin && <p className="text-xs text-destructive">Only admins can terminate users.</p>}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => window.close()} disabled={busy}>Cancel</Button>
+                <Button
+                  onClick={handleTerminate}
+                  disabled={!canSubmit}
+                  className="bg-warning text-warning-foreground hover:bg-warning/90"
+                >
+                  <UserMinus className="h-4 w-4 mr-1" />
+                  {busy ? "Saving…" : "Confirm termination"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      </main>
+    </div>
+  );
+}
+
+function Detail({ label, value, mono, children }: { label: string; value?: string; mono?: boolean; children?: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`text-sm mt-0.5 ${mono ? "font-mono font-semibold" : "font-medium"}`}>
+        {children ?? value}
+      </div>
+    </div>
+  );
+}

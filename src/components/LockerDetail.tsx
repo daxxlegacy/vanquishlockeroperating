@@ -22,7 +22,8 @@ interface Props {
   onUpdated?: () => void;
 }
 
-const STATUSES = ["active", "empty", "repair", "unknown"] as const;
+import { LOCKER_STATUSES } from "@/lib/locker-status";
+const STATUSES = LOCKER_STATUSES;
 const KEYS = ["available", "missing", "with_employee", "damaged", "unknown"] as const;
 
 export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
@@ -113,14 +114,23 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
                   <Trash2 className="h-4 w-4 mr-1" /> Delete
                 </Button>
                 {locker.employee_name && (
-                  <Button
-                    size="sm"
-                    disabled={saving}
-                    onClick={() => setTermOpen(true)}
-                    className="bg-warning text-warning-foreground hover:bg-warning/90"
-                  >
-                    <UserMinus className="h-4 w-4 mr-1" /> Terminate user
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => setTermOpen(true)}
+                      className="bg-warning text-warning-foreground hover:bg-warning/90"
+                    >
+                      <UserMinus className="h-4 w-4 mr-1" /> Terminate user
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`/terminate/${locker.id}`, "_blank")}
+                    >
+                      Open in new tab
+                    </Button>
+                  </>
                 )}
               </div>
             ) : <span />}
