@@ -47,6 +47,7 @@ function LockersPage() {
   const debouncedSearch = useDebounced(search, 180);
   const [statusFilter, setStatusFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
+  const [keyLockFilter, setKeyLockFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
@@ -64,28 +65,78 @@ function LockersPage() {
     return Array.from(new Set(lockers.map((l) => l.location))).sort();
   }, [lockers]);
 
+  const keyLocks = useMemo(() => {
+    if (!lockers) return [];
+    return Array.from(new Set(lockers.map((l) => (l.key_lock ?? "").trim()).filter(Boolean))).sort();
+  }, [lockers]);
+
   const filtered = useMemo(() => {
     if (!lockers) return [];
     const q = debouncedSearch.toLowerCase().trim();
     return lockers.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (locFilter !== "all" && l.location !== locFilter) return false;
+      if (keyLockFilter !== "all") {
+        const k = (l.key_lock ?? "").trim();
+        if (keyLockFilter === "__none__" ? k !== "" : k !== keyLockFilter) return false;
+      }
       if (!q) return true;
       return (
         l.locker_number.toLowerCase().includes(q) ||
         l.employee_name?.toLowerCase().includes(q) ||
-        l.badge_number?.toLowerCase().includes(q)
+        l.badge_number?.toLowerCase().includes(q) ||
+        l.key_lock?.toLowerCase().includes(q)
       );
     });
-  }, [lockers, debouncedSearch, statusFilter, locFilter]);
+  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter]);
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, locFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, locFilter, keyLockFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const startIdx = (safePage - 1) * PAGE_SIZE;
   const visible = filtered.slice(startIdx, startIdx + PAGE_SIZE);
+
+  const buildExportRows = () => filtered.map((l) => ({
+    "Locker Number": l.locker_number,
+    "Location": l.location,
+    "Row": l.row_label ?? "",
+    "Unit Type": l.unit_type ?? "",
+    "Key Lock": l.key_lock ?? "",
+    "Badge Number": l.badge_number ?? "",
+    "Employee Name": l.employee_name ?? "",
+    "Status": STATUS_LABEL[l.status as LockerStatus] ?? l.status,
+    "Physical Key": l.physical_key_status ?? "",
+    "Spare Key": l.spare_key_status ?? "",
+    "Batch Intake": formatBatchIntake(l.batch_intake),
+    "Remark": l.remark ?? "",
+  }));
+
+  const filterTag = () => {
+    const parts: string[] = [];
+    if (statusFilter !== "all") parts.push(statusFilter);
+    if (locFilter !== "all") parts.push(locFilter.replace(/\s+/g, "_"));
+    if (keyLockFilter !== "all") parts.push((keyLockFilter === "__none__" ? "no-key-lock" : keyLockFilter).replace(/\s+/g, "_"));
+    return parts.length ? `_${parts.join("-")}` : "";
+  };
+
+  const exportCsv = () => {
+    const rows = buildExportRows();
+    if (rows.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    downloadCsv(`lockers${filterTag()}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    toast.success(`Exported ${rows.length.toLocaleString()} rows`);
+  };
+
+  const exportXlsx = () => {
+    const rows = buildExportRows();
+    if (rows.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lockers");
+    XLSX.writeFile(wb, `lockers${filterTag()}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success(`Exported ${rows.length.toLocaleString()} rows`);
+  };
 
   if (loading || !user) return <div className="min-h-screen" />;
 
