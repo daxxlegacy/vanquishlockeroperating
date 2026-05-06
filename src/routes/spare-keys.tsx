@@ -249,3 +249,114 @@ function KeyBadge({ status }: { status: string | null }) {
     </Badge>
   );
 }
+
+function AddSpareKeyLockerDialog({
+  existingNumbers,
+  existingLocations,
+  onClose,
+  onCreated,
+}: {
+  existingNumbers: Set<string>;
+  existingLocations: string[];
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [form, setForm] = useState({
+    locker_number: "",
+    location: existingLocations[0] ?? "",
+    row_label: "",
+    spare_key_status: "available" as KeyStatus,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const trimmedNumber = form.locker_number.trim();
+  const duplicate = trimmedNumber && existingNumbers.has(trimmedNumber.toUpperCase());
+
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!trimmedNumber) { toast.error("Locker number is required"); return; }
+    if (!form.location.trim()) { toast.error("Location is required"); return; }
+    if (duplicate) { toast.error(`Locker "${trimmedNumber}" already exists in the listing`); return; }
+    setSaving(true);
+    const { error } = await supabase.from("lockers").insert({
+      locker_number: trimmedNumber,
+      location: form.location.trim(),
+      row_label: form.row_label.trim() || null,
+      status: "empty",
+      spare_key_status: form.spare_key_status,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(error.message.toLowerCase().includes("duplicate")
+        ? `Locker "${trimmedNumber}" already exists in the listing`
+        : error.message);
+      return;
+    }
+    toast.success(`Spare key locker ${trimmedNumber} added`);
+    onCreated();
+  };
+
+  return (
+    <DialogContent className="max-w-md">
+      <DialogHeader>
+        <DialogTitle className="font-display flex items-center gap-2">
+          <Key className="h-5 w-5 text-primary" /> Add spare key locker
+        </DialogTitle>
+        <DialogDescription>
+          New entries appear in the listing immediately and are auto-sorted by locker number.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 py-2">
+        <div>
+          <Label>Locker Number *</Label>
+          <Input
+            value={form.locker_number}
+            onChange={(e) => set("locker_number", e.target.value)}
+            placeholder="e.g. 1A, M16, LK01"
+            className={`font-mono ${duplicate ? "border-destructive" : ""}`}
+            autoFocus
+          />
+          {duplicate && (
+            <p className="text-xs text-destructive mt-1">
+              "{trimmedNumber}" already exists in the listing.
+            </p>
+          )}
+        </div>
+        <div>
+          <Label>Location *</Label>
+          <Input
+            value={form.location}
+            onChange={(e) => set("location", e.target.value)}
+            list="spare-loc-list"
+            placeholder="e.g. Building A"
+          />
+          <datalist id="spare-loc-list">
+            {existingLocations.map((l) => <option key={l} value={l} />)}
+          </datalist>
+        </div>
+        <div>
+          <Label>Row</Label>
+          <Input value={form.row_label} onChange={(e) => set("row_label", e.target.value)} placeholder="optional" />
+        </div>
+        <div>
+          <Label>Spare Key Status</Label>
+          <Select value={form.spare_key_status} onValueChange={(v) => set("spare_key_status", v as KeyStatus)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {SPARE_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button onClick={handleSave} disabled={saving || !!duplicate || !trimmedNumber}>
+          {saving ? "Adding…" : "Add Locker"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
