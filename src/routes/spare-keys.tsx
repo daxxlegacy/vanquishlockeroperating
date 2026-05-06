@@ -135,7 +135,7 @@ function SpareKeysPage() {
                 existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
                 existingLocations={locations}
                 onClose={() => setAddOpen(false)}
-                onCreated={() => { setAddOpen(false); setRefresh((k) => k + 1); }}
+                onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
               />
             </Dialog>
           )}
@@ -221,7 +221,7 @@ function SpareKeysPage() {
           )}
         </Card>
       </main>
-      <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => setRefresh((k) => k + 1)} />
+      <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
     </div>
   );
 }

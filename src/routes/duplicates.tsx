@@ -145,7 +145,7 @@ function DuplicatesPage() {
         lockerId={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
-        onUpdated={() => { setRefresh((k) => k + 1); }}
+        onUpdated={() => { invalidateLockersCache(); }}
       />
     </div>
   );
