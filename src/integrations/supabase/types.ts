@@ -415,6 +415,8 @@ export type Database = {
         | "with_employee"
         | "damaged"
         | "unknown"
+        | "taken"
+        | "taken_for_cleaning"
       locker_status:
         | "active"
         | "empty"
@@ -564,6 +566,8 @@ export const Constants = {
         "with_employee",
         "damaged",
         "unknown",
+        "taken",
+        "taken_for_cleaning",
       ],
       locker_status: [
         "active",
