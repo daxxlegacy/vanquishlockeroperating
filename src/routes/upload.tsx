@@ -710,32 +710,97 @@ function UploadPage() {
             </div>
           )}
         </Card>
+        </TabsContent>
 
-        <Card className="mt-6 p-6">
-          <h2 className="font-display text-xl font-bold mb-4">Upload history</h2>
-          {history.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No uploads yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left">
-                  <tr><Th>Date</Th><Th>File</Th><Th>Rows</Th><Th>Active</Th><Th>Resigned</Th></tr>
-                </thead>
-                <tbody>
-                  {history.map((h) => (
-                    <tr key={h.id} className="border-t">
-                      <td className="px-3 py-2">{new Date(h.created_at).toLocaleString()}</td>
-                      <td className="px-3 py-2">{h.filename}</td>
-                      <td className="px-3 py-2">{h.rows_processed}</td>
-                      <td className="px-3 py-2 text-success">{h.active_count}</td>
-                      <td className="px-3 py-2 text-destructive">{h.resigned_count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <TabsContent value="spare" className="space-y-6">
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Key className="h-5 w-5 text-primary" />
+              <h2 className="font-display text-xl font-bold">Spare key sync</h2>
             </div>
-          )}
-        </Card>
+            <p className="text-sm text-muted-foreground mb-3">
+              Upload your <code className="bg-muted px-1 rounded">Spare_Key_Physical.xlsx</code> (multiple sheets supported). The system matches by <code className="bg-muted px-1 rounded">Combine Locker</code> and updates each locker's <strong>Spare Key Status</strong> and <strong>Physical Key Status</strong>. Lockers not listed are marked spare-key <em>missing</em>.
+            </p>
+            <div className="flex gap-3 items-center flex-wrap">
+              <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) { setSpareFile(f); runSpareKeySync(f, false); } }} />
+              {spareBusy && <Badge variant="secondary">Working…</Badge>}
+              {spareFile && !spareBusy && <span className="text-xs text-muted-foreground">{spareFile.name}</span>}
+            </div>
+
+            {spareResult && (
+              <div className="mt-5 space-y-4">
+                <div className="grid md:grid-cols-3 gap-3">
+                  <Stat icon={Key} label="Lockers in file" value={spareResult.fileCount} />
+                  <Stat icon={CheckCircle2} label="Matched in DB" value={spareResult.matched} accent="text-success" />
+                  <Stat icon={AlertCircle} label="Not in DB" value={spareResult.unmatched.length} accent="text-warning" />
+                </div>
+
+                <div className="border rounded-md max-h-72 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Locker</Th><Th>Spare key</Th><Th>Physical key</Th><Th>Was</Th></tr></thead>
+                    <tbody>
+                      {spareResult.updates.slice(0, 200).map((u) => (
+                        <tr key={u.locker_number} className="border-t">
+                          <td className="px-3 py-1.5 font-medium">{u.locker_number}</td>
+                          <td className="px-3 py-1.5"><Badge variant="outline">{u.spare_key_status}</Badge></td>
+                          <td className="px-3 py-1.5"><Badge variant="outline">{u.physical_key_status}</Badge></td>
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{u.prevSpare ?? "—"} / {u.prevPhys ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {spareResult.updates.length > 200 && <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {spareResult.updates.length - 200} more</div>}
+                </div>
+
+                {spareResult.unmatched.length > 0 && (
+                  <details className="rounded-md border">
+                    <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">Not found in DB ({spareResult.unmatched.length})</summary>
+                    <div className="max-h-48 overflow-auto p-3 text-xs font-mono">
+                      {spareResult.unmatched.map((u) => u.locker_number).join(", ")}
+                    </div>
+                  </details>
+                )}
+
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => { setSpareResult(null); setSpareFile(null); }}>Cancel</Button>
+                  <Button onClick={() => spareFile && runSpareKeySync(spareFile, true)} disabled={spareBusy}>
+                    {spareBusy ? "Applying…" : "Apply spare key sync"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-6">
+          <Card className="p-6">
+            <h2 className="font-display text-xl font-bold mb-4">Upload history</h2>
+            {history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No uploads yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left">
+                    <tr><Th>Date</Th><Th>File</Th><Th>Rows</Th><Th>Active</Th><Th>Resigned</Th></tr>
+                  </thead>
+                  <tbody>
+                    {history.map((h) => (
+                      <tr key={h.id} className="border-t">
+                        <td className="px-3 py-2">{new Date(h.created_at).toLocaleString()}</td>
+                        <td className="px-3 py-2">{h.filename}</td>
+                        <td className="px-3 py-2">{h.rows_processed}</td>
+                        <td className="px-3 py-2 text-success">{h.active_count}</td>
+                        <td className="px-3 py-2 text-destructive">{h.resigned_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
