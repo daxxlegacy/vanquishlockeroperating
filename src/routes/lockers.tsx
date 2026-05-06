@@ -255,7 +255,8 @@ function AddLockerDialog({
     }
     setSaving(true);
     const hasBadge = !!form.badge_number.trim();
-    const { error } = await supabase.from("lockers").insert({
+    const finalStatus = hasBadge && form.status === "empty" ? "active" : form.status;
+    const { data: inserted, error } = await supabase.from("lockers").insert({
       locker_number: form.locker_number.trim(),
       location: form.location.trim(),
       row_label: form.row_label.trim() || null,
@@ -263,14 +264,18 @@ function AddLockerDialog({
       key_lock: form.key_lock.trim() || null,
       badge_number: form.badge_number.trim() || null,
       employee_name: form.employee_name.trim() || null,
-      status: hasBadge && form.status === "empty" ? "active" : form.status,
+      status: finalStatus,
       batch_intake: parseBatchIntake(form.batch_intake),
       remark: form.remark.trim() || null,
-    });
+    }).select("*").single();
     setSaving(false);
     if (error) {
       toast.error(error.message.includes("duplicate") ? "That locker number already exists" : error.message);
       return;
+    }
+    if (inserted && finalStatus === "active" && (inserted.employee_name || inserted.badge_number)) {
+      const { syncActivationToOccupancy } = await import("@/lib/occupancy-sync");
+      await syncActivationToOccupancy(inserted);
     }
     toast.success(`Locker ${form.locker_number} added`);
     onCreated();

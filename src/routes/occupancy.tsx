@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 
@@ -97,9 +98,12 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   const [rows, setRows] = useState<Row[] | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [rowFilter, setRowFilter] = useState("all");
+  const [locFilter, setLocFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [refresh, setRefresh] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -123,34 +127,49 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     })();
   }, [category, refresh]);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, rowFilter, locFilter]);
+
+  // Build filter option lists from data
+  const { rowOpts, locOpts } = useMemo(() => {
+    const r = new Set<string>(), l = new Set<string>();
+    for (const x of rows ?? []) {
+      if (x.locker_row) r.add(x.locker_row);
+      if (x.locker_location_by_row) l.add(x.locker_location_by_row);
+    }
+    return { rowOpts: [...r].sort(), locOpts: [...l].sort() };
+  }, [rows]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.toLowerCase().trim();
     const f = rows.filter((r) => {
-      if (statusFilter !== "all" && (r.status ?? "").toLowerCase() !== statusFilter) return false;
+      const st = (r.status ?? "").toLowerCase();
+      if (statusFilter === "active" && st !== "active") return false;
+      if (statusFilter === "terminate" && st !== "terminate" && st !== "terminated") return false;
+      if (rowFilter !== "all" && (r.locker_row ?? "") !== rowFilter) return false;
+      if (locFilter !== "all" && (r.locker_location_by_row ?? "") !== locFilter) return false;
       if (!q) return true;
       return (
         r.locker_number.toLowerCase().includes(q) ||
         (r.employee_name ?? "").toLowerCase().includes(q) ||
         (r.badge_number ?? "").toLowerCase().includes(q) ||
-        (r.department ?? "").toLowerCase().includes(q)
+        (r.department ?? "").toLowerCase().includes(q) ||
+        (r.locker_row ?? "").toLowerCase().includes(q) ||
+        (r.locker_location_by_row ?? "").toLowerCase().includes(q)
       );
     });
     f.sort((a, b) => {
       const c = compareLockerNumbers(a.locker_number, b.locker_number);
       if (c !== 0) return c;
-      // Active first, then by termination date desc (most recent first)
       const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
       const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
       if (aActive !== bActive) return aActive - bActive;
       return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
     });
     return f;
-  }, [rows, search, statusFilter]);
+  }, [rows, search, statusFilter, rowFilter, locFilter]);
 
-  // Group by locker number
+  // Group by locker number — limit to 1 active + 1 most-recent terminate
   const grouped = useMemo(() => {
     const m = new Map<string, Row[]>();
     for (const r of filtered) {
@@ -158,7 +177,22 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
       arr.push(r);
       m.set(r.locker_number, arr);
     }
-    return Array.from(m.entries()); // already sorted because filtered is sorted
+    // Trim each group: keep first Active + first Terminate (already sorted)
+    const trimmed: [string, Row[]][] = [];
+    for (const [k, arr] of m.entries()) {
+      const active = arr.find((r) => (r.status ?? "").toLowerCase() === "active");
+      const terminate = arr.find((r) => {
+        const s = (r.status ?? "").toLowerCase();
+        return s === "terminate" || s === "terminated";
+      });
+      const out: Row[] = [];
+      if (active) out.push(active);
+      if (terminate) out.push(terminate);
+      // Fallback if neither matched (e.g. unknown status)
+      if (out.length === 0) out.push(arr[0]);
+      trimmed.push([k, out]);
+    }
+    return trimmed;
   }, [filtered]);
 
   const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE));
@@ -283,11 +317,25 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           <Input placeholder="Search locker, employee, badge, dept…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="terminate">Terminated</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={rowFilter} onValueChange={setRowFilter}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Row" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All rows</SelectItem>
+            {rowOpts.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={locFilter} onValueChange={setLocFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Location" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All locations</SelectItem>
+            {locOpts.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
           </SelectContent>
         </Select>
         {isAdmin && (
@@ -333,11 +381,12 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
                     <Th>Intake</Th>
                     <Th>Terminated</Th>
                     <Th>Key / Row</Th>
+                    <Th>History</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map(([lockerNumber, group]) => (
-                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} />
+                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} onViewHistory={() => setHistoryFor(lockerNumber)} />
                   ))}
                 </tbody>
               </table>
@@ -359,12 +408,13 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           </>
         )}
       </Card>
+
+      <HistoryDialog lockerNumber={historyFor} onClose={() => setHistoryFor(null)} />
     </div>
   );
 }
 
-function LockerGroup({ lockerNumber, group }: { lockerNumber: string; group: Row[] }) {
-  // group already sorted: active first, then most recent terminated
+function LockerGroup({ lockerNumber, group, onViewHistory }: { lockerNumber: string; group: Row[]; onViewHistory: () => void }) {
   return (
     <>
       {group.map((r, i) => {
@@ -389,10 +439,116 @@ function LockerGroup({ lockerNumber, group }: { lockerNumber: string; group: Row
             <td className="px-3 py-2 text-muted-foreground text-xs">
               {r.key_lock_type ?? "—"}{r.locker_row ? ` · row ${r.locker_row}` : ""}
             </td>
+            <td className="px-3 py-2">
+              {isFirst && (
+                <Button variant="ghost" size="sm" onClick={onViewHistory} className="h-7 px-2">
+                  <Eye className="h-3.5 w-3.5 mr-1" /> View
+                </Button>
+              )}
+            </td>
           </tr>
         );
       })}
     </>
+  );
+}
+
+type HistoryEvent = {
+  id: string;
+  source: "occupancy" | "termination";
+  status: string;
+  employee_name: string | null;
+  badge_number: string | null;
+  date: string | null;
+  date_label: string;
+  remarks: string | null;
+  by: string | null;
+};
+
+function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null; onClose: () => void }) {
+  const [events, setEvents] = useState<HistoryEvent[] | null>(null);
+
+  useEffect(() => {
+    if (!lockerNumber) { setEvents(null); return; }
+    (async () => {
+      setEvents(null);
+      const [{ data: occ }, { data: term }] = await Promise.all([
+        supabase.from("locker_occupancy").select("*").eq("locker_number", lockerNumber).order("updated_at", { ascending: false }),
+        supabase.from("terminations").select("*").eq("locker_number", lockerNumber).order("termination_date", { ascending: false }),
+      ]);
+      const out: HistoryEvent[] = [];
+      for (const r of occ ?? []) {
+        out.push({
+          id: `o-${r.id}`,
+          source: "occupancy",
+          status: r.status ?? "—",
+          employee_name: r.employee_name,
+          badge_number: r.badge_number,
+          date: (r.status ?? "").toLowerCase() === "active" ? r.batch_intake_date : r.termination_date,
+          date_label: (r.status ?? "").toLowerCase() === "active" ? "Intake" : "Terminated",
+          remarks: r.remarks,
+          by: r.source_filename,
+        });
+      }
+      for (const t of term ?? []) {
+        out.push({
+          id: `t-${t.id}`,
+          source: "termination",
+          status: "Terminate",
+          employee_name: t.employee_name,
+          badge_number: t.badge_number,
+          date: t.termination_date,
+          date_label: "Terminated",
+          remarks: t.reason,
+          by: t.terminated_by_email,
+        });
+      }
+      out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+      setEvents(out);
+    })();
+  }, [lockerNumber]);
+
+  return (
+    <Dialog open={!!lockerNumber} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="font-display flex items-center gap-2">
+            <History className="h-5 w-5" /> Locker {lockerNumber} — Full history
+          </DialogTitle>
+          <DialogDescription>All occupancy and termination events recorded for this locker.</DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto">
+          {!events ? (
+            <div className="space-y-2 p-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+          ) : events.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8 text-sm">No history recorded.</div>
+          ) : (
+            <ul className="space-y-2">
+              {events.map((e) => {
+                const active = e.status.toLowerCase() === "active";
+                return (
+                  <li key={e.id} className="border rounded-md p-3 bg-card">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={active ? "default" : "secondary"}>{e.status}</Badge>
+                        <span className="font-medium">{e.employee_name ?? "—"}</span>
+                        {e.badge_number && <span className="font-mono text-xs text-muted-foreground">#{e.badge_number}</span>}
+                      </div>
+                      <Badge variant="outline" className="text-[10px] uppercase">{e.source}</Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {e.date_label}: {fmtDate(e.date)}
+                      {e.by && <span> · {e.by}</span>}
+                    </div>
+                    {e.remarks && <div className="mt-1 text-xs italic text-muted-foreground">"{e.remarks}"</div>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
