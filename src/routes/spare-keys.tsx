@@ -6,15 +6,19 @@ import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Key, ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Search, Key, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
+type KeyStatus = Database["public"]["Enums"]["key_status"];
 
 const PAGE_SIZE = 100;
 const SPARE_OPTIONS = [
@@ -47,8 +51,10 @@ export const Route = createFileRoute("/spare-keys")({
 });
 
 function SpareKeysPage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = role === "admin";
+  const [addOpen, setAddOpen] = useState(false);
   const [lockers, setLockers] = useState<Locker[] | null>(null);
   const [search, setSearch] = useState("");
   const [spareFilter, setSpareFilter] = useState("all");
@@ -120,13 +126,30 @@ function SpareKeysPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="max-w-[1400px] mx-auto px-6 py-8">
-        <div className="flex items-center gap-3 mb-1">
-          <Key className="h-6 w-6 text-primary" />
-          <h1 className="font-display text-3xl font-bold">Spare Keys</h1>
+        <div className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <Key className="h-6 w-6 text-primary" />
+              <h1 className="font-display text-3xl font-bold">Spare Keys</h1>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
+            </p>
+          </div>
+          {isAdmin && (
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-1" /> Add Spare Key Locker</Button>
+              </DialogTrigger>
+              <AddSpareKeyLockerDialog
+                existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
+                existingLocations={locations}
+                onClose={() => setAddOpen(false)}
+                onCreated={() => { setAddOpen(false); setRefresh((k) => k + 1); }}
+              />
+            </Dialog>
+          )}
         </div>
-        <p className="text-muted-foreground text-sm">
-          {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
-        </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mt-4">
           {SPARE_OPTIONS.map((k) => (
@@ -224,5 +247,116 @@ function KeyBadge({ status }: { status: string | null }) {
       <span className={`h-2 w-2 rounded-full ${SWATCH[s] ?? "bg-muted-foreground"}`} />
       {s.replace(/_/g, " ")}
     </Badge>
+  );
+}
+
+function AddSpareKeyLockerDialog({
+  existingNumbers,
+  existingLocations,
+  onClose,
+  onCreated,
+}: {
+  existingNumbers: Set<string>;
+  existingLocations: string[];
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [form, setForm] = useState({
+    locker_number: "",
+    location: existingLocations[0] ?? "",
+    row_label: "",
+    spare_key_status: "available" as KeyStatus,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const trimmedNumber = form.locker_number.trim();
+  const duplicate = trimmedNumber && existingNumbers.has(trimmedNumber.toUpperCase());
+
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!trimmedNumber) { toast.error("Locker number is required"); return; }
+    if (!form.location.trim()) { toast.error("Location is required"); return; }
+    if (duplicate) { toast.error(`Locker "${trimmedNumber}" already exists in the listing`); return; }
+    setSaving(true);
+    const { error } = await supabase.from("lockers").insert({
+      locker_number: trimmedNumber,
+      location: form.location.trim(),
+      row_label: form.row_label.trim() || null,
+      status: "empty",
+      spare_key_status: form.spare_key_status,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(error.message.toLowerCase().includes("duplicate")
+        ? `Locker "${trimmedNumber}" already exists in the listing`
+        : error.message);
+      return;
+    }
+    toast.success(`Spare key locker ${trimmedNumber} added`);
+    onCreated();
+  };
+
+  return (
+    <DialogContent className="max-w-md">
+      <DialogHeader>
+        <DialogTitle className="font-display flex items-center gap-2">
+          <Key className="h-5 w-5 text-primary" /> Add spare key locker
+        </DialogTitle>
+        <DialogDescription>
+          New entries appear in the listing immediately and are auto-sorted by locker number.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 py-2">
+        <div>
+          <Label>Locker Number *</Label>
+          <Input
+            value={form.locker_number}
+            onChange={(e) => set("locker_number", e.target.value)}
+            placeholder="e.g. 1A, M16, LK01"
+            className={`font-mono ${duplicate ? "border-destructive" : ""}`}
+            autoFocus
+          />
+          {duplicate && (
+            <p className="text-xs text-destructive mt-1">
+              "{trimmedNumber}" already exists in the listing.
+            </p>
+          )}
+        </div>
+        <div>
+          <Label>Location *</Label>
+          <Input
+            value={form.location}
+            onChange={(e) => set("location", e.target.value)}
+            list="spare-loc-list"
+            placeholder="e.g. Building A"
+          />
+          <datalist id="spare-loc-list">
+            {existingLocations.map((l) => <option key={l} value={l} />)}
+          </datalist>
+        </div>
+        <div>
+          <Label>Row</Label>
+          <Input value={form.row_label} onChange={(e) => set("row_label", e.target.value)} placeholder="optional" />
+        </div>
+        <div>
+          <Label>Spare Key Status</Label>
+          <Select value={form.spare_key_status} onValueChange={(v) => set("spare_key_status", v as KeyStatus)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {SPARE_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button onClick={handleSave} disabled={saving || !!duplicate || !trimmedNumber}>
+          {saving ? "Adding…" : "Add Locker"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
