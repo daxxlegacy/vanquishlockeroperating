@@ -700,10 +700,16 @@ function detectColumns(headers: string[]): Record<string, string> {
     batch_intake: ["batchintake", "batch", "intake", "intakedate"],
   };
 
+  // Fields that should match by substring (flexible) vs exact normalized header.
+  const substringFields = new Set(["badge_number", "employee_name"]);
+
   for (const [field, opts] of Object.entries(aliases)) {
     for (const h of headers) {
       const n = norm(h);
-      if (opts.includes(n)) {
+      const hit = substringFields.has(field)
+        ? opts.some((o) => n.includes(o))
+        : opts.includes(n);
+      if (hit) {
         out[field] = h;
         break;
       }
