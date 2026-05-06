@@ -126,7 +126,7 @@ function SpareKeysPage() {
               <h1 className="font-display text-3xl font-bold">Spare Keys</h1>
             </div>
             <p className="text-muted-foreground text-sm">
-              {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
+              {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match
             </p>
           </div>
           {isAdmin && (
