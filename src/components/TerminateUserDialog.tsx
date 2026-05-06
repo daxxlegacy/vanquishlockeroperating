@@ -8,6 +8,7 @@ import { UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBatchIntake } from "@/lib/locker-utils";
+import { syncTerminationToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -56,6 +57,8 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
         .update({ employee_name: null, badge_number: null, status: "empty" })
         .eq("id", locker.id);
       if (e2) throw e2;
+
+      await syncTerminationToOccupancy(locker, iso, reason.trim() || null);
 
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       onOpenChange(false);

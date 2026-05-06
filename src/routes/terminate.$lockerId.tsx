@@ -115,6 +115,8 @@ function TerminatePage() {
         .eq("id", locker.id);
       if (e2) throw e2;
 
+      await syncTerminationToOccupancy(locker, iso, reason.trim() || null);
+
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       setDone(true);
     } catch (e) {
