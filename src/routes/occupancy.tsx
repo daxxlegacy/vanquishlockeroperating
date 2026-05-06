@@ -381,11 +381,12 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
                     <Th>Intake</Th>
                     <Th>Terminated</Th>
                     <Th>Key / Row</Th>
+                    <Th>History</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map(([lockerNumber, group]) => (
-                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} />
+                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} onViewHistory={() => setHistoryFor(lockerNumber)} />
                   ))}
                 </tbody>
               </table>
