@@ -45,8 +45,8 @@ type LockerRow = {
   badge_number: string | null;
   employee_name: string | null;
   status: "active" | "empty" | "repair" | "cleaning" | "broken_door" | "on_hold" | "reserved" | "unknown";
-  physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
-  spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
+  physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
+  spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
   remark: string | null;
   batch_intake: string | null;
 };
