@@ -51,7 +51,6 @@ function LockersPage() {
   const [locFilter, setLocFilter] = useState("all");
   const [keyLockFilter, setKeyLockFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
