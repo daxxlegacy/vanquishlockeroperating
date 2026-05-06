@@ -261,6 +261,99 @@ function UploadPage() {
     }
   };
 
+  const runSpareKeySync = async (f: File, apply: boolean) => {
+    setSpareBusy(true);
+    if (!apply) setSpareResult(null);
+    try {
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array", cellDates: false });
+      const allRows: Record<string, unknown>[] = [];
+      for (const sn of wb.SheetNames) {
+        const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sn], { defval: "", raw: true });
+        allRows.push(...json);
+      }
+      if (allRows.length === 0) { toast.error("Spare key file is empty."); setSpareBusy(false); return; }
+
+      const detected = detectColumns(Object.keys(allRows[0]));
+      const lockerKey = detected.locker_number;
+      const physKey = detected.physical_key_status;
+      const spareKey = detected.spare_key_status ?? detected.status;
+      if (!lockerKey) {
+        toast.error("Couldn't find a locker column (e.g. 'Combine Locker').");
+        setSpareBusy(false);
+        return;
+      }
+
+      const incoming = new Map<string, { spare: LockerRow["spare_key_status"]; phys: LockerRow["physical_key_status"] }>();
+      for (const r of allRows) {
+        const ln = getStr(r, lockerKey);
+        if (!ln) continue;
+        const spareRaw = spareKey ? getStr(r, spareKey) : null;
+        const physRaw = physKey ? getStr(r, physKey) : null;
+        // "Status" col on spare sheet is just "Spare Key" → presence = available; physical key is the real signal
+        const spare: LockerRow["spare_key_status"] = spareRaw && spareRaw.toLowerCase().includes("spare") ? "available" : mapKeyStatus(spareRaw);
+        const phys: LockerRow["physical_key_status"] = mapKeyStatus(physRaw);
+        incoming.set(ln.trim().toUpperCase(), { spare, phys });
+      }
+
+      const dbLockers: { locker_number: string; spare_key_status: string | null; physical_key_status: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase.from("lockers")
+          .select("locker_number, spare_key_status, physical_key_status")
+          .is("deleted_at", null)
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        dbLockers.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      const dbMap = new Map(dbLockers.map((l) => [l.locker_number.trim().toUpperCase(), l]));
+
+      const updates: SpareSyncResult["updates"] = [];
+      const unmatched: SpareSyncResult["unmatched"] = [];
+      for (const [ln, v] of incoming) {
+        const db = dbMap.get(ln);
+        if (!db) { unmatched.push({ locker_number: ln, status: "not in DB" }); continue; }
+        updates.push({
+          locker_number: db.locker_number,
+          spare_key_status: v.spare,
+          physical_key_status: v.phys,
+          prevSpare: db.spare_key_status,
+          prevPhys: db.physical_key_status,
+        });
+      }
+
+      if (apply) {
+        for (const u of updates) {
+          const { error } = await supabase.from("lockers")
+            .update({ spare_key_status: u.spare_key_status, physical_key_status: u.physical_key_status })
+            .eq("locker_number", u.locker_number);
+          if (error) throw error;
+        }
+        const incomingKeys = new Set(incoming.keys());
+        const noSpare = dbLockers
+          .filter((l) => !incomingKeys.has(l.locker_number.trim().toUpperCase()) && l.spare_key_status !== "missing")
+          .map((l) => l.locker_number);
+        for (let i = 0; i < noSpare.length; i += 500) {
+          const slice = noSpare.slice(i, i + 500);
+          const { error } = await supabase.from("lockers").update({ spare_key_status: "missing" }).in("locker_number", slice);
+          if (error) throw error;
+        }
+        toast.success(`Spare keys synced — ${updates.length} updated, ${noSpare.length} marked missing.`);
+        setSpareResult(null);
+        setSpareFile(null);
+      } else {
+        setSpareResult({ filename: f.name, fileCount: incoming.size, matched: updates.length, unmatched, updates });
+        toast.success(`Preview — ${updates.length} matched, ${unmatched.length} not in DB.`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Spare key sync failed");
+    }
+    setSpareBusy(false);
+  };
+
   const runRosterCheck = async (f: File) => {
     setCheckBusy(true);
     setCheckResult(null);
