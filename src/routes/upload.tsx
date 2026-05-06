@@ -607,8 +607,21 @@ function UploadPage() {
               {preview.parsed.length > 50 && <div className="p-2 text-xs text-center text-muted-foreground border-t">Showing 50 of {preview.parsed.length} rows</div>}
             </div>
 
+            {applyProgress && (
+              <div className="mb-3 space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{applyProgress.phase}…</span>
+                  <span>
+                    {applyProgress.done.toLocaleString()} / {applyProgress.total.toLocaleString()}
+                    {applyProgress.total > 0 && ` (${Math.round((applyProgress.done / applyProgress.total) * 100)}%)`}
+                  </span>
+                </div>
+                <Progress value={applyProgress.total ? (applyProgress.done / applyProgress.total) * 100 : 0} />
+              </div>
+            )}
+
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => { setPreview(null); setFile(null); }}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setPreview(null); setFile(null); }} disabled={applying}>Cancel</Button>
               <Button onClick={handleApply} disabled={applying}>
                 {applying ? "Applying…" : "Apply changes"}
               </Button>
