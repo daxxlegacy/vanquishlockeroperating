@@ -136,7 +136,7 @@ function NumberGrid({
           >
             <span className="font-display font-bold text-sm leading-none">{l.locker_number}</span>
             <span className="text-[10px] leading-tight mt-1 break-words line-clamp-2">
-              {l.employee_name ?? "— empty —"}
+              {l.employee_name ?? `— ${(STATUS_LABEL[l.status as LockerStatus] ?? "empty").toLowerCase()} —`}
             </span>
           </button>
         );
