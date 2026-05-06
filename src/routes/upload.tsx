@@ -187,8 +187,11 @@ function UploadPage() {
   const handleApply = async () => {
     if (!preview || !file || !user) return;
     setApplying(true);
+    const resume = pauseLockersRealtime();
+    const totalUnits = preview.parsed.length + preview.newlyResigned.length;
+    setApplyProgress({ done: 0, total: totalUnits, phase: "Uploading lockers" });
+    let done = 0;
     try {
-      // Upsert rows in chunks
       const CHUNK = 200;
       for (let i = 0; i < preview.parsed.length; i += CHUNK) {
         const slice = preview.parsed.slice(i, i + CHUNK);
@@ -196,9 +199,10 @@ function UploadPage() {
           .from("lockers")
           .upsert(slice, { onConflict: "locker_number" });
         if (error) throw error;
+        done += slice.length;
+        setApplyProgress({ done, total: totalUnits, phase: "Uploading lockers" });
       }
 
-      // Mark resigned lockers (active in DB but missing from upload) as empty
       const resignedKeys = preview.newlyResigned.map((r) => r.locker_number);
       for (let i = 0; i < resignedKeys.length; i += CHUNK) {
         const slice = resignedKeys.slice(i, i + CHUNK);
@@ -207,6 +211,8 @@ function UploadPage() {
           .update({ status: "empty", employee_name: null, badge_number: null, remark: "Auto-resigned via upload" })
           .in("locker_number", slice);
         if (error) throw error;
+        done += slice.length;
+        setApplyProgress({ done, total: totalUnits, phase: "Marking resigned" });
       }
 
       await supabase.from("upload_history").insert({
@@ -225,6 +231,8 @@ function UploadPage() {
       toast.error(e instanceof Error ? e.message : "Apply failed");
     }
     setApplying(false);
+    setApplyProgress(null);
+    resume(); // single refresh of cache
   };
 
   const exportLockers = async (fmt: "xlsx" | "csv") => {
