@@ -159,7 +159,7 @@ function LockersPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <Th>Locker #</Th><Th>Location</Th><Th>Row</Th><Th>Badge</Th><Th>Employee</Th>
+                    <Th>Locker #</Th><Th>Location</Th><Th>Row</Th><Th>Key Lock</Th><Th>Badge</Th><Th>Employee</Th>
                     <Th>Status</Th><Th>Phys. Key</Th><Th>Spare Key</Th><Th>Batch</Th>
                   </tr>
                 </thead>
@@ -169,6 +169,7 @@ function LockersPage() {
                       <td className="px-3 py-2 font-medium">{l.locker_number}</td>
                       <td className="px-3 py-2">{l.location}</td>
                       <td className="px-3 py-2 text-muted-foreground">{l.row_label}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{l.key_lock ?? "—"}</td>
                       <td className="px-3 py-2 text-muted-foreground">{l.badge_number ?? "—"}</td>
                       <td className="px-3 py-2">{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</td>
                       <td className="px-3 py-2"><StatusBadge status={l.status} /></td>
