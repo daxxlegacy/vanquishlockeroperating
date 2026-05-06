@@ -290,9 +290,10 @@ function UploadPage() {
         if (!ln) continue;
         const spareRaw = spareKey ? getStr(r, spareKey) : null;
         const physRaw = physKey ? getStr(r, physKey) : null;
-        // "Status" col on spare sheet is just "Spare Key" → presence = available; physical key is the real signal
-        const spare: LockerRow["spare_key_status"] = spareRaw && spareRaw.toLowerCase().includes("spare") ? "available" : mapKeyStatus(spareRaw);
+        // Sheet "Status" col = "Spare Key" (presence). The "Physicial Key" col carries the live state (Yes/Taken/Taken For Cleaning).
         const phys: LockerRow["physical_key_status"] = mapKeyStatus(physRaw);
+        const hasSpareMarker = !!spareRaw && spareRaw.toLowerCase().includes("spare");
+        const spare: LockerRow["spare_key_status"] = hasSpareMarker ? phys : mapKeyStatus(spareRaw);
         incoming.set(ln.trim().toUpperCase(), { spare, phys });
       }
 
