@@ -9,6 +9,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Search, ClipboardCheck } from "lucide-react";
+import { toast } from "sonner";
 import layoutData from "@/data/locker-map-layout.json";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -65,6 +70,8 @@ function MapPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [compartmentNumber, setCompartmentNumber] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeSheet, setActiveSheet] = useState<string | undefined>(undefined);
+  const [showValidation, setShowValidation] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -161,6 +168,21 @@ function MapPage() {
           <Legend />
         </div>
 
+        <LockerSearchBar
+          lockers={lockers}
+          onJump={(locker) => {
+            // find which sheet contains this prefix
+            const prefix = prefixOf(locker.locker_number);
+            const sheet = sheetNames.find((n) =>
+              LAYOUT[n].cells.some((c) => prefixOf(c.n) === prefix),
+            );
+            if (sheet) setActiveSheet(sheet);
+            // Open compartments popover so user picks the right slot, then detail
+            setCompartmentNumber(prefix);
+          }}
+          onValidate={() => setShowValidation(true)}
+        />
+
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3 mb-6">
             <SummaryCard label="Total" value={summary.total} accent="bg-primary" />
@@ -173,7 +195,7 @@ function MapPage() {
         {!lockers ? (
           <Skeleton className="h-96 w-full" />
         ) : (
-          <Tabs defaultValue={sheetNames[0]}>
+          <Tabs value={activeSheet ?? sheetNames[0]} onValueChange={setActiveSheet}>
             <TabsList className="flex-wrap h-auto">
               {sheetNames.map((name) => (
                 <TabsTrigger key={name} value={name}>
@@ -209,6 +231,12 @@ function MapPage() {
         open={!!selected}
         onClose={() => setSelected(null)}
         onUpdated={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ValidationReportDialog
+        open={showValidation}
+        onOpenChange={setShowValidation}
+        lockers={lockers}
       />
     </div>
   );
@@ -312,4 +340,188 @@ function SummaryCard({ label, value, accent }: { label: string; value: number; a
 
 function FullPageLoader() {
   return <div className="min-h-screen grid place-items-center"><Skeleton className="h-12 w-12 rounded-full" /></div>;
+}
+
+function LockerSearchBar({
+  lockers,
+  onJump,
+  onValidate,
+}: {
+  lockers: Locker[] | null;
+  onJump: (l: Locker) => void;
+  onValidate: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const matches = useMemo(() => {
+    if (!lockers || !q.trim()) return [] as Locker[];
+    const needle = q.trim().toUpperCase();
+    return lockers
+      .filter((l) => l.locker_number.toUpperCase().includes(needle))
+      .slice(0, 8);
+  }, [lockers, q]);
+
+  function jump(l: Locker) {
+    onJump(l);
+    setQ("");
+  }
+
+  return (
+    <div className="mb-6 flex flex-wrap items-start gap-3">
+      <div className="relative flex-1 min-w-[260px] max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && matches[0]) jump(matches[0]);
+          }}
+          placeholder="Jump to locker (e.g. AA01, W12, 6075B)"
+          className="pl-9"
+        />
+        {q && matches.length > 0 && (
+          <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-md max-h-64 overflow-auto">
+            {matches.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => jump(m)}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex justify-between gap-2"
+              >
+                <span className="font-medium font-display">{m.locker_number}</span>
+                <span className="text-muted-foreground truncate">
+                  {m.employee_name ?? "—"} · {STATUS_LABEL[m.status as LockerStatus] ?? m.status}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {q && matches.length === 0 && (
+          <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-md p-3 text-sm text-muted-foreground">
+            No locker matches "{q}".
+          </div>
+        )}
+      </div>
+      <Button variant="outline" onClick={onValidate}>
+        <ClipboardCheck className="h-4 w-4 mr-2" /> Validation report
+      </Button>
+    </div>
+  );
+}
+
+function ValidationReportDialog({
+  open,
+  onOpenChange,
+  lockers,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  lockers: Locker[] | null;
+}) {
+  const report = useMemo(() => {
+    if (!lockers) return null;
+    // All prefixes present in any sheet
+    const mappedPrefixes = new Set<string>();
+    for (const sheet of Object.values(LAYOUT)) {
+      for (const cell of sheet.cells) mappedPrefixes.add(prefixOf(cell.n));
+    }
+    const missing: Locker[] = [];
+    const missingPrefixes = new Map<string, number>();
+    for (const l of lockers) {
+      const p = prefixOf(l.locker_number);
+      if (!mappedPrefixes.has(p)) {
+        missing.push(l);
+        missingPrefixes.set(p, (missingPrefixes.get(p) ?? 0) + 1);
+      }
+    }
+    return { missing, missingPrefixes, totalDb: lockers.length, totalMapped: mappedPrefixes.size };
+  }, [lockers]);
+
+  function exportCsv() {
+    if (!report) return;
+    const rows = [["locker_number", "prefix", "location", "status", "employee_name", "badge_id"]];
+    for (const l of report.missing) {
+      rows.push([
+        l.locker_number,
+        prefixOf(l.locker_number),
+        l.location ?? "",
+        l.status,
+        l.employee_name ?? "",
+        (l as { badge_id?: string | null }).badge_id ?? "",
+      ]);
+    }
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `locker-map-validation-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${report.missing.length} missing lockers`);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="font-display">Locker map validation</DialogTitle>
+          <DialogDescription>
+            Lockers in the database that are not represented on any map sheet.
+          </DialogDescription>
+        </DialogHeader>
+        {!report ? (
+          <Skeleton className="h-32 w-full" />
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <Card className="p-3">
+                <div className="text-2xl font-bold font-display">{report.totalDb.toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground uppercase">Lockers in DB</div>
+              </Card>
+              <Card className="p-3">
+                <div className="text-2xl font-bold font-display">{report.totalMapped.toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground uppercase">Mapped prefixes</div>
+              </Card>
+              <Card className="p-3">
+                <div className="text-2xl font-bold font-display text-destructive">
+                  {report.missing.length.toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground uppercase">Missing from map</div>
+              </Card>
+            </div>
+
+            {report.missing.length === 0 ? (
+              <Card className="p-4 text-sm text-success">
+                ✓ Every locker in the database is represented on the map.
+              </Card>
+            ) : (
+              <>
+                <div>
+                  <div className="text-xs uppercase text-muted-foreground mb-2">
+                    Missing prefixes ({report.missingPrefixes.size})
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-auto">
+                    {[...report.missingPrefixes.entries()]
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([p, n]) => (
+                        <span
+                          key={p}
+                          className="px-2 py-0.5 rounded bg-muted text-xs font-mono"
+                        >
+                          {p} ({n})
+                        </span>
+                      ))}
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={exportCsv}>Export CSV</Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
