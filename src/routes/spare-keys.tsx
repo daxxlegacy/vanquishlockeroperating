@@ -102,12 +102,6 @@ function SpareKeysPage() {
     });
   }, [lockers, debouncedSearch, spareFilter, locFilter]);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, spareFilter, locFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const startIdx = (safePage - 1) * PAGE_SIZE;
-  const visible = filtered.slice(startIdx, startIdx + PAGE_SIZE);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
