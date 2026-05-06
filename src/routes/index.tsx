@@ -70,6 +70,8 @@ function MapPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [compartmentNumber, setCompartmentNumber] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeSheet, setActiveSheet] = useState<string | undefined>(undefined);
+  const [showValidation, setShowValidation] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
