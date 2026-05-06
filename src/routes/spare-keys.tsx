@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Key, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Search, Key, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
@@ -22,7 +23,16 @@ import type { Database } from "@/integrations/supabase/types";
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 type KeyStatus = Database["public"]["Enums"]["key_status"];
 
-const PAGE_SIZE = 100;
+const ROW_HEIGHT = 40;
+const VIEWPORT_HEIGHT = 600;
+const COLS = [
+  { key: "num", w: 140 },
+  { key: "loc", w: 200 },
+  { key: "row", w: 160 },
+  { key: "spare", w: 220 },
+];
+const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
+const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
 const SPARE_OPTIONS = [
   "available",
   "taken",
