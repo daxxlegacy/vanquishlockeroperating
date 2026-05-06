@@ -400,6 +400,13 @@ function Th({ children }: { children: React.ReactNode }) {
   return <th className="px-3 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">{children}</th>;
 }
 
+function fmtDate(iso: string | null): string {
+  if (!iso) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
 function StatCard({ label, value, tone }: { label: string; value: number; tone?: "success" | "muted" }) {
   const color = tone === "success" ? "text-success" : tone === "muted" ? "text-muted-foreground" : "text-foreground";
   return (
