@@ -478,6 +478,17 @@ type HistoryEvent = {
 
 function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null; onClose: () => void }) {
   const [events, setEvents] = useState<HistoryEvent[] | null>(null);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!lockerNumber) return;
+    const ch = supabase
+      .channel(`history-${lockerNumber}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "terminations", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [lockerNumber]);
 
   useEffect(() => {
     if (!lockerNumber) { setEvents(null); return; }
