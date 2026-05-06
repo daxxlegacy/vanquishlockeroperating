@@ -35,27 +35,10 @@ function normName(s: string | null | undefined) {
 function DuplicatesPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [lockers, setLockers] = useState<Locker[] | null>(null);
+  const { lockers } = useLockers();
   const [selected, setSelected] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
-
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const all: Locker[] = [];
-      let from = 0;
-      while (true) {
-        const { data } = await supabase.from("lockers").select("*").range(from, from + 999);
-        if (!data) break;
-        all.push(...data);
-        if (data.length < 1000) break;
-        from += 1000;
-      }
-      setLockers(all);
-    })();
-  }, [user, refresh]);
 
   const nameGroups = useMemo(() => {
     if (!lockers) return [];
