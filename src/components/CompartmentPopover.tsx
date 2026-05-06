@@ -95,7 +95,13 @@ function LetterGrid({
             </div>
             <div className="text-[11px] leading-tight mt-1 break-words">
               {l ? (
-                l.employee_name ? <span className="font-medium">{l.employee_name}</span> : <span className="opacity-80">— empty —</span>
+                l.employee_name ? (
+                  <span className="font-medium">{l.employee_name}</span>
+                ) : (
+                  <span className="opacity-80">
+                    — {(STATUS_LABEL[l.status as LockerStatus] ?? "empty").toLowerCase()} —
+                  </span>
+                )
               ) : (
                 <span className="italic">not in DB</span>
               )}
