@@ -16,6 +16,8 @@ import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserM
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
+import { Progress } from "@/components/ui/progress";
+import { pauseLockersRealtime } from "@/lib/lockers-cache";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
