@@ -46,3 +46,40 @@ export const STATUS_SWATCH: Record<LockerStatus, string> = {
   reserved: "bg-violet-500",
   unknown: "bg-muted-foreground",
 };
+
+/**
+ * Normalize a free-text status value (from uploads, pasted data, etc.) to a
+ * canonical LockerStatus. When the input is empty/unrecognized, fall back to
+ * "active" if a badge is present, otherwise "empty".
+ */
+export function normalizeLockerStatus(
+  raw: string | null | undefined,
+  hasBadge = false,
+): LockerStatus {
+  if (raw === null || raw === undefined) return hasBadge ? "active" : "empty";
+  const n = String(raw).toLowerCase().replace(/[_\-/]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!n) return hasBadge ? "active" : "empty";
+
+  // Direct match against canonical keys / labels first.
+  for (const s of LOCKER_STATUSES) {
+    if (n === s.replace(/_/g, " ")) return s;
+    if (n === STATUS_LABEL[s].toLowerCase()) return s;
+  }
+
+  if (n.includes("clean") || n.includes("wash") || n.includes("sanitiz")) return "cleaning";
+  if (n.includes("broken") || n.includes("damaged door") || n.includes("door")) return "broken_door";
+  if (n.includes("on hold") || n.includes("hold") || n.includes("pending")) return "on_hold";
+  if (n.includes("reserve") || n.includes("booked")) return "reserved";
+  if (n.includes("repair") || n.includes("maintenance") || n.includes("fix")) return "repair";
+  if (
+    n.includes("empty") || n.includes("vacant") || n.includes("free") ||
+    n.includes("available") || n.includes("unoccupied") || n === "no"
+  ) return "empty";
+  if (
+    n.includes("active") || n.includes("occupied") || n.includes("assigned") ||
+    n.includes("in use") || n.includes("listing") || n.includes("taken")
+  ) return "active";
+  if (n.includes("unknown") || n === "n a" || n === "na") return "unknown";
+
+  return hasBadge ? "active" : "empty";
+}
