@@ -1,0 +1,411 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { AppHeader } from "@/components/AppHeader";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { compareLockerNumbers } from "@/lib/locker-utils";
+
+type Category = "main" | "staff" | "shoe";
+
+type Row = {
+  id: string;
+  category: Category;
+  locker_number: string;
+  locker_row: string | null;
+  locker_unit: string | null;
+  locker_location_by_row: string | null;
+  key_lock_type: string | null;
+  badge_number: string | null;
+  employee_name: string | null;
+  contact: string | null;
+  status: string | null;
+  batch_intake_date: string | null;
+  termination_date: string | null;
+  gradeset: string | null;
+  department: string | null;
+  remarks: string | null;
+  source_filename: string | null;
+};
+
+const CATEGORY_LABEL: Record<Category, string> = {
+  main: "Full Locker (Occupied + Vacant)",
+  staff: "Staff Locker (Occupied + Staff)",
+  shoe: "Shoe Locker (Occupied + Shoe)",
+};
+
+const PAGE_SIZE = 50;
+
+export const Route = createFileRoute("/occupancy")({
+  head: () => ({
+    meta: [
+      { title: "Occupancy History — LockerOps" },
+      { name: "description", content: "Current and historical locker occupancy across Main, Staff, and Shoe lockers, including previous owners and terminations." },
+    ],
+  }),
+  component: OccupancyPage,
+});
+
+function OccupancyPage() {
+  const { user, role, loading } = useAuth();
+  const navigate = useNavigate();
+  const isAdmin = role === "admin";
+  const [tab, setTab] = useState<Category>("main");
+
+  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
+  if (loading || !user) return <div className="min-h-screen" />;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+      <main className="max-w-[1500px] mx-auto px-6 py-8">
+        <div className="flex items-center gap-3 mb-1">
+          <History className="h-6 w-6 text-primary" />
+          <h1 className="font-display text-3xl font-bold">Occupancy History</h1>
+        </div>
+        <p className="text-muted-foreground text-sm mb-5">
+          Current holders and previous owners (including terminations) for every locker, sourced from the Occupied + Vacant sheets.
+        </p>
+
+        <Tabs value={tab} onValueChange={(v) => setTab(v as Category)}>
+          <TabsList>
+            <TabsTrigger value="main">Full Lockers</TabsTrigger>
+            <TabsTrigger value="staff">Staff Lockers</TabsTrigger>
+            <TabsTrigger value="shoe">Shoe Lockers</TabsTrigger>
+          </TabsList>
+          {(["main", "staff", "shoe"] as Category[]).map((c) => (
+            <TabsContent key={c} value={c}>
+              <CategoryView category={c} isAdmin={isAdmin} />
+            </TabsContent>
+          ))}
+        </Tabs>
+      </main>
+    </div>
+  );
+}
+
+function CategoryView({ category, isAdmin }: { category: Category; isAdmin: boolean }) {
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [refresh, setRefresh] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      setRows(null);
+      const all: Row[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("locker_occupancy")
+          .select("*")
+          .eq("category", category)
+          .range(from, from + 999);
+        if (error) { toast.error(error.message); break; }
+        if (!data) break;
+        all.push(...(data as Row[]));
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      setRows(all);
+    })();
+  }, [category, refresh]);
+
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+
+  const filtered = useMemo(() => {
+    if (!rows) return [];
+    const q = search.toLowerCase().trim();
+    const f = rows.filter((r) => {
+      if (statusFilter !== "all" && (r.status ?? "").toLowerCase() !== statusFilter) return false;
+      if (!q) return true;
+      return (
+        r.locker_number.toLowerCase().includes(q) ||
+        (r.employee_name ?? "").toLowerCase().includes(q) ||
+        (r.badge_number ?? "").toLowerCase().includes(q) ||
+        (r.department ?? "").toLowerCase().includes(q)
+      );
+    });
+    f.sort((a, b) => {
+      const c = compareLockerNumbers(a.locker_number, b.locker_number);
+      if (c !== 0) return c;
+      // Active first, then by termination date desc (most recent first)
+      const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
+      const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
+    });
+    return f;
+  }, [rows, search, statusFilter]);
+
+  // Group by locker number
+  const grouped = useMemo(() => {
+    const m = new Map<string, Row[]>();
+    for (const r of filtered) {
+      const arr = m.get(r.locker_number) ?? [];
+      arr.push(r);
+      m.set(r.locker_number, arr);
+    }
+    return Array.from(m.entries()); // already sorted because filtered is sorted
+  }, [filtered]);
+
+  const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const visible = grouped.slice(startIdx, startIdx + PAGE_SIZE);
+
+  const stats = useMemo(() => {
+    const s = { total: 0, active: 0, terminated: 0, lockers: new Set<string>() };
+    for (const r of rows ?? []) {
+      s.total++;
+      const st = (r.status ?? "").toLowerCase();
+      if (st === "active") s.active++;
+      else if (st === "terminate" || st === "terminated") s.terminated++;
+      s.lockers.add(r.locker_number);
+    }
+    return { ...s, uniqueLockers: s.lockers.size };
+  }, [rows]);
+
+  const handleImport = async (file: File) => {
+    setImporting(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array", cellDates: true });
+      const targetSheet =
+        category === "main" ? "Occupied + Vacant" :
+        category === "staff" ? "Occupied + Staff" : "Occupied + Shoe";
+      const sheet = wb.Sheets[targetSheet];
+      if (!sheet) {
+        toast.error(`Sheet "${targetSheet}" not found in this workbook`);
+        return;
+      }
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: false });
+      const norm = (v: unknown) => {
+        const s = String(v ?? "").trim();
+        return s === "" ? null : s;
+      };
+      const dateOnly = (v: unknown) => {
+        const s = norm(v);
+        if (!s) return null;
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString().slice(0, 10);
+      };
+      const pick = (row: Record<string, unknown>, ...keys: string[]) => {
+        for (const k of keys) {
+          for (const real of Object.keys(row)) {
+            if (real.toLowerCase().replace(/\s+/g, "") === k.toLowerCase().replace(/\s+/g, "")) {
+              return row[real];
+            }
+          }
+        }
+        return "";
+      };
+      const records = json
+        .map((r) => ({
+          category,
+          locker_number: String(pick(r, "Combine Locker", "Locker Number") ?? "").trim(),
+          locker_row: norm(pick(r, "Locker Row")),
+          locker_unit: norm(pick(r, "Locker Unit")),
+          locker_location_by_row: norm(pick(r, "Locker Location by Row")),
+          key_lock_type: norm(pick(r, "Types of Key Lock")),
+          badge_number: norm(pick(r, "Employee Number", "Badge Number")),
+          employee_name: norm(pick(r, "Employee Name")),
+          contact: norm(pick(r, "Contact")),
+          status: norm(pick(r, "Terminate", "Status")),
+          batch_intake_date: dateOnly(pick(r, "Batch Intake Date")),
+          termination_date: dateOnly(pick(r, "Termination Date")),
+          gradeset: norm(pick(r, "Gradeset")),
+          department: norm(pick(r, "Department")),
+          remarks: norm(pick(r, "Remarks", "Remark")),
+          source_filename: file.name,
+        }))
+        .filter((r) => r.locker_number);
+
+      if (records.length === 0) {
+        toast.error("No rows found in the sheet");
+        return;
+      }
+
+      // Replace existing rows for this category
+      const { error: delErr } = await supabase.from("locker_occupancy").delete().eq("category", category);
+      if (delErr) { toast.error(`Replace failed: ${delErr.message}`); return; }
+
+      // Insert in chunks
+      const CHUNK = 500;
+      for (let i = 0; i < records.length; i += CHUNK) {
+        const slice = records.slice(i, i + CHUNK);
+        const { error } = await supabase.from("locker_occupancy").insert(slice);
+        if (error) { toast.error(`Insert failed: ${error.message}`); return; }
+      }
+      toast.success(`Imported ${records.length.toLocaleString()} rows for ${CATEGORY_LABEL[category]}`);
+      setRefresh((k) => k + 1);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleClear = async () => {
+    if (!confirm(`Clear all ${CATEGORY_LABEL[category]} occupancy rows? This cannot be undone.`)) return;
+    const { error } = await supabase.from("locker_occupancy").delete().eq("category", category);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Cleared");
+    setRefresh((k) => k + 1);
+  };
+
+  return (
+    <div className="space-y-4 pt-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <StatCard label="Total Rows" value={stats.total} />
+        <StatCard label="Unique Lockers" value={stats.uniqueLockers} />
+        <StatCard label="Active" value={stats.active} tone="success" />
+        <StatCard label="Terminated" value={stats.terminated} tone="muted" />
+      </div>
+
+      <Card className="p-4 flex gap-3 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search locker, employee, badge, dept…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="terminate">Terminated</SelectItem>
+          </SelectContent>
+        </Select>
+        {isAdmin && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
+            />
+            <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={importing}>
+              <UploadIcon className="h-4 w-4 mr-1.5" />
+              {importing ? "Importing…" : "Import Excel"}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleClear} title="Clear category" disabled={importing}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </>
+        )}
+      </Card>
+
+      <Card className="overflow-hidden">
+        {!rows ? (
+          <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
+        ) : grouped.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">
+            {(rows.length === 0)
+              ? "No data yet. Click \"Import Excel\" and upload your master listing workbook."
+              : "No rows match these filters."}
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left">
+                  <tr>
+                    <Th>Locker</Th>
+                    <Th>Status</Th>
+                    <Th>Badge</Th>
+                    <Th>Employee</Th>
+                    <Th>Dept</Th>
+                    <Th>Intake</Th>
+                    <Th>Terminated</Th>
+                    <Th>Key / Row</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map(([lockerNumber, group]) => (
+                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-muted/20">
+              <div className="text-xs text-muted-foreground">
+                Showing lockers {startIdx + 1}–{startIdx + visible.length} of {grouped.length.toLocaleString()} ({filtered.length.toLocaleString()} rows)
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                </Button>
+                <span className="text-sm font-medium px-2">Page {safePage} / {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function LockerGroup({ lockerNumber, group }: { lockerNumber: string; group: Row[] }) {
+  // group already sorted: active first, then most recent terminated
+  return (
+    <>
+      {group.map((r, i) => {
+        const isActive = (r.status ?? "").toLowerCase() === "active";
+        const isFirst = i === 0;
+        return (
+          <tr
+            key={r.id}
+            className={`border-t ${isFirst ? "" : "bg-muted/20"} hover:bg-muted/40`}
+          >
+            <td className="px-3 py-2 font-medium font-mono">{isFirst ? lockerNumber : <span className="text-muted-foreground/60 text-xs pl-3">↳</span>}</td>
+            <td className="px-3 py-2">
+              <Badge variant={isActive ? "default" : "secondary"} className={isActive ? "" : "text-muted-foreground"}>
+                {r.status ?? "—"}
+              </Badge>
+            </td>
+            <td className="px-3 py-2 font-mono text-xs">{r.badge_number ?? "—"}</td>
+            <td className="px-3 py-2">{r.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</td>
+            <td className="px-3 py-2 text-muted-foreground">{r.department ?? "—"}</td>
+            <td className="px-3 py-2 text-muted-foreground text-xs">{r.batch_intake_date ?? "—"}</td>
+            <td className="px-3 py-2 text-muted-foreground text-xs">{r.termination_date ?? "—"}</td>
+            <td className="px-3 py-2 text-muted-foreground text-xs">
+              {r.key_lock_type ?? "—"}{r.locker_row ? ` · row ${r.locker_row}` : ""}
+            </td>
+          </tr>
+        );
+      })}
+    </>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return <th className="px-3 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">{children}</th>;
+}
+
+function StatCard({ label, value, tone }: { label: string; value: number; tone?: "success" | "muted" }) {
+  const color = tone === "success" ? "text-success" : tone === "muted" ? "text-muted-foreground" : "text-foreground";
+  return (
+    <Card className="p-3">
+      <div className={`text-2xl font-bold font-display ${color}`}>{value.toLocaleString()}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+    </Card>
+  );
+}
