@@ -71,6 +71,14 @@ interface RosterCheckResult {
   badgeMatchedNameDiffers: { badge: string; fileName: string; dbName: string; locker_number: string }[];
 }
 
+interface SpareSyncResult {
+  filename: string;
+  fileCount: number;
+  matched: number;
+  unmatched: { locker_number: string; status: string }[];
+  updates: { locker_number: string; spare_key_status: LockerRow["spare_key_status"]; physical_key_status: LockerRow["physical_key_status"]; prevSpare: string | null; prevPhys: string | null }[];
+}
+
 function UploadPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
