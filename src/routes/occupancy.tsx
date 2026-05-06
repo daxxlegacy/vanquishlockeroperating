@@ -105,6 +105,8 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   const [importing, setImporting] = useState(false);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const importingRef = useRef(false);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
