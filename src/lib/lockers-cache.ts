@@ -12,6 +12,7 @@ let state: State = { data: null, loading: false };
 const subscribers = new Set<(s: State) => void>();
 let channel: ReturnType<typeof supabase.channel> | null = null;
 let fetchPromise: Promise<void> | null = null;
+let realtimePaused = 0; // counter for nested pauses
 
 function emit() {
   for (const fn of subscribers) fn(state);
