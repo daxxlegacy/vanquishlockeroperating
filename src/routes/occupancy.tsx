@@ -408,12 +408,13 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           </>
         )}
       </Card>
+
+      <HistoryDialog lockerNumber={historyFor} onClose={() => setHistoryFor(null)} />
     </div>
   );
 }
 
-function LockerGroup({ lockerNumber, group }: { lockerNumber: string; group: Row[] }) {
-  // group already sorted: active first, then most recent terminated
+function LockerGroup({ lockerNumber, group, onViewHistory }: { lockerNumber: string; group: Row[]; onViewHistory: () => void }) {
   return (
     <>
       {group.map((r, i) => {
@@ -438,10 +439,116 @@ function LockerGroup({ lockerNumber, group }: { lockerNumber: string; group: Row
             <td className="px-3 py-2 text-muted-foreground text-xs">
               {r.key_lock_type ?? "—"}{r.locker_row ? ` · row ${r.locker_row}` : ""}
             </td>
+            <td className="px-3 py-2">
+              {isFirst && (
+                <Button variant="ghost" size="sm" onClick={onViewHistory} className="h-7 px-2">
+                  <Eye className="h-3.5 w-3.5 mr-1" /> View
+                </Button>
+              )}
+            </td>
           </tr>
         );
       })}
     </>
+  );
+}
+
+type HistoryEvent = {
+  id: string;
+  source: "occupancy" | "termination";
+  status: string;
+  employee_name: string | null;
+  badge_number: string | null;
+  date: string | null;
+  date_label: string;
+  remarks: string | null;
+  by: string | null;
+};
+
+function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null; onClose: () => void }) {
+  const [events, setEvents] = useState<HistoryEvent[] | null>(null);
+
+  useEffect(() => {
+    if (!lockerNumber) { setEvents(null); return; }
+    (async () => {
+      setEvents(null);
+      const [{ data: occ }, { data: term }] = await Promise.all([
+        supabase.from("locker_occupancy").select("*").eq("locker_number", lockerNumber).order("updated_at", { ascending: false }),
+        supabase.from("terminations").select("*").eq("locker_number", lockerNumber).order("termination_date", { ascending: false }),
+      ]);
+      const out: HistoryEvent[] = [];
+      for (const r of occ ?? []) {
+        out.push({
+          id: `o-${r.id}`,
+          source: "occupancy",
+          status: r.status ?? "—",
+          employee_name: r.employee_name,
+          badge_number: r.badge_number,
+          date: (r.status ?? "").toLowerCase() === "active" ? r.batch_intake_date : r.termination_date,
+          date_label: (r.status ?? "").toLowerCase() === "active" ? "Intake" : "Terminated",
+          remarks: r.remarks,
+          by: r.source_filename,
+        });
+      }
+      for (const t of term ?? []) {
+        out.push({
+          id: `t-${t.id}`,
+          source: "termination",
+          status: "Terminate",
+          employee_name: t.employee_name,
+          badge_number: t.badge_number,
+          date: t.termination_date,
+          date_label: "Terminated",
+          remarks: t.reason,
+          by: t.terminated_by_email,
+        });
+      }
+      out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+      setEvents(out);
+    })();
+  }, [lockerNumber]);
+
+  return (
+    <Dialog open={!!lockerNumber} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="font-display flex items-center gap-2">
+            <History className="h-5 w-5" /> Locker {lockerNumber} — Full history
+          </DialogTitle>
+          <DialogDescription>All occupancy and termination events recorded for this locker.</DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto">
+          {!events ? (
+            <div className="space-y-2 p-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+          ) : events.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8 text-sm">No history recorded.</div>
+          ) : (
+            <ul className="space-y-2">
+              {events.map((e) => {
+                const active = e.status.toLowerCase() === "active";
+                return (
+                  <li key={e.id} className="border rounded-md p-3 bg-card">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={active ? "default" : "secondary"}>{e.status}</Badge>
+                        <span className="font-medium">{e.employee_name ?? "—"}</span>
+                        {e.badge_number && <span className="font-mono text-xs text-muted-foreground">#{e.badge_number}</span>}
+                      </div>
+                      <Badge variant="outline" className="text-[10px] uppercase">{e.source}</Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {e.date_label}: {fmtDate(e.date)}
+                      {e.by && <span> · {e.by}</span>}
+                    </div>
+                    {e.remarks && <div className="mt-1 text-xs italic text-muted-foreground">"{e.remarks}"</div>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
