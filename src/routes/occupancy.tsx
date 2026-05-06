@@ -528,7 +528,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
       out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
       setEvents(out);
     })();
-  }, [lockerNumber]);
+  }, [lockerNumber, tick]);
 
   return (
     <Dialog open={!!lockerNumber} onOpenChange={(v) => { if (!v) onClose(); }}>
