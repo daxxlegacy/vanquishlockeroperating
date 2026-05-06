@@ -91,13 +91,6 @@ function LockersPage() {
     });
   }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter]);
 
-  // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, locFilter, keyLockFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const startIdx = (safePage - 1) * PAGE_SIZE;
-  const visible = filtered.slice(startIdx, startIdx + PAGE_SIZE);
 
   const buildExportRows = () => filtered.map((l) => ({
     "Locker Number": l.locker_number,
