@@ -479,8 +479,18 @@ function UploadPage() {
       <main className="max-w-5xl mx-auto px-6 py-8">
         <h1 className="font-display text-3xl font-bold">Upload Locker Data</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Upload your CSV or Excel file. Columns are auto-detected — new lockers are added, existing ones are updated, and active lockers missing from the file are marked as resigned.
+          Sync locker assignments, run roster checks, or update spare-key status from spreadsheets.
         </p>
+
+        <Tabs defaultValue="roster" className="mt-6">
+          <TabsList>
+            <TabsTrigger value="roster"><UploadIcon className="h-4 w-4 mr-1.5" /> Roster Sync</TabsTrigger>
+            <TabsTrigger value="check"><Search className="h-4 w-4 mr-1.5" /> Roster Check</TabsTrigger>
+            <TabsTrigger value="spare"><Key className="h-4 w-4 mr-1.5" /> Spare Key</TabsTrigger>
+            <TabsTrigger value="history"><FileSpreadsheet className="h-4 w-4 mr-1.5" /> History</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="roster" className="space-y-6">
 
         <Card className="mt-6 p-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">
