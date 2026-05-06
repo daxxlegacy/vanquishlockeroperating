@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserMinus, ArrowLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { syncTerminationToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -114,6 +115,8 @@ function TerminatePage() {
         .update({ employee_name: null, badge_number: null, status: "empty" })
         .eq("id", locker.id);
       if (e2) throw e2;
+
+      await syncTerminationToOccupancy(locker, iso, reason.trim() || null);
 
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       setDone(true);
