@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+// supabase client no longer needed here — data comes from useLockers cache
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
