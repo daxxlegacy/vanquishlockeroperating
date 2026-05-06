@@ -13,9 +13,10 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Plus, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Search, Plus, Download } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
@@ -27,7 +28,8 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
-const PAGE_SIZE = 500;
+const ROW_HEIGHT = 40;
+const VIEWPORT_HEIGHT = 640;
 
 export const Route = createFileRoute("/lockers")({
   head: () => ({
