@@ -105,14 +105,14 @@ function LockersPage() {
                 </DialogTrigger>
                 <AddLockerDialog
                   onClose={() => setAddOpen(false)}
-                  onCreated={() => { setAddOpen(false); setRefresh((k) => k + 1); }}
+                  onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
                   existingLocations={locations}
                 />
               </Dialog>
-              <DeleteLockerByNumberDialog onDeleted={() => setRefresh((k) => k + 1)} />
+              <DeleteLockerByNumberDialog onDeleted={() => invalidateLockersCache()} />
               <DeleteLocationDialog
                 locations={locations}
-                onDeleted={() => setRefresh((k) => k + 1)}
+                onDeleted={() => invalidateLockersCache()}
               />
             </div>
           )}
@@ -189,7 +189,7 @@ function LockersPage() {
           )}
         </Card>
       </main>
-      <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => setRefresh((k) => k + 1)} />
+      <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
     </div>
   );
 }
