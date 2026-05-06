@@ -166,6 +166,72 @@ export type Database = {
         }
         Relationships: []
       }
+      locker_occupancy: {
+        Row: {
+          badge_number: string | null
+          batch_intake_date: string | null
+          category: string
+          contact: string | null
+          created_at: string
+          department: string | null
+          employee_name: string | null
+          gradeset: string | null
+          id: string
+          key_lock_type: string | null
+          locker_location_by_row: string | null
+          locker_number: string
+          locker_row: string | null
+          locker_unit: string | null
+          remarks: string | null
+          source_filename: string | null
+          status: string | null
+          termination_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          badge_number?: string | null
+          batch_intake_date?: string | null
+          category: string
+          contact?: string | null
+          created_at?: string
+          department?: string | null
+          employee_name?: string | null
+          gradeset?: string | null
+          id?: string
+          key_lock_type?: string | null
+          locker_location_by_row?: string | null
+          locker_number: string
+          locker_row?: string | null
+          locker_unit?: string | null
+          remarks?: string | null
+          source_filename?: string | null
+          status?: string | null
+          termination_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          badge_number?: string | null
+          batch_intake_date?: string | null
+          category?: string
+          contact?: string | null
+          created_at?: string
+          department?: string | null
+          employee_name?: string | null
+          gradeset?: string | null
+          id?: string
+          key_lock_type?: string | null
+          locker_location_by_row?: string | null
+          locker_number?: string
+          locker_row?: string | null
+          locker_unit?: string | null
+          remarks?: string | null
+          source_filename?: string | null
+          status?: string | null
+          termination_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lockers: {
         Row: {
           badge_number: string | null
