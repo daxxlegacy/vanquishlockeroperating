@@ -132,12 +132,22 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   // Auto-refresh when occupancy or terminations change elsewhere (e.g. after
   // saving a locker, marking active/terminated, or running automation).
   useEffect(() => {
+    const schedule = () => {
+      // Skip realtime refreshes while a bulk import is running — the chunked
+      // inserts fire dozens of events and would cause the table to flash.
+      if (importingRef.current) return;
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => setRefresh((k) => k + 1), 600);
+    };
     const ch = supabase
       .channel(`occupancy-${category}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, () => setRefresh((k) => k + 1))
-      .on("postgres_changes", { event: "*", schema: "public", table: "terminations" }, () => setRefresh((k) => k + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "terminations" }, schedule)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      supabase.removeChannel(ch);
+    };
   }, [category]);
 
   useEffect(() => { setPage(1); }, [search, statusFilter, rowFilter, locFilter]);
