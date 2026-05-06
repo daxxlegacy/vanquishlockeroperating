@@ -16,12 +16,22 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
-const PAGE_SIZE = 500;
-const SPARE_OPTIONS = ["available", "missing", "with_employee", "damaged", "unknown"] as const;
+const PAGE_SIZE = 100;
+const SPARE_OPTIONS = [
+  "available",
+  "taken",
+  "taken_for_cleaning",
+  "with_employee",
+  "missing",
+  "damaged",
+  "unknown",
+] as const;
 const SWATCH: Record<string, string> = {
   available: "bg-success",
-  missing: "bg-destructive",
+  taken: "bg-primary",
+  taken_for_cleaning: "bg-accent",
   with_employee: "bg-primary",
+  missing: "bg-destructive",
   damaged: "bg-warning",
   unknown: "bg-muted-foreground",
 };
@@ -42,9 +52,7 @@ function SpareKeysPage() {
   const [lockers, setLockers] = useState<Locker[] | null>(null);
   const [search, setSearch] = useState("");
   const [spareFilter, setSpareFilter] = useState("all");
-  const [physFilter, setPhysFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
-  const [onlyWithSpare, setOnlyWithSpare] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [page, setPage] = useState(1);
@@ -75,56 +83,58 @@ function SpareKeysPage() {
 
   const filtered = useMemo(() => {
     if (!lockers) return [];
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().trim();
     return lockers.filter((l) => {
-      if (onlyWithSpare && l.spare_key_status !== "available" && l.spare_key_status !== "with_employee" && l.spare_key_status !== "damaged") return false;
-      if (spareFilter !== "all" && l.spare_key_status !== spareFilter) return false;
-      if (physFilter !== "all" && l.physical_key_status !== physFilter) return false;
+      const s = l.spare_key_status ?? "unknown";
+      if (spareFilter !== "all" && s !== spareFilter) return false;
       if (locFilter !== "all" && l.location !== locFilter) return false;
       if (!q) return true;
       return (
         l.locker_number.toLowerCase().includes(q) ||
-        l.employee_name?.toLowerCase().includes(q) ||
-        l.badge_number?.toLowerCase().includes(q)
+        (l.row_label ?? "").toLowerCase().includes(q) ||
+        l.location.toLowerCase().includes(q)
       );
     });
-  }, [lockers, search, spareFilter, physFilter, locFilter, onlyWithSpare]);
+  }, [lockers, search, spareFilter, locFilter]);
 
-  useEffect(() => { setPage(1); }, [search, spareFilter, physFilter, locFilter, onlyWithSpare]);
+  useEffect(() => { setPage(1); }, [search, spareFilter, locFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const startIdx = (safePage - 1) * PAGE_SIZE;
   const visible = filtered.slice(startIdx, startIdx + PAGE_SIZE);
 
-  if (loading || !user) return <div className="min-h-screen" />;
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const k of SPARE_OPTIONS) c[k] = 0;
+    for (const l of lockers ?? []) {
+      const s = l.spare_key_status ?? "unknown";
+      c[s] = (c[s] ?? 0) + 1;
+    }
+    return c;
+  }, [lockers]);
 
-  const counts = {
-    available: lockers?.filter((l) => l.spare_key_status === "available").length ?? 0,
-    missing: lockers?.filter((l) => l.spare_key_status === "missing").length ?? 0,
-    with_employee: lockers?.filter((l) => l.spare_key_status === "with_employee").length ?? 0,
-    damaged: lockers?.filter((l) => l.spare_key_status === "damaged").length ?? 0,
-  };
+  if (loading || !user) return <div className="min-h-screen" />;
 
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
+      <main className="max-w-[1400px] mx-auto px-6 py-8">
         <div className="flex items-center gap-3 mb-1">
           <Key className="h-6 w-6 text-primary" />
           <h1 className="font-display text-3xl font-bold">Spare Keys</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          {lockers?.length.toLocaleString() ?? "…"} total · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
+          {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
         </p>
 
-        <div className="grid sm:grid-cols-4 gap-3 mt-4">
-          {(["available", "with_employee", "damaged", "missing"] as const).map((k) => (
-            <Card key={k} className="p-3 flex items-center gap-3">
-              <span className={`h-3 w-3 rounded-full ${SWATCH[k]}`} />
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mt-4">
+          {SPARE_OPTIONS.map((k) => (
+            <Card key={k} className="p-3 flex items-center gap-2">
+              <span className={`h-2.5 w-2.5 rounded-full ${SWATCH[k]}`} />
               <div>
-                <div className="text-xl font-bold font-display">{counts[k].toLocaleString()}</div>
-                <div className="text-xs text-muted-foreground capitalize">{k.replace(/_/g, " ")}</div>
+                <div className="text-lg font-bold font-display leading-tight">{counts[k].toLocaleString()}</div>
+                <div className="text-[10px] text-muted-foreground capitalize leading-tight">{k.replace(/_/g, " ")}</div>
               </div>
             </Card>
           ))}
@@ -133,19 +143,12 @@ function SpareKeysPage() {
         <Card className="p-4 mt-6 flex gap-3 flex-wrap items-center">
           <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search locker, employee, badge…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Search locker number, row, location…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={spareFilter} onValueChange={setSpareFilter}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Spare key" /></SelectTrigger>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Spare key" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All spare statuses</SelectItem>
-              {SPARE_OPTIONS.map((s) => <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={physFilter} onValueChange={setPhysFilter}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Physical key" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All physical statuses</SelectItem>
               {SPARE_OPTIONS.map((s) => <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -156,9 +159,6 @@ function SpareKeysPage() {
               {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant={onlyWithSpare ? "default" : "outline"} size="sm" onClick={() => setOnlyWithSpare((v) => !v)}>
-            {onlyWithSpare ? "Showing only with spare" : "Showing all"}
-          </Button>
         </Card>
 
         <Card className="mt-4 overflow-hidden">
@@ -169,9 +169,10 @@ function SpareKeysPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <Th>Locker #</Th><Th>Location</Th><Th>Row</Th>
-                    <Th>Employee</Th><Th>Badge</Th>
-                    <Th>Spare Key</Th><Th>Physical Key</Th>
+                    <Th>Locker #</Th>
+                    <Th>Location</Th>
+                    <Th>Row</Th>
+                    <Th>Spare Key Status</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -179,13 +180,13 @@ function SpareKeysPage() {
                     <tr key={l.id} onClick={() => setSelected(l.id)} className="border-t hover:bg-muted/40 cursor-pointer">
                       <td className="px-3 py-2 font-medium">{l.locker_number}</td>
                       <td className="px-3 py-2">{l.location}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{l.row_label}</td>
-                      <td className="px-3 py-2">{l.employee_name ?? <span className="text-muted-foreground italic">—</span>}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{l.badge_number ?? "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{l.row_label ?? "—"}</td>
                       <td className="px-3 py-2"><KeyBadge status={l.spare_key_status} /></td>
-                      <td className="px-3 py-2"><KeyBadge status={l.physical_key_status} /></td>
                     </tr>
                   ))}
+                  {visible.length === 0 && (
+                    <tr><td colSpan={4} className="px-3 py-12 text-center text-muted-foreground">No lockers match these filters.</td></tr>
+                  )}
                 </tbody>
               </table>
 
