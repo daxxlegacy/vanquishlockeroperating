@@ -73,7 +73,6 @@ function SpareKeysPage() {
   const [spareFilter, setSpareFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
