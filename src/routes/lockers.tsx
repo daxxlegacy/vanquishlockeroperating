@@ -168,7 +168,7 @@ function LockersPage() {
                       <td className="px-3 py-2">{l.location}</td>
                       <td className="px-3 py-2 text-muted-foreground">{l.row_label}</td>
                       <td className="px-3 py-2 text-muted-foreground">{l.badge_number ?? "—"}</td>
-                      <td className="px-3 py-2">{l.employee_name ?? "—"}</td>
+                      <td className="px-3 py-2">{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</td>
                       <td className="px-3 py-2"><StatusBadge status={l.status} /></td>
                       <td className="px-3 py-2 text-xs capitalize text-muted-foreground">{l.physical_key_status?.replace(/_/g, " ")}</td>
                       <td className="px-3 py-2 text-xs capitalize text-muted-foreground">{l.spare_key_status?.replace(/_/g, " ")}</td>

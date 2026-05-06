@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
+import { normalizeLockerStatus } from "@/lib/locker-status";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -727,17 +728,7 @@ function getStr(row: Record<string, unknown>, key: string | undefined): string |
 }
 
 function mapStatus(raw: string | null, hasBadge: boolean): LockerRow["status"] {
-  if (!raw) return hasBadge ? "active" : "empty";
-  const n = raw.toLowerCase();
-  if (n.includes("clean")) return "cleaning";
-  if (n.includes("broken") || n.includes("broken door") || n.includes("door")) return "broken_door";
-  if (n.includes("on hold") || n.includes("onhold") || n.includes("hold")) return "on_hold";
-  if (n.includes("reserve")) return "reserved";
-  if (n.includes("repair")) return "repair";
-  if (n.includes("empty") || n.includes("vacant") || n.includes("available")) return "empty";
-  if (n.includes("active") || n.includes("occupied") || n.includes("listing")) return "active";
-  if (n.includes("unknown")) return "unknown";
-  return hasBadge ? "active" : "empty";
+  return normalizeLockerStatus(raw, hasBadge);
 }
 
 function mapKeyStatus(raw: string | null): LockerRow["physical_key_status"] {
