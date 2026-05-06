@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { compareLockerNumbers } from "@/lib/locker-utils";
+import { compareLockerNumbers, parseBatchIntake } from "@/lib/locker-utils";
 
 type Category = "main" | "staff" | "shoe";
 
@@ -241,13 +241,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         const s = String(v ?? "").trim();
         return s === "" ? null : s;
       };
-      const dateOnly = (v: unknown) => {
-        const s = norm(v);
-        if (!s) return null;
-        const d = new Date(s);
-        if (isNaN(d.getTime())) return null;
-        return d.toISOString().slice(0, 10);
-      };
+      const dateOnly = (v: unknown) => parseBatchIntake(v);
       const pick = (row: Record<string, unknown>, ...keys: string[]) => {
         for (const k of keys) {
           for (const real of Object.keys(row)) {
