@@ -98,9 +98,12 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   const [rows, setRows] = useState<Row[] | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [rowFilter, setRowFilter] = useState("all");
+  const [locFilter, setLocFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [refresh, setRefresh] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -124,34 +127,49 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     })();
   }, [category, refresh]);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, rowFilter, locFilter]);
+
+  // Build filter option lists from data
+  const { rowOpts, locOpts } = useMemo(() => {
+    const r = new Set<string>(), l = new Set<string>();
+    for (const x of rows ?? []) {
+      if (x.locker_row) r.add(x.locker_row);
+      if (x.locker_location_by_row) l.add(x.locker_location_by_row);
+    }
+    return { rowOpts: [...r].sort(), locOpts: [...l].sort() };
+  }, [rows]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.toLowerCase().trim();
     const f = rows.filter((r) => {
-      if (statusFilter !== "all" && (r.status ?? "").toLowerCase() !== statusFilter) return false;
+      const st = (r.status ?? "").toLowerCase();
+      if (statusFilter === "active" && st !== "active") return false;
+      if (statusFilter === "terminate" && st !== "terminate" && st !== "terminated") return false;
+      if (rowFilter !== "all" && (r.locker_row ?? "") !== rowFilter) return false;
+      if (locFilter !== "all" && (r.locker_location_by_row ?? "") !== locFilter) return false;
       if (!q) return true;
       return (
         r.locker_number.toLowerCase().includes(q) ||
         (r.employee_name ?? "").toLowerCase().includes(q) ||
         (r.badge_number ?? "").toLowerCase().includes(q) ||
-        (r.department ?? "").toLowerCase().includes(q)
+        (r.department ?? "").toLowerCase().includes(q) ||
+        (r.locker_row ?? "").toLowerCase().includes(q) ||
+        (r.locker_location_by_row ?? "").toLowerCase().includes(q)
       );
     });
     f.sort((a, b) => {
       const c = compareLockerNumbers(a.locker_number, b.locker_number);
       if (c !== 0) return c;
-      // Active first, then by termination date desc (most recent first)
       const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
       const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
       if (aActive !== bActive) return aActive - bActive;
       return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
     });
     return f;
-  }, [rows, search, statusFilter]);
+  }, [rows, search, statusFilter, rowFilter, locFilter]);
 
-  // Group by locker number
+  // Group by locker number — limit to 1 active + 1 most-recent terminate
   const grouped = useMemo(() => {
     const m = new Map<string, Row[]>();
     for (const r of filtered) {
@@ -159,7 +177,22 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
       arr.push(r);
       m.set(r.locker_number, arr);
     }
-    return Array.from(m.entries()); // already sorted because filtered is sorted
+    // Trim each group: keep first Active + first Terminate (already sorted)
+    const trimmed: [string, Row[]][] = [];
+    for (const [k, arr] of m.entries()) {
+      const active = arr.find((r) => (r.status ?? "").toLowerCase() === "active");
+      const terminate = arr.find((r) => {
+        const s = (r.status ?? "").toLowerCase();
+        return s === "terminate" || s === "terminated";
+      });
+      const out: Row[] = [];
+      if (active) out.push(active);
+      if (terminate) out.push(terminate);
+      // Fallback if neither matched (e.g. unknown status)
+      if (out.length === 0) out.push(arr[0]);
+      trimmed.push([k, out]);
+    }
+    return trimmed;
   }, [filtered]);
 
   const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE));
