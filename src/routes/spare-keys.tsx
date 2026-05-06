@@ -126,13 +126,30 @@ function SpareKeysPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="max-w-[1400px] mx-auto px-6 py-8">
-        <div className="flex items-center gap-3 mb-1">
-          <Key className="h-6 w-6 text-primary" />
-          <h1 className="font-display text-3xl font-bold">Spare Keys</h1>
+        <div className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <Key className="h-6 w-6 text-primary" />
+              <h1 className="font-display text-3xl font-bold">Spare Keys</h1>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
+            </p>
+          </div>
+          {isAdmin && (
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-1" /> Add Spare Key Locker</Button>
+              </DialogTrigger>
+              <AddSpareKeyLockerDialog
+                existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
+                existingLocations={locations}
+                onClose={() => setAddOpen(false)}
+                onCreated={() => { setAddOpen(false); setRefresh((k) => k + 1); }}
+              />
+            </Dialog>
+          )}
         </div>
-        <p className="text-muted-foreground text-sm">
-          {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
-        </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mt-4">
           {SPARE_OPTIONS.map((k) => (
