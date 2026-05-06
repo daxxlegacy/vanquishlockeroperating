@@ -166,6 +166,21 @@ function MapPage() {
           <Legend />
         </div>
 
+        <LockerSearchBar
+          lockers={lockers}
+          onJump={(locker) => {
+            // find which sheet contains this prefix
+            const prefix = prefixOf(locker.locker_number);
+            const sheet = sheetNames.find((n) =>
+              LAYOUT[n].cells.some((c) => prefixOf(c.n) === prefix),
+            );
+            if (sheet) setActiveSheet(sheet);
+            // Open compartments popover so user picks the right slot, then detail
+            setCompartmentNumber(prefix);
+          }}
+          onValidate={() => setShowValidation(true)}
+        />
+
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3 mb-6">
             <SummaryCard label="Total" value={summary.total} accent="bg-primary" />
@@ -178,7 +193,7 @@ function MapPage() {
         {!lockers ? (
           <Skeleton className="h-96 w-full" />
         ) : (
-          <Tabs defaultValue={sheetNames[0]}>
+          <Tabs value={activeSheet ?? sheetNames[0]} onValueChange={setActiveSheet}>
             <TabsList className="flex-wrap h-auto">
               {sheetNames.map((name) => (
                 <TabsTrigger key={name} value={name}>
@@ -214,6 +229,12 @@ function MapPage() {
         open={!!selected}
         onClose={() => setSelected(null)}
         onUpdated={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ValidationReportDialog
+        open={showValidation}
+        onOpenChange={setShowValidation}
+        lockers={lockers}
       />
     </div>
   );
