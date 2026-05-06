@@ -251,7 +251,7 @@ function MapPage() {
   );
 }
 
-function SheetGrid({
+const SheetGrid = memo(function SheetGrid({
   layout,
   byPrefix,
   onPick,
@@ -266,56 +266,42 @@ function SheetGrid({
   const height = layout.rows * (CELL + GAP);
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <div className="relative mx-auto" style={{ width, height, minWidth: width }}>
-        {layout.cells.map((cell) => {
-          const group = byPrefix.get(prefixOf(cell.n)) ?? [];
-          const status = group.length > 0 ? aggregateStatus(group) : "notdb";
-          const colorClass = group.length > 0
-            ? STATUS_COLORS[status] ?? STATUS_COLORS.unknown
-            : NOT_IN_DB;
-          const left = (cell.c - 1) * (CELL + GAP);
-          const top = (cell.r - 1) * (CELL + GAP);
-          const occupied = group.filter((l) => l.status === "active").length;
+    <div className="relative mx-auto" style={{ width, height, minWidth: width }}>
+      {layout.cells.map((cell) => {
+        const group = byPrefix.get(prefixOf(cell.n)) ?? [];
+        const status = group.length > 0 ? aggregateStatus(group) : "notdb";
+        const colorClass = group.length > 0
+          ? STATUS_COLORS[status] ?? STATUS_COLORS.unknown
+          : NOT_IN_DB;
+        const left = (cell.c - 1) * (CELL + GAP);
+        const top = (cell.r - 1) * (CELL + GAP);
+        const occupied = group.filter((l) => l.status === "active").length;
+        const title = group.length > 0
+          ? `Locker ${cell.n} — ${group.length} compartment${group.length === 1 ? "" : "s"}, ${occupied} occupied`
+          : `Locker ${cell.n} — not in database`;
 
-          return (
-            <Tooltip key={`${cell.r}-${cell.c}`}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => group.length > 0 && onPick(cell.n)}
-                  disabled={group.length === 0}
-                  aria-label={`Locker ${cell.n}`}
-                  style={{ left, top, width: CELL, height: CELL }}
-                  className={`absolute rounded border-2 ${colorClass} ${
-                    group.length > 0 ? "cursor-pointer hover:ring-2 hover:ring-ring hover:z-10" : "cursor-not-allowed"
-                  } font-bold flex flex-col items-center justify-center leading-none transition-all`}
-                >
-                  <span className="text-[11px] tracking-tight">{cell.n}</span>
-                  {group.length > 0 && (
-                    <span className="text-[9px] opacity-80 mt-0.5">{occupied}/{group.length}</span>
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="text-xs space-y-0.5">
-                  <div className="font-semibold">Locker {cell.n}</div>
-                  {group.length > 0 ? (
-                    <>
-                      <div>{group.length} compartment{group.length === 1 ? "" : "s"} · {occupied} occupied</div>
-                      <div className="text-muted-foreground">Click to view A–F</div>
-                    </>
-                  ) : (
-                    <div className="text-muted-foreground">Not in database</div>
-                  )}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </div>
-    </TooltipProvider>
+        return (
+          <button
+            key={`${cell.r}-${cell.c}`}
+            onClick={() => group.length > 0 && onPick(cell.n)}
+            disabled={group.length === 0}
+            aria-label={`Locker ${cell.n}`}
+            title={title}
+            style={{ left, top, width: CELL, height: CELL }}
+            className={`absolute rounded border-2 ${colorClass} ${
+              group.length > 0 ? "cursor-pointer hover:ring-2 hover:ring-ring hover:z-10" : "cursor-not-allowed"
+            } font-bold flex flex-col items-center justify-center leading-none transition-colors`}
+          >
+            <span className="text-[11px] tracking-tight">{cell.n}</span>
+            {group.length > 0 && (
+              <span className="text-[9px] opacity-80 mt-0.5">{occupied}/{group.length}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
-}
+});
 
 function Legend() {
   const items: { c: string; l: string }[] = [
