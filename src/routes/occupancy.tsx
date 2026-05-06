@@ -127,6 +127,17 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     })();
   }, [category, refresh]);
 
+  // Auto-refresh when occupancy or terminations change elsewhere (e.g. after
+  // saving a locker, marking active/terminated, or running automation).
+  useEffect(() => {
+    const ch = supabase
+      .channel(`occupancy-${category}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, () => setRefresh((k) => k + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "terminations" }, () => setRefresh((k) => k + 1))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [category]);
+
   useEffect(() => { setPage(1); }, [search, statusFilter, rowFilter, locFilter]);
 
   // Build filter option lists from data
@@ -467,6 +478,17 @@ type HistoryEvent = {
 
 function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null; onClose: () => void }) {
   const [events, setEvents] = useState<HistoryEvent[] | null>(null);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!lockerNumber) return;
+    const ch = supabase
+      .channel(`history-${lockerNumber}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "terminations", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [lockerNumber]);
 
   useEffect(() => {
     if (!lockerNumber) { setEvents(null); return; }
@@ -506,7 +528,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
       out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
       setEvents(out);
     })();
-  }, [lockerNumber]);
+  }, [lockerNumber, tick]);
 
   return (
     <Dialog open={!!lockerNumber} onOpenChange={(v) => { if (!v) onClose(); }}>

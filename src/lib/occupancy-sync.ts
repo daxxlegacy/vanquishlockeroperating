@@ -64,6 +64,21 @@ export async function syncTerminationToOccupancy(
 }
 
 /**
+ * When a locker becomes empty/repair/unknown (i.e. no longer "active" but
+ * also not a formal termination), remove any lingering Active row from the
+ * occupancy history so it doesn't show a stale active occupant.
+ * Existing Terminate rows are preserved as historical reference.
+ */
+export async function syncStatusChangeToOccupancy(locker: Locker): Promise<void> {
+  await supabase
+    .from("locker_occupancy")
+    .delete()
+    .eq("category", "main")
+    .eq("locker_number", locker.locker_number)
+    .ilike("status", "active");
+}
+
+/**
  * Mark a locker as Active in occupancy history.
  * - If an Active row exists, updates it with the latest locker details.
  * - Otherwise inserts a new Active row.

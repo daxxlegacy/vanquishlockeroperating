@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { DeleteLockerDialog } from "@/components/DeleteLockerDialog";
 import { TerminateUserDialog } from "@/components/TerminateUserDialog";
-import { syncActivationToOccupancy } from "@/lib/occupancy-sync";
+import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -74,9 +74,12 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
     setSaving(false);
     if (error) toast.error(error.message);
     else {
-      // If the locker now has an occupant and is active, sync to occupancy history
+      // Sync occupancy history based on the new status
       if (locker.status === "active" && (locker.employee_name || locker.badge_number)) {
         await syncActivationToOccupancy(locker);
+      } else {
+        // empty / repair / unknown / etc. → drop stale Active row, keep Terminate history
+        await syncStatusChangeToOccupancy(locker);
       }
       toast.success("Locker updated");
       onUpdated?.();
