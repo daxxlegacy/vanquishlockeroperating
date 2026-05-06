@@ -83,6 +83,10 @@ function UploadPage() {
   const [checkFile, setCheckFile] = useState<File | null>(null);
   const [checkBusy, setCheckBusy] = useState(false);
   const [checkResult, setCheckResult] = useState<RosterCheckResult | null>(null);
+  // Spare Key sync
+  const [spareFile, setSpareFile] = useState<File | null>(null);
+  const [spareBusy, setSpareBusy] = useState(false);
+  const [spareResult, setSpareResult] = useState<SpareSyncResult | null>(null);
 
   useEffect(() => {
     if (!loading) {
