@@ -45,12 +45,12 @@ const STATUS_COLORS: Record<string, string> = {
 const NOT_IN_DB = "bg-background border-dashed border-border text-muted-foreground/70";
 
 /** Group key for a locker code.
- *  - Numeric series with optional trailing letter: "1A" -> "1", "6075B" -> "6075"
+ *  - Numeric series with trailing letters: "1A" -> "1", "6075B" -> "6075", "6114WX" -> "6114"
  *  - Letter-prefixed series: "W01" -> "W", "AA18" -> "AA", "LK05" -> "LK"
  *  - Bare letter labels on the map ("W", "AA") map to themselves. */
 function prefixOf(n: string): string {
-  const u = n.toUpperCase();
-  const numWithLetter = u.match(/^(\d+)[A-F]?$/);
+  const u = n.trim().toUpperCase();
+  const numWithLetter = u.match(/^(\d+)[A-Z]*$/);
   if (numWithLetter) return numWithLetter[1];
   const letterPrefixed = u.match(/^([A-Z]{1,3})\d+$/);
   if (letterPrefixed) return letterPrefixed[1];
