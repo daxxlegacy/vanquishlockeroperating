@@ -142,7 +142,7 @@ function LockersPage() {
           <div>
             <h1 className="font-display text-3xl font-bold">Lockers</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {lockers?.length.toLocaleString() ?? "…"} total · {filtered.length.toLocaleString()} match · page {safePage} of {totalPages}
+              {lockers?.length.toLocaleString() ?? "…"} total · {filtered.length.toLocaleString()} match
             </p>
           </div>
           {role === "admin" && (
