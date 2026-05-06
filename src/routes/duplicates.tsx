@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+// supabase client no longer needed here — data comes from useLockers cache
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Users, BadgeAlert, Download } from "lucide-react";
 import { compareLockerNumbers } from "@/lib/locker-utils";
+import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -34,27 +35,10 @@ function normName(s: string | null | undefined) {
 function DuplicatesPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [lockers, setLockers] = useState<Locker[] | null>(null);
+  const { lockers } = useLockers();
   const [selected, setSelected] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
-
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const all: Locker[] = [];
-      let from = 0;
-      while (true) {
-        const { data } = await supabase.from("lockers").select("*").range(from, from + 999);
-        if (!data) break;
-        all.push(...data);
-        if (data.length < 1000) break;
-        from += 1000;
-      }
-      setLockers(all);
-    })();
-  }, [user, refresh]);
 
   const nameGroups = useMemo(() => {
     if (!lockers) return [];
@@ -145,7 +129,7 @@ function DuplicatesPage() {
         lockerId={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
-        onUpdated={() => { setRefresh((k) => k + 1); }}
+        onUpdated={() => { invalidateLockersCache(); }}
       />
     </div>
   );

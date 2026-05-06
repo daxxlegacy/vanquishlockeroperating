@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Search, Key, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers } from "@/lib/locker-utils";
+import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { useDebounced } from "@/hooks/use-debounced";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -55,32 +57,20 @@ function SpareKeysPage() {
   const navigate = useNavigate();
   const isAdmin = role === "admin";
   const [addOpen, setAddOpen] = useState(false);
-  const [lockers, setLockers] = useState<Locker[] | null>(null);
+  const { lockers: rawLockers } = useLockers();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, 180);
   const [spareFilter, setSpareFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState(0);
   const [page, setPage] = useState(1);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const all: Locker[] = [];
-      let from = 0;
-      while (true) {
-        const { data } = await supabase.from("lockers").select("*").is("deleted_at", null).range(from, from + 999);
-        if (!data) break;
-        all.push(...data);
-        if (data.length < 1000) break;
-        from += 1000;
-      }
-      all.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
-      setLockers(all);
-    })();
-  }, [user, refresh]);
+  const lockers = useMemo(() => {
+    if (!rawLockers) return null;
+    return [...rawLockers].sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+  }, [rawLockers]);
 
   const locations = useMemo(() => {
     if (!lockers) return [];
@@ -89,7 +79,7 @@ function SpareKeysPage() {
 
   const filtered = useMemo(() => {
     if (!lockers) return [];
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
     return lockers.filter((l) => {
       const s = l.spare_key_status ?? "unknown";
       if (spareFilter !== "all" && s !== spareFilter) return false;
@@ -101,9 +91,9 @@ function SpareKeysPage() {
         l.location.toLowerCase().includes(q)
       );
     });
-  }, [lockers, search, spareFilter, locFilter]);
+  }, [lockers, debouncedSearch, spareFilter, locFilter]);
 
-  useEffect(() => { setPage(1); }, [search, spareFilter, locFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, spareFilter, locFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -145,7 +135,7 @@ function SpareKeysPage() {
                 existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
                 existingLocations={locations}
                 onClose={() => setAddOpen(false)}
-                onCreated={() => { setAddOpen(false); setRefresh((k) => k + 1); }}
+                onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
               />
             </Dialog>
           )}
@@ -231,7 +221,7 @@ function SpareKeysPage() {
           )}
         </Card>
       </main>
-      <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => setRefresh((k) => k + 1)} />
+      <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
     </div>
   );
 }
