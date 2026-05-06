@@ -39,34 +39,22 @@ export const Route = createFileRoute("/lockers")({
 function LockersPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
-  const [lockers, setLockers] = useState<Locker[] | null>(null);
+  const { lockers: rawLockers } = useLockers();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, 180);
   const [statusFilter, setStatusFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState(0);
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const all: Locker[] = [];
-      let from = 0;
-      while (true) {
-        const { data } = await supabase.from("lockers").select("*").is("deleted_at", null).range(from, from + 999);
-        if (!data) break;
-        all.push(...data);
-        if (data.length < 1000) break;
-        from += 1000;
-      }
-      // Natural sort across all formats (1A → 6378F → A01 → Y40 → LK01 → AA01 → KKK18)
-      all.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
-      setLockers(all);
-    })();
-  }, [user, refresh]);
+  // Sort once when underlying data changes (avoid re-sorting on every render)
+  const lockers = useMemo(() => {
+    if (!rawLockers) return null;
+    return [...rawLockers].sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+  }, [rawLockers]);
 
   const locations = useMemo(() => {
     if (!lockers) return [];
@@ -75,7 +63,7 @@ function LockersPage() {
 
   const filtered = useMemo(() => {
     if (!lockers) return [];
-    const q = search.toLowerCase();
+    const q = debouncedSearch.toLowerCase().trim();
     return lockers.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (locFilter !== "all" && l.location !== locFilter) return false;
@@ -86,10 +74,10 @@ function LockersPage() {
         l.badge_number?.toLowerCase().includes(q)
       );
     });
-  }, [lockers, search, statusFilter, locFilter]);
+  }, [lockers, debouncedSearch, statusFilter, locFilter]);
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [search, statusFilter, locFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, locFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
