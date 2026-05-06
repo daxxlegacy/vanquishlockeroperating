@@ -88,6 +88,16 @@ export function invalidateLockersCache() {
   fetchAll();
 }
 
+/** Pause realtime patches (e.g. during a bulk import) so the table doesn't
+ *  re-render hundreds of times. Returns a resume() that does a single refetch. */
+export function pauseLockersRealtime() {
+  realtimePaused++;
+  return () => {
+    realtimePaused = Math.max(0, realtimePaused - 1);
+    if (realtimePaused === 0) invalidateLockersCache();
+  };
+}
+
 export function useLockers() {
   const [s, set] = useState<State>(state);
   useEffect(() => {
