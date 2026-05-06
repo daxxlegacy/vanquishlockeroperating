@@ -18,6 +18,8 @@ import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDialog";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
+import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { useDebounced } from "@/hooks/use-debounced";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
