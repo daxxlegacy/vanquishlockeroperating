@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { DeleteLockerDialog } from "@/components/DeleteLockerDialog";
 import { TerminateUserDialog } from "@/components/TerminateUserDialog";
+import { syncActivationToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
