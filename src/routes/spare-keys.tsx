@@ -51,8 +51,10 @@ export const Route = createFileRoute("/spare-keys")({
 });
 
 function SpareKeysPage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = role === "admin";
+  const [addOpen, setAddOpen] = useState(false);
   const [lockers, setLockers] = useState<Locker[] | null>(null);
   const [search, setSearch] = useState("");
   const [spareFilter, setSpareFilter] = useState("all");
