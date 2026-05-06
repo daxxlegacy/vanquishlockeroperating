@@ -241,13 +241,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         const s = String(v ?? "").trim();
         return s === "" ? null : s;
       };
-      const dateOnly = (v: unknown) => {
-        const s = norm(v);
-        if (!s) return null;
-        const d = new Date(s);
-        if (isNaN(d.getTime())) return null;
-        return d.toISOString().slice(0, 10);
-      };
+      const dateOnly = (v: unknown) => parseBatchIntake(v);
       const pick = (row: Record<string, unknown>, ...keys: string[]) => {
         for (const k of keys) {
           for (const real of Object.keys(row)) {
