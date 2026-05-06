@@ -105,6 +105,8 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   const [importing, setImporting] = useState(false);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const importingRef = useRef(false);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -130,12 +132,22 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   // Auto-refresh when occupancy or terminations change elsewhere (e.g. after
   // saving a locker, marking active/terminated, or running automation).
   useEffect(() => {
+    const schedule = () => {
+      // Skip realtime refreshes while a bulk import is running — the chunked
+      // inserts fire dozens of events and would cause the table to flash.
+      if (importingRef.current) return;
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => setRefresh((k) => k + 1), 600);
+    };
     const ch = supabase
       .channel(`occupancy-${category}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, () => setRefresh((k) => k + 1))
-      .on("postgres_changes", { event: "*", schema: "public", table: "terminations" }, () => setRefresh((k) => k + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "terminations" }, schedule)
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      supabase.removeChannel(ch);
+    };
   }, [category]);
 
   useEffect(() => { setPage(1); }, [search, statusFilter, rowFilter, locFilter]);
@@ -225,8 +237,11 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
 
   const handleImport = async (file: File) => {
     setImporting(true);
+    importingRef.current = true;
     try {
       const buf = await file.arrayBuffer();
+      // cellDates: true → real Date objects; raw: true keeps Date/number values
+      // intact so parseBatchIntake handles every format consistently.
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const targetSheet =
         category === "main" ? "Occupied + Vacant" :
@@ -236,19 +251,18 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         toast.error(`Sheet "${targetSheet}" not found in this workbook`);
         return;
       }
-      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: false });
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: true });
       const norm = (v: unknown) => {
+        if (v instanceof Date) return v.toISOString().slice(0, 10);
         const s = String(v ?? "").trim();
         return s === "" ? null : s;
       };
       const dateOnly = (v: unknown) => parseBatchIntake(v);
       const pick = (row: Record<string, unknown>, ...keys: string[]) => {
-        for (const k of keys) {
-          for (const real of Object.keys(row)) {
-            if (real.toLowerCase().replace(/\s+/g, "") === k.toLowerCase().replace(/\s+/g, "")) {
-              return row[real];
-            }
-          }
+        const want = keys.map((k) => k.toLowerCase().replace(/\s+/g, ""));
+        for (const real of Object.keys(row)) {
+          const r = real.toLowerCase().replace(/\s+/g, "");
+          if (want.includes(r)) return row[real];
         }
         return "";
       };
@@ -294,6 +308,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import failed");
     } finally {
+      importingRef.current = false;
       setImporting(false);
       if (fileRef.current) fileRef.current.value = "";
     }
