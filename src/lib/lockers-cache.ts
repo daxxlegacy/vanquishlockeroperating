@@ -51,6 +51,7 @@ function ensureChannel() {
   channel = supabase
     .channel("lockers-shared-cache")
     .on("postgres_changes", { event: "*", schema: "public", table: "lockers" }, (payload) => {
+      if (realtimePaused > 0) return;
       const cur = state.data;
       if (!cur) return;
       if (payload.eventType === "INSERT") {
