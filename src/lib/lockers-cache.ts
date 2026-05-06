@@ -12,6 +12,7 @@ let state: State = { data: null, loading: false };
 const subscribers = new Set<(s: State) => void>();
 let channel: ReturnType<typeof supabase.channel> | null = null;
 let fetchPromise: Promise<void> | null = null;
+let realtimePaused = 0; // counter for nested pauses
 
 function emit() {
   for (const fn of subscribers) fn(state);
@@ -50,6 +51,7 @@ function ensureChannel() {
   channel = supabase
     .channel("lockers-shared-cache")
     .on("postgres_changes", { event: "*", schema: "public", table: "lockers" }, (payload) => {
+      if (realtimePaused > 0) return;
       const cur = state.data;
       if (!cur) return;
       if (payload.eventType === "INSERT") {
@@ -84,6 +86,16 @@ export function invalidateLockersCache() {
   state = { data: null, loading: false };
   emit();
   fetchAll();
+}
+
+/** Pause realtime patches (e.g. during a bulk import) so the table doesn't
+ *  re-render hundreds of times. Returns a resume() that does a single refetch. */
+export function pauseLockersRealtime() {
+  realtimePaused++;
+  return () => {
+    realtimePaused = Math.max(0, realtimePaused - 1);
+    if (realtimePaused === 0) invalidateLockersCache();
+  };
 }
 
 export function useLockers() {

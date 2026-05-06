@@ -16,6 +16,8 @@ import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserM
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
+import { Progress } from "@/components/ui/progress";
+import { pauseLockersRealtime } from "@/lib/lockers-cache";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -85,6 +87,7 @@ function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [applyProgress, setApplyProgress] = useState<{ done: number; total: number; phase: string } | null>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [history, setHistory] = useState<UploadHistoryRow[]>([]);
   // Roster check (VLOOKUP-style)
@@ -184,8 +187,11 @@ function UploadPage() {
   const handleApply = async () => {
     if (!preview || !file || !user) return;
     setApplying(true);
+    const resume = pauseLockersRealtime();
+    const totalUnits = preview.parsed.length + preview.newlyResigned.length;
+    setApplyProgress({ done: 0, total: totalUnits, phase: "Uploading lockers" });
+    let done = 0;
     try {
-      // Upsert rows in chunks
       const CHUNK = 200;
       for (let i = 0; i < preview.parsed.length; i += CHUNK) {
         const slice = preview.parsed.slice(i, i + CHUNK);
@@ -193,9 +199,10 @@ function UploadPage() {
           .from("lockers")
           .upsert(slice, { onConflict: "locker_number" });
         if (error) throw error;
+        done += slice.length;
+        setApplyProgress({ done, total: totalUnits, phase: "Uploading lockers" });
       }
 
-      // Mark resigned lockers (active in DB but missing from upload) as empty
       const resignedKeys = preview.newlyResigned.map((r) => r.locker_number);
       for (let i = 0; i < resignedKeys.length; i += CHUNK) {
         const slice = resignedKeys.slice(i, i + CHUNK);
@@ -204,6 +211,8 @@ function UploadPage() {
           .update({ status: "empty", employee_name: null, badge_number: null, remark: "Auto-resigned via upload" })
           .in("locker_number", slice);
         if (error) throw error;
+        done += slice.length;
+        setApplyProgress({ done, total: totalUnits, phase: "Marking resigned" });
       }
 
       await supabase.from("upload_history").insert({
@@ -222,6 +231,8 @@ function UploadPage() {
       toast.error(e instanceof Error ? e.message : "Apply failed");
     }
     setApplying(false);
+    setApplyProgress(null);
+    resume(); // single refresh of cache
   };
 
   const exportLockers = async (fmt: "xlsx" | "csv") => {
@@ -327,24 +338,29 @@ function UploadPage() {
       }
 
       if (apply) {
-        for (const u of updates) {
-          const { error } = await supabase.from("lockers")
-            .update({ spare_key_status: u.spare_key_status, physical_key_status: u.physical_key_status })
-            .eq("locker_number", u.locker_number);
-          if (error) throw error;
+        const resume = pauseLockersRealtime();
+        try {
+          for (const u of updates) {
+            const { error } = await supabase.from("lockers")
+              .update({ spare_key_status: u.spare_key_status, physical_key_status: u.physical_key_status })
+              .eq("locker_number", u.locker_number);
+            if (error) throw error;
+          }
+          const incomingKeys = new Set(incoming.keys());
+          const noSpare = dbLockers
+            .filter((l) => !incomingKeys.has(l.locker_number.trim().toUpperCase()) && l.spare_key_status !== "missing")
+            .map((l) => l.locker_number);
+          for (let i = 0; i < noSpare.length; i += 500) {
+            const slice = noSpare.slice(i, i + 500);
+            const { error } = await supabase.from("lockers").update({ spare_key_status: "missing" }).in("locker_number", slice);
+            if (error) throw error;
+          }
+          toast.success(`Spare keys synced — ${updates.length} updated, ${noSpare.length} marked missing.`);
+          setSpareResult(null);
+          setSpareFile(null);
+        } finally {
+          resume();
         }
-        const incomingKeys = new Set(incoming.keys());
-        const noSpare = dbLockers
-          .filter((l) => !incomingKeys.has(l.locker_number.trim().toUpperCase()) && l.spare_key_status !== "missing")
-          .map((l) => l.locker_number);
-        for (let i = 0; i < noSpare.length; i += 500) {
-          const slice = noSpare.slice(i, i + 500);
-          const { error } = await supabase.from("lockers").update({ spare_key_status: "missing" }).in("locker_number", slice);
-          if (error) throw error;
-        }
-        toast.success(`Spare keys synced — ${updates.length} updated, ${noSpare.length} marked missing.`);
-        setSpareResult(null);
-        setSpareFile(null);
       } else {
         setSpareResult({ filename: f.name, fileCount: incoming.size, matched: updates.length, unmatched, updates });
         toast.success(`Preview — ${updates.length} matched, ${unmatched.length} not in DB.`);
@@ -596,8 +612,21 @@ function UploadPage() {
               {preview.parsed.length > 50 && <div className="p-2 text-xs text-center text-muted-foreground border-t">Showing 50 of {preview.parsed.length} rows</div>}
             </div>
 
+            {applyProgress && (
+              <div className="mb-3 space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{applyProgress.phase}…</span>
+                  <span>
+                    {applyProgress.done.toLocaleString()} / {applyProgress.total.toLocaleString()}
+                    {applyProgress.total > 0 && ` (${Math.round((applyProgress.done / applyProgress.total) * 100)}%)`}
+                  </span>
+                </div>
+                <Progress value={applyProgress.total ? (applyProgress.done / applyProgress.total) * 100 : 0} />
+              </div>
+            )}
+
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => { setPreview(null); setFile(null); }}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setPreview(null); setFile(null); }} disabled={applying}>Cancel</Button>
               <Button onClick={handleApply} disabled={applying}>
                 {applying ? "Applying…" : "Apply changes"}
               </Button>
