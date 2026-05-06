@@ -603,8 +603,10 @@ function UploadPage() {
             </div>
           </Card>
         )}
+        </TabsContent>
 
-        <Card className="mt-6 p-6">
+        <TabsContent value="check" className="space-y-6">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-1">
             <Search className="h-5 w-5 text-primary" />
             <h2 className="font-display text-xl font-bold">Roster check (VLOOKUP)</h2>
