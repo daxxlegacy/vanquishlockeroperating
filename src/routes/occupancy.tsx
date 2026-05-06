@@ -237,8 +237,11 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
 
   const handleImport = async (file: File) => {
     setImporting(true);
+    importingRef.current = true;
     try {
       const buf = await file.arrayBuffer();
+      // cellDates: true → real Date objects; raw: true keeps Date/number values
+      // intact so parseBatchIntake handles every format consistently.
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const targetSheet =
         category === "main" ? "Occupied + Vacant" :
@@ -248,19 +251,18 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         toast.error(`Sheet "${targetSheet}" not found in this workbook`);
         return;
       }
-      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: false });
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: true });
       const norm = (v: unknown) => {
+        if (v instanceof Date) return v.toISOString().slice(0, 10);
         const s = String(v ?? "").trim();
         return s === "" ? null : s;
       };
       const dateOnly = (v: unknown) => parseBatchIntake(v);
       const pick = (row: Record<string, unknown>, ...keys: string[]) => {
-        for (const k of keys) {
-          for (const real of Object.keys(row)) {
-            if (real.toLowerCase().replace(/\s+/g, "") === k.toLowerCase().replace(/\s+/g, "")) {
-              return row[real];
-            }
-          }
+        const want = keys.map((k) => k.toLowerCase().replace(/\s+/g, ""));
+        for (const real of Object.keys(row)) {
+          const r = real.toLowerCase().replace(/\s+/g, "");
+          if (want.includes(r)) return row[real];
         }
         return "";
       };
@@ -306,6 +308,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import failed");
     } finally {
+      importingRef.current = false;
       setImporting(false);
       if (fileRef.current) fileRef.current.value = "";
     }
