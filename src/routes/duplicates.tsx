@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Users, BadgeAlert, Download } from "lucide-react";
 import { compareLockerNumbers } from "@/lib/locker-utils";
+import { useLockers } from "@/lib/lockers-cache";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
