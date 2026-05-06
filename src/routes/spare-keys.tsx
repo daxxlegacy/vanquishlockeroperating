@@ -182,43 +182,27 @@ function SpareKeysPage() {
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left">
-                  <tr>
-                    <Th>Locker #</Th>
-                    <Th>Location</Th>
-                    <Th>Row</Th>
-                    <Th>Spare Key Status</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((l) => (
-                    <tr key={l.id} onClick={() => setSelected(l.id)} className="border-t hover:bg-muted/40 cursor-pointer">
-                      <td className="px-3 py-2 font-medium">{l.locker_number}</td>
-                      <td className="px-3 py-2">{l.location}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{l.row_label ?? "—"}</td>
-                      <td className="px-3 py-2"><KeyBadge status={l.spare_key_status} /></td>
-                    </tr>
-                  ))}
-                  {visible.length === 0 && (
-                    <tr><td colSpan={4} className="px-3 py-12 text-center text-muted-foreground">No lockers match these filters.</td></tr>
-                  )}
-                </tbody>
-              </table>
-
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-muted/20">
-                <div className="text-xs text-muted-foreground">
-                  Showing {filtered.length === 0 ? 0 : (startIdx + 1).toLocaleString()}–{(startIdx + visible.length).toLocaleString()} of {filtered.length.toLocaleString()}
+              <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
+                <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+                  <Th>Locker #</Th>
+                  <Th>Location</Th>
+                  <Th>Row</Th>
+                  <Th>Spare Key Status</Th>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                  </Button>
-                  <span className="text-sm font-medium px-2">Page {safePage} / {totalPages}</span>
-                  <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                    Next <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
+                ) : (
+                  <List
+                    rowComponent={SpareRow}
+                    rowCount={filtered.length}
+                    rowHeight={ROW_HEIGHT}
+                    rowProps={{ rows: filtered, onPick: setSelected }}
+                    style={{ height: Math.min(VIEWPORT_HEIGHT, filtered.length * ROW_HEIGHT + 4) }}
+                  />
+                )}
+              </div>
+              <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
+                Showing {filtered.length.toLocaleString()} locker{filtered.length === 1 ? "" : "s"}
               </div>
             </div>
           )}
@@ -230,7 +214,24 @@ function SpareKeysPage() {
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">{children}</th>;
+  return <div className="px-3 py-2.5">{children}</div>;
+}
+
+type SpareRowProps = { rows: Locker[]; onPick: (id: string) => void };
+function SpareRow({ index, style, rows, onPick }: RowComponentProps<SpareRowProps>) {
+  const l = rows[index];
+  return (
+    <div
+      style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
+      onClick={() => onPick(l.id)}
+      className="grid items-center border-t hover:bg-muted/40 cursor-pointer text-sm"
+    >
+      <div className="px-3 truncate font-medium">{l.locker_number}</div>
+      <div className="px-3 truncate">{l.location}</div>
+      <div className="px-3 truncate text-muted-foreground">{l.row_label ?? "—"}</div>
+      <div className="px-3"><KeyBadge status={l.spare_key_status} /></div>
+    </div>
+  );
 }
 
 function KeyBadge({ status }: { status: string | null }) {
