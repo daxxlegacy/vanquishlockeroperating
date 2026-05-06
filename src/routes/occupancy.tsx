@@ -127,6 +127,17 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     })();
   }, [category, refresh]);
 
+  // Auto-refresh when occupancy or terminations change elsewhere (e.g. after
+  // saving a locker, marking active/terminated, or running automation).
+  useEffect(() => {
+    const ch = supabase
+      .channel(`occupancy-${category}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, () => setRefresh((k) => k + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "terminations" }, () => setRefresh((k) => k + 1))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [category]);
+
   useEffect(() => { setPage(1); }, [search, statusFilter, rowFilter, locFilter]);
 
   // Build filter option lists from data
