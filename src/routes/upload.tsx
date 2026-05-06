@@ -338,24 +338,29 @@ function UploadPage() {
       }
 
       if (apply) {
-        for (const u of updates) {
-          const { error } = await supabase.from("lockers")
-            .update({ spare_key_status: u.spare_key_status, physical_key_status: u.physical_key_status })
-            .eq("locker_number", u.locker_number);
-          if (error) throw error;
+        const resume = pauseLockersRealtime();
+        try {
+          for (const u of updates) {
+            const { error } = await supabase.from("lockers")
+              .update({ spare_key_status: u.spare_key_status, physical_key_status: u.physical_key_status })
+              .eq("locker_number", u.locker_number);
+            if (error) throw error;
+          }
+          const incomingKeys = new Set(incoming.keys());
+          const noSpare = dbLockers
+            .filter((l) => !incomingKeys.has(l.locker_number.trim().toUpperCase()) && l.spare_key_status !== "missing")
+            .map((l) => l.locker_number);
+          for (let i = 0; i < noSpare.length; i += 500) {
+            const slice = noSpare.slice(i, i + 500);
+            const { error } = await supabase.from("lockers").update({ spare_key_status: "missing" }).in("locker_number", slice);
+            if (error) throw error;
+          }
+          toast.success(`Spare keys synced — ${updates.length} updated, ${noSpare.length} marked missing.`);
+          setSpareResult(null);
+          setSpareFile(null);
+        } finally {
+          resume();
         }
-        const incomingKeys = new Set(incoming.keys());
-        const noSpare = dbLockers
-          .filter((l) => !incomingKeys.has(l.locker_number.trim().toUpperCase()) && l.spare_key_status !== "missing")
-          .map((l) => l.locker_number);
-        for (let i = 0; i < noSpare.length; i += 500) {
-          const slice = noSpare.slice(i, i + 500);
-          const { error } = await supabase.from("lockers").update({ spare_key_status: "missing" }).in("locker_number", slice);
-          if (error) throw error;
-        }
-        toast.success(`Spare keys synced — ${updates.length} updated, ${noSpare.length} marked missing.`);
-        setSpareResult(null);
-        setSpareFile(null);
       } else {
         setSpareResult({ filename: f.name, fileCount: incoming.size, matched: updates.length, unmatched, updates });
         toast.success(`Preview — ${updates.length} matched, ${unmatched.length} not in DB.`);
