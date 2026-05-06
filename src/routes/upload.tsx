@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
+import { normalizeLockerStatus } from "@/lib/locker-status";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
