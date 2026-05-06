@@ -76,8 +76,13 @@ function detectRosterColumns(keys: string[]): { badge?: string; name?: string } 
   const lc = keys.map((k) => ({ k, n: k.toLowerCase().replace(/[^a-z0-9]/g, "") }));
   const find = (candidates: string[]) => lc.find(({ n }) => candidates.some((c) => n.includes(c)))?.k;
   return {
-    badge: find(["badge", "empid", "employeeid", "staffid", "id"]),
-    name: find(["name", "employee", "fullname"]),
+    badge: find([
+      "badge", "empid", "employeeid", "staffid",
+      "personnumber", "empnum", "employeenumber",
+      "empcode", "employeecode", "legacy", "legacyid",
+      "vlookupocempnum",
+    ]),
+    name: find(["name", "employee", "fullname", "legalfullname", "vlookupocname"]),
   };
 }
 

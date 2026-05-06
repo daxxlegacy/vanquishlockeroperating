@@ -30,7 +30,15 @@ type Candidate = LockerLite & { reason: "no_badge_match" | "no_name_match" };
 function detectCols(keys: string[]): { badge?: string; name?: string } {
   const lc = keys.map((k) => ({ k, n: k.toLowerCase().replace(/[^a-z0-9]/g, "") }));
   const find = (cands: string[]) => lc.find(({ n }) => cands.some((c) => n.includes(c)))?.k;
-  return { badge: find(["badge", "empid", "employeeid", "staffid", "id"]), name: find(["name", "employee", "fullname"]) };
+  return {
+    badge: find([
+      "badge", "empid", "employeeid", "staffid",
+      "personnumber", "empnum", "employeenumber",
+      "empcode", "employeecode", "legacy", "legacyid",
+      "vlookupocempnum",
+    ]),
+    name: find(["name", "employee", "fullname", "legalfullname", "vlookupocname"]),
+  };
 }
 function getStr(r: Record<string, unknown>, k: string): string | undefined {
   const v = r[k]; if (v == null) return undefined;

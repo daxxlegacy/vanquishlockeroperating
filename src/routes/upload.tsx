@@ -677,13 +677,22 @@ function norm(s: string): string {
 function detectColumns(headers: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   const aliases: Record<string, string[]> = {
-    locker_number: ["combinelocker", "lockernumber", "locker", "lockerno", "lockerid"],
+    locker_number: ["combinelocker", "comblocker", "lockernumber", "locker", "lockerno", "lockerid"],
     location: ["lockerlocation", "lockerlocationbyrow", "location"],
     row_label: ["row", "rowlabel", "lockerlocationbyrow"],
     unit_type: ["typesofkeylock", "unittype", "type", "lockertype"],
     key_lock: ["keylock", "typesofkeylock", "lock"],
-    badge_number: ["badgenumber", "badge", "badgeno", "badgeid"],
-    employee_name: ["vlookupocname", "vlookupocname", "employeename", "name", "fullname", "ocname"],
+    badge_number: [
+      "badgenumber", "badge", "badgeno", "badgeid",
+      "vlookupocempnum", "vlookupempnum", "empnum", "employeenumber", "personnumber",
+      "employeecode", "empcode", "employeeid", "empid", "staffid",
+      "legacyid", "legacy",
+    ],
+    employee_name: [
+      "vlookupocname", "ocname",
+      "employeename", "name", "fullname",
+      "legalfullname", "legalname",
+    ],
     status: ["status"],
     physical_key_status: ["physicalkeystatus", "physicalkey", "statusavailablenotavailable", "statusavailable"],
     spare_key_status: ["sparekeystatus", "sparekey"],
