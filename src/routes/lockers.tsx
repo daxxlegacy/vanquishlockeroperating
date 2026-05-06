@@ -257,7 +257,7 @@ function LockersPage() {
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">{children}</th>;
+  return <div className="px-3 py-2.5">{children}</div>;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -268,6 +268,29 @@ function StatusBadge({ status }: { status: string }) {
       <span className={`h-2 w-2 rounded-full ${swatch}`} />
       {label}
     </Badge>
+  );
+}
+
+type LockerRowProps = { rows: Locker[]; onPick: (id: string) => void };
+function LockerRow({ index, style, rows, onPick }: RowComponentProps<LockerRowProps>) {
+  const l = rows[index];
+  return (
+    <div
+      style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
+      onClick={() => onPick(l.id)}
+      className="grid items-center border-t hover:bg-muted/40 cursor-pointer text-sm"
+    >
+      <div className="px-3 truncate font-medium">{l.locker_number}</div>
+      <div className="px-3 truncate">{l.location}</div>
+      <div className="px-3 truncate text-muted-foreground">{l.row_label}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</div>
+      <div className="px-3 truncate text-muted-foreground">{l.badge_number ?? "—"}</div>
+      <div className="px-3 truncate">{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
+      <div className="px-3"><StatusBadge status={l.status} /></div>
+      <div className="px-3 truncate text-xs capitalize text-muted-foreground">{l.physical_key_status?.replace(/_/g, " ")}</div>
+      <div className="px-3 truncate text-xs capitalize text-muted-foreground">{l.spare_key_status?.replace(/_/g, " ")}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground">{formatBatchIntake(l.batch_intake)}</div>
+    </div>
   );
 }
 
