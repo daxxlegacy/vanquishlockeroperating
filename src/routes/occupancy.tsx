@@ -317,11 +317,25 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           <Input placeholder="Search locker, employee, badge, dept…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="terminate">Terminated</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={rowFilter} onValueChange={setRowFilter}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Row" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All rows</SelectItem>
+            {rowOpts.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={locFilter} onValueChange={setLocFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Location" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All locations</SelectItem>
+            {locOpts.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
           </SelectContent>
         </Select>
         {isAdmin && (
