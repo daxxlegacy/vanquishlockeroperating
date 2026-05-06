@@ -87,6 +87,7 @@ function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [applyProgress, setApplyProgress] = useState<{ done: number; total: number; phase: string } | null>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [history, setHistory] = useState<UploadHistoryRow[]>([]);
   // Roster check (VLOOKUP-style)
