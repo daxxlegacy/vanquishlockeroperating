@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TerminationsRouteImport } from './routes/terminations'
+import { Route as SpareKeysRouteImport } from './routes/spare-keys'
 import { Route as OperationsRouteImport } from './routes/operations'
 import { Route as LockersRouteImport } from './routes/lockers'
 import { Route as DuplicatesRouteImport } from './routes/duplicates'
@@ -30,6 +31,11 @@ const UploadRoute = UploadRouteImport.update({
 const TerminationsRoute = TerminationsRouteImport.update({
   id: '/terminations',
   path: '/terminations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpareKeysRoute = SpareKeysRouteImport.update({
+  id: '/spare-keys',
+  path: '/spare-keys',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperationsRoute = OperationsRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/operations': typeof OperationsRoute
+  '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
   '/terminate/$lockerId': typeof TerminateLockerIdRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/operations': typeof OperationsRoute
+  '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
   '/terminate/$lockerId': typeof TerminateLockerIdRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/operations': typeof OperationsRoute
+  '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
   '/terminate/$lockerId': typeof TerminateLockerIdRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/duplicates'
     | '/lockers'
     | '/operations'
+    | '/spare-keys'
     | '/terminations'
     | '/upload'
     | '/terminate/$lockerId'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/duplicates'
     | '/lockers'
     | '/operations'
+    | '/spare-keys'
     | '/terminations'
     | '/upload'
     | '/terminate/$lockerId'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/duplicates'
     | '/lockers'
     | '/operations'
+    | '/spare-keys'
     | '/terminations'
     | '/upload'
     | '/terminate/$lockerId'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   DuplicatesRoute: typeof DuplicatesRoute
   LockersRoute: typeof LockersRoute
   OperationsRoute: typeof OperationsRoute
+  SpareKeysRoute: typeof SpareKeysRoute
   TerminationsRoute: typeof TerminationsRoute
   UploadRoute: typeof UploadRoute
   TerminateLockerIdRoute: typeof TerminateLockerIdRoute
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/terminations'
       fullPath: '/terminations'
       preLoaderRoute: typeof TerminationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spare-keys': {
+      id: '/spare-keys'
+      path: '/spare-keys'
+      fullPath: '/spare-keys'
+      preLoaderRoute: typeof SpareKeysRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operations': {
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   DuplicatesRoute: DuplicatesRoute,
   LockersRoute: LockersRoute,
   OperationsRoute: OperationsRoute,
+  SpareKeysRoute: SpareKeysRoute,
   TerminationsRoute: TerminationsRoute,
   UploadRoute: UploadRoute,
   TerminateLockerIdRoute: TerminateLockerIdRoute,
