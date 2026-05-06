@@ -119,6 +119,7 @@ function LockersPage() {
                   existingLocations={locations}
                 />
               </Dialog>
+              <DeleteLockerByNumberDialog onDeleted={() => setRefresh((k) => k + 1)} />
               <DeleteLocationDialog
                 locations={locations}
                 onDeleted={() => setRefresh((k) => k + 1)}
