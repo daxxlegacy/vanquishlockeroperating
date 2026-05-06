@@ -384,8 +384,8 @@ function LockerGroup({ lockerNumber, group }: { lockerNumber: string; group: Row
             <td className="px-3 py-2 font-mono text-xs">{r.badge_number ?? "—"}</td>
             <td className="px-3 py-2">{r.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</td>
             <td className="px-3 py-2 text-muted-foreground">{r.department ?? "—"}</td>
-            <td className="px-3 py-2 text-muted-foreground text-xs">{r.batch_intake_date ?? "—"}</td>
-            <td className="px-3 py-2 text-muted-foreground text-xs">{r.termination_date ?? "—"}</td>
+            <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.batch_intake_date)}</td>
+            <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.termination_date)}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs">
               {r.key_lock_type ?? "—"}{r.locker_row ? ` · row ${r.locker_row}` : ""}
             </td>
