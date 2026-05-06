@@ -13,6 +13,7 @@ import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TerminationsRouteImport } from './routes/terminations'
 import { Route as SpareKeysRouteImport } from './routes/spare-keys'
 import { Route as OperationsRouteImport } from './routes/operations'
+import { Route as OccupancyRouteImport } from './routes/occupancy'
 import { Route as LockersRouteImport } from './routes/lockers'
 import { Route as DuplicatesRouteImport } from './routes/duplicates'
 import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
@@ -41,6 +42,11 @@ const SpareKeysRoute = SpareKeysRouteImport.update({
 const OperationsRoute = OperationsRouteImport.update({
   id: '/operations',
   path: '/operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OccupancyRoute = OccupancyRouteImport.update({
+  id: '/occupancy',
+  path: '/occupancy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LockersRoute = LockersRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
+  '/occupancy': typeof OccupancyRoute
   '/operations': typeof OperationsRoute
   '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
+  '/occupancy': typeof OccupancyRoute
   '/operations': typeof OperationsRoute
   '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/automation-history': typeof AutomationHistoryRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
+  '/occupancy': typeof OccupancyRoute
   '/operations': typeof OperationsRoute
   '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/automation-history'
     | '/duplicates'
     | '/lockers'
+    | '/occupancy'
     | '/operations'
     | '/spare-keys'
     | '/terminations'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/automation-history'
     | '/duplicates'
     | '/lockers'
+    | '/occupancy'
     | '/operations'
     | '/spare-keys'
     | '/terminations'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/automation-history'
     | '/duplicates'
     | '/lockers'
+    | '/occupancy'
     | '/operations'
     | '/spare-keys'
     | '/terminations'
@@ -192,6 +204,7 @@ export interface RootRouteChildren {
   AutomationHistoryRoute: typeof AutomationHistoryRoute
   DuplicatesRoute: typeof DuplicatesRoute
   LockersRoute: typeof LockersRoute
+  OccupancyRoute: typeof OccupancyRoute
   OperationsRoute: typeof OperationsRoute
   SpareKeysRoute: typeof SpareKeysRoute
   TerminationsRoute: typeof TerminationsRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/operations'
       fullPath: '/operations'
       preLoaderRoute: typeof OperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/occupancy': {
+      id: '/occupancy'
+      path: '/occupancy'
+      fullPath: '/occupancy'
+      preLoaderRoute: typeof OccupancyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lockers': {
@@ -304,6 +324,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutomationHistoryRoute: AutomationHistoryRoute,
   DuplicatesRoute: DuplicatesRoute,
   LockersRoute: LockersRoute,
+  OccupancyRoute: OccupancyRoute,
   OperationsRoute: OperationsRoute,
   SpareKeysRoute: SpareKeysRoute,
   TerminationsRoute: TerminationsRoute,
