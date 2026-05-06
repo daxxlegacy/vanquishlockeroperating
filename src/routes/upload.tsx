@@ -45,8 +45,8 @@ type LockerRow = {
   badge_number: string | null;
   employee_name: string | null;
   status: "active" | "empty" | "repair" | "cleaning" | "broken_door" | "on_hold" | "reserved" | "unknown";
-  physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
-  spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown";
+  physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
+  spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
   remark: string | null;
   batch_intake: string | null;
 };
@@ -290,9 +290,10 @@ function UploadPage() {
         if (!ln) continue;
         const spareRaw = spareKey ? getStr(r, spareKey) : null;
         const physRaw = physKey ? getStr(r, physKey) : null;
-        // "Status" col on spare sheet is just "Spare Key" → presence = available; physical key is the real signal
-        const spare: LockerRow["spare_key_status"] = spareRaw && spareRaw.toLowerCase().includes("spare") ? "available" : mapKeyStatus(spareRaw);
+        // Sheet "Status" col = "Spare Key" (presence). The "Physicial Key" col carries the live state (Yes/Taken/Taken For Cleaning).
         const phys: LockerRow["physical_key_status"] = mapKeyStatus(physRaw);
+        const hasSpareMarker = !!spareRaw && spareRaw.toLowerCase().includes("spare");
+        const spare: LockerRow["spare_key_status"] = hasSpareMarker ? phys : mapKeyStatus(spareRaw);
         incoming.set(ln.trim().toUpperCase(), { spare, phys });
       }
 
@@ -917,9 +918,12 @@ function mapStatus(raw: string | null, hasBadge: boolean): LockerRow["status"] {
 function mapKeyStatus(raw: string | null): LockerRow["physical_key_status"] {
   if (!raw) return "unknown";
   const n = raw.toLowerCase();
+  if (n.includes("clean")) return "taken_for_cleaning";
   if (n.includes("not available") || n.includes("missing")) return "missing";
   if (n.includes("with employee") || n.includes("withemp")) return "with_employee";
   if (n.includes("damage")) return "damaged";
+  if (n.includes("taken")) return "taken";
+  if (n.includes("spare")) return "available";
   if (n.includes("available") || n.includes("ok") || n.includes("yes")) return "available";
   return "unknown";
 }
