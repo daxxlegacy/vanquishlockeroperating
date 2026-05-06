@@ -30,6 +30,20 @@ type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
 const ROW_HEIGHT = 40;
 const VIEWPORT_HEIGHT = 640;
+const COLS = [
+  { key: "num", w: 110 },
+  { key: "loc", w: 160 },
+  { key: "row", w: 110 },
+  { key: "key_lock", w: 160 },
+  { key: "badge", w: 110 },
+  { key: "emp", w: 220 },
+  { key: "status", w: 130 },
+  { key: "phys", w: 130 },
+  { key: "spare", w: 130 },
+  { key: "batch", w: 130 },
+];
+const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
+const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
 
 export const Route = createFileRoute("/lockers")({
   head: () => ({
