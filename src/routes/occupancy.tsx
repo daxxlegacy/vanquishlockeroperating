@@ -516,7 +516,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
     const ch = supabase
       .channel(`history-${lockerNumber}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
-      .on("postgres_changes", { event: "*", schema: "public", table: "terminations", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "lockers", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [lockerNumber]);
