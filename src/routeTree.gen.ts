@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TerminationsRouteImport } from './routes/terminations'
 import { Route as SpareKeysRouteImport } from './routes/spare-keys'
+import { Route as ReconcileRouteImport } from './routes/reconcile'
 import { Route as OperationsRouteImport } from './routes/operations'
 import { Route as OccupancyRouteImport } from './routes/occupancy'
 import { Route as LockersRouteImport } from './routes/lockers'
@@ -37,6 +38,11 @@ const TerminationsRoute = TerminationsRouteImport.update({
 const SpareKeysRoute = SpareKeysRouteImport.update({
   id: '/spare-keys',
   path: '/spare-keys',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReconcileRoute = ReconcileRouteImport.update({
+  id: '/reconcile',
+  path: '/reconcile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperationsRoute = OperationsRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
   '/operations': typeof OperationsRoute
+  '/reconcile': typeof ReconcileRoute
   '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
   '/operations': typeof OperationsRoute
+  '/reconcile': typeof ReconcileRoute
   '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
   '/operations': typeof OperationsRoute
+  '/reconcile': typeof ReconcileRoute
   '/spare-keys': typeof SpareKeysRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/lockers'
     | '/occupancy'
     | '/operations'
+    | '/reconcile'
     | '/spare-keys'
     | '/terminations'
     | '/upload'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/lockers'
     | '/occupancy'
     | '/operations'
+    | '/reconcile'
     | '/spare-keys'
     | '/terminations'
     | '/upload'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/lockers'
     | '/occupancy'
     | '/operations'
+    | '/reconcile'
     | '/spare-keys'
     | '/terminations'
     | '/upload'
@@ -206,6 +218,7 @@ export interface RootRouteChildren {
   LockersRoute: typeof LockersRoute
   OccupancyRoute: typeof OccupancyRoute
   OperationsRoute: typeof OperationsRoute
+  ReconcileRoute: typeof ReconcileRoute
   SpareKeysRoute: typeof SpareKeysRoute
   TerminationsRoute: typeof TerminationsRoute
   UploadRoute: typeof UploadRoute
@@ -233,6 +246,13 @@ declare module '@tanstack/react-router' {
       path: '/spare-keys'
       fullPath: '/spare-keys'
       preLoaderRoute: typeof SpareKeysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reconcile': {
+      id: '/reconcile'
+      path: '/reconcile'
+      fullPath: '/reconcile'
+      preLoaderRoute: typeof ReconcileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operations': {
@@ -326,6 +346,7 @@ const rootRouteChildren: RootRouteChildren = {
   LockersRoute: LockersRoute,
   OccupancyRoute: OccupancyRoute,
   OperationsRoute: OperationsRoute,
+  ReconcileRoute: ReconcileRoute,
   SpareKeysRoute: SpareKeysRoute,
   TerminationsRoute: TerminationsRoute,
   UploadRoute: UploadRoute,

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Users, Settings, Key, UserCog, History } from "lucide-react";
+import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Users, Settings, Key, UserCog, History, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
