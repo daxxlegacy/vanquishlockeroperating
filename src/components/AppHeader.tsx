@@ -18,6 +18,7 @@ export function AppHeader() {
     { to: "/occupancy", label: "Occupancy", icon: History },
     { to: "/duplicates", label: "Duplicates", icon: Users },
     { to: "/operations", label: "Operations", icon: Settings },
+    { to: "/reconcile", label: "Reconcile", icon: ShieldAlert, adminOnly: true },
     { to: "/upload", label: "Upload", icon: Upload, adminOnly: true },
     { to: "/admin", label: "Admin", icon: UserCog, adminOnly: true },
   ];
