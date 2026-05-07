@@ -64,6 +64,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
         key_lock: locker.key_lock,
         location: locker.location,
         row_label: locker.row_label,
+        work_location: locker.work_location,
         badge_number: locker.badge_number,
         employee_name: locker.employee_name,
         status: locker.status,
