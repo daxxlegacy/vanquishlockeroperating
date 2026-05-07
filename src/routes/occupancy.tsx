@@ -160,7 +160,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     const ch = supabase
       .channel(`occupancy-${category}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, schedule)
-      .on("postgres_changes", { event: "*", schema: "public", table: "terminations" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lockers" }, schedule)
       .subscribe();
     return () => {
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
@@ -516,7 +516,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
     const ch = supabase
       .channel(`history-${lockerNumber}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
-      .on("postgres_changes", { event: "*", schema: "public", table: "terminations", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "lockers", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [lockerNumber]);
