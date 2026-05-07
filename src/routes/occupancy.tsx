@@ -160,7 +160,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     const ch = supabase
       .channel(`occupancy-${category}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, schedule)
-      .on("postgres_changes", { event: "*", schema: "public", table: "terminations" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lockers" }, schedule)
       .subscribe();
     return () => {
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
