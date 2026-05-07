@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { DeleteLockerDialog } from "@/components/DeleteLockerDialog";
 import { TerminateUserDialog } from "@/components/TerminateUserDialog";
 import { TransferLockerDialog } from "@/components/TransferLockerDialog";
-import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
+import { syncActivationToOccupancy, syncMetadataToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
