@@ -287,6 +287,7 @@ function LockerRow({ index, style, rows, onPick }: RowComponentProps<LockerRowPr
       <div className="px-3 truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</div>
       <div className="px-3 truncate text-muted-foreground">{l.badge_number ?? "—"}</div>
       <div className="px-3 truncate">{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
+      <div className="px-3 truncate text-muted-foreground">{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} /></div>
       <div className="px-3 truncate text-xs capitalize text-muted-foreground">{l.physical_key_status?.replace(/_/g, " ")}</div>
       <div className="px-3 truncate text-xs capitalize text-muted-foreground">{l.spare_key_status?.replace(/_/g, " ")}</div>
