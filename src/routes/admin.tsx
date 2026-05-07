@@ -104,7 +104,7 @@ function AdminPage() {
           <h1 className="font-display text-3xl font-bold">Admin — User Permissions</h1>
         </div>
         <p className="text-muted-foreground text-sm mb-6">
-          Grant role and granular permissions per user. New users sign up via the Auth page; admins control what they can do here.
+          New users sign up via the Auth page and appear here as Pending. Approve them to grant access, then assign role and granular permissions.
         </p>
 
         {(() => {
