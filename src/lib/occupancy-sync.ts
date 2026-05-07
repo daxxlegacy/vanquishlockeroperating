@@ -64,21 +64,11 @@ export async function syncTerminationToOccupancy(
 }
 
 /**
- * When a locker becomes empty/repair/unknown (i.e. no longer "active" but
- * also not a formal termination), remove any lingering Active row from the
- * occupancy history so it doesn't show a stale active occupant.
- * Existing Terminate rows are preserved as historical reference.
+ * Propagate locker metadata edits (row, location, key lock, batch intake)
+ * to ALL occupancy rows for this locker — both Active and Terminate — so the
+ * occupancy page mirrors the latest locker details from the lockers page.
  */
-export async function syncStatusChangeToOccupancy(locker: Locker): Promise<void> {
-  await supabase
-    .from("locker_occupancy")
-    .delete()
-    .eq("category", "main")
-    .eq("locker_number", locker.locker_number)
-    .ilike("status", "active");
-
-  // Propagate locker metadata edits to any remaining historical rows so the
-  // occupancy page stays in sync with the lockers page.
+export async function syncMetadataToOccupancy(locker: Locker): Promise<void> {
   await supabase
     .from("locker_occupancy")
     .update({
@@ -89,6 +79,24 @@ export async function syncStatusChangeToOccupancy(locker: Locker): Promise<void>
     })
     .eq("category", "main")
     .eq("locker_number", locker.locker_number);
+}
+
+/**
+ * When a locker becomes empty/repair/unknown (i.e. no longer "active" but
+ * also not a formal termination), remove any lingering Active row from the
+ * occupancy history so it doesn't show a stale active occupant.
+ * Existing Terminate rows are preserved as historical reference, and their
+ * metadata is updated to match the latest locker details.
+ */
+export async function syncStatusChangeToOccupancy(locker: Locker): Promise<void> {
+  await supabase
+    .from("locker_occupancy")
+    .delete()
+    .eq("category", "main")
+    .eq("locker_number", locker.locker_number)
+    .ilike("status", "active");
+
+  await syncMetadataToOccupancy(locker);
 }
 
 /**
