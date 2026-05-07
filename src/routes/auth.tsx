@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -16,11 +16,10 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, user, loading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -36,18 +35,8 @@ function AuthPage() {
     else navigate({ to: "/" });
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    const { error } = await signUp(email, password, fullName);
-    setBusy(false);
-    if (error) toast.error(error);
-    else {
-      toast.success("Account created — signing you in…");
-      const r = await signIn(email, password);
-      if (!r.error) navigate({ to: "/" });
-    }
-  };
+
+
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
@@ -81,28 +70,14 @@ function AuthPage() {
           <h2 className="font-display text-2xl font-bold">Welcome back</h2>
           <p className="text-muted-foreground text-sm mt-1">Sign in to manage lockers.</p>
 
-          <Tabs defaultValue="signin" className="mt-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign in</TabsTrigger>
-              <TabsTrigger value="signup">Create account</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4 mt-4">
-                <Field id="email" label="Email" type="email" value={email} onChange={setEmail} required />
-                <Field id="password" label="Password" type="password" value={password} onChange={setPassword} required />
-                <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-4">
-                <Field id="name" label="Full name" value={fullName} onChange={setFullName} required />
-                <Field id="email2" label="Email" type="email" value={email} onChange={setEmail} required />
-                <Field id="password2" label="Password" type="password" value={password} onChange={setPassword} required minLength={6} />
-                <Button type="submit" className="w-full" disabled={busy}>{busy ? "Creating…" : "Create account"}</Button>
-                <p className="text-xs text-muted-foreground">First account becomes admin automatically.</p>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={handleSignIn} className="space-y-4 mt-6">
+            <Field id="email" label="Email" type="email" value={email} onChange={setEmail} required />
+            <Field id="password" label="Password" type="password" value={password} onChange={setPassword} required />
+            <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
+            <p className="text-xs text-muted-foreground">
+              Public sign-up is disabled. Contact an administrator to request access.
+            </p>
+          </form>
         </div>
       </div>
     </div>
