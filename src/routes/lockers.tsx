@@ -115,6 +115,7 @@ function LockersPage() {
     "Key Lock": l.key_lock ?? "",
     "Badge Number": l.badge_number ?? "",
     "Employee Name": l.employee_name ?? "",
+    "Work Location": l.work_location ?? "",
     "Status": STATUS_LABEL[l.status as LockerStatus] ?? l.status,
     "Physical Key": l.physical_key_status ?? "",
     "Spare Key": l.spare_key_status ?? "",
