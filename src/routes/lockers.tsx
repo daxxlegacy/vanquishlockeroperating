@@ -36,7 +36,8 @@ const COLS = [
   { key: "row", w: 110 },
   { key: "key_lock", w: 160 },
   { key: "badge", w: 110 },
-  { key: "emp", w: 220 },
+  { key: "emp", w: 200 },
+  { key: "work", w: 160 },
   { key: "status", w: 130 },
   { key: "phys", w: 130 },
   { key: "spare", w: 130 },
@@ -114,6 +115,7 @@ function LockersPage() {
     "Key Lock": l.key_lock ?? "",
     "Badge Number": l.badge_number ?? "",
     "Employee Name": l.employee_name ?? "",
+    "Work Location": l.work_location ?? "",
     "Status": STATUS_LABEL[l.status as LockerStatus] ?? l.status,
     "Physical Key": l.physical_key_status ?? "",
     "Spare Key": l.spare_key_status ?? "",
@@ -230,7 +232,7 @@ function LockersPage() {
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
                   <Th>Locker #</Th><Th>Location</Th><Th>Row</Th><Th>Key Lock</Th><Th>Badge</Th><Th>Employee</Th>
-                  <Th>Status</Th><Th>Phys. Key</Th><Th>Spare Key</Th><Th>Batch</Th>
+                  <Th>Work Location</Th><Th>Status</Th><Th>Phys. Key</Th><Th>Spare Key</Th><Th>Batch</Th>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
@@ -286,6 +288,7 @@ function LockerRow({ index, style, rows, onPick }: RowComponentProps<LockerRowPr
       <div className="px-3 truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</div>
       <div className="px-3 truncate text-muted-foreground">{l.badge_number ?? "—"}</div>
       <div className="px-3 truncate">{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
+      <div className="px-3 truncate text-muted-foreground">{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} /></div>
       <div className="px-3 truncate text-xs capitalize text-muted-foreground">{l.physical_key_status?.replace(/_/g, " ")}</div>
       <div className="px-3 truncate text-xs capitalize text-muted-foreground">{l.spare_key_status?.replace(/_/g, " ")}</div>

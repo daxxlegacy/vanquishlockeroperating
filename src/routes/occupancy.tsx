@@ -108,6 +108,8 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   const importingRef = useRef(false);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [reasons, setReasons] = useState<Map<string, string>>(new Map());
+
   useEffect(() => {
     (async () => {
       setRows(null);
@@ -126,6 +128,22 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         from += 1000;
       }
       setRows(all);
+
+      // Latest termination reason per locker (for Reason column)
+      if (category === "main") {
+        const { data: terms } = await supabase
+          .from("terminations")
+          .select("locker_number,reason,termination_date")
+          .order("termination_date", { ascending: false });
+        const map = new Map<string, string>();
+        for (const t of terms ?? []) {
+          if (!t.locker_number || !t.reason) continue;
+          if (!map.has(t.locker_number)) map.set(t.locker_number, t.reason);
+        }
+        setReasons(map);
+      } else {
+        setReasons(new Map());
+      }
     })();
   }, [category, refresh]);
 
@@ -400,13 +418,14 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
                     <Th>Dept</Th>
                     <Th>Intake</Th>
                     <Th>Terminated</Th>
+                    <Th>Reason</Th>
                     <Th>Key / Row</Th>
                     <Th>History</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map(([lockerNumber, group]) => (
-                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} onViewHistory={() => setHistoryFor(lockerNumber)} />
+                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
                   ))}
                 </tbody>
               </table>
@@ -434,7 +453,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   );
 }
 
-function LockerGroup({ lockerNumber, group, onViewHistory }: { lockerNumber: string; group: Row[]; onViewHistory: () => void }) {
+function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNumber: string; group: Row[]; reason?: string | null; onViewHistory: () => void }) {
   return (
     <>
       {group.map((r, i) => {
@@ -456,6 +475,9 @@ function LockerGroup({ lockerNumber, group, onViewHistory }: { lockerNumber: str
             <td className="px-3 py-2 text-muted-foreground">{r.department ?? "—"}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.batch_intake_date)}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.termination_date)}</td>
+            <td className="px-3 py-2 text-muted-foreground text-xs max-w-[220px] truncate" title={(!isActive ? (r.remarks || reason || "") : "") || undefined}>
+              {!isActive ? (r.remarks || reason || "—") : "—"}
+            </td>
             <td className="px-3 py-2 text-muted-foreground text-xs">
               {r.key_lock_type ?? "—"}{r.locker_row ? ` · row ${r.locker_row}` : ""}
             </td>

@@ -64,10 +64,29 @@ export async function syncTerminationToOccupancy(
 }
 
 /**
+ * Propagate locker metadata edits (row, location, key lock, batch intake)
+ * to ALL occupancy rows for this locker — both Active and Terminate — so the
+ * occupancy page mirrors the latest locker details from the lockers page.
+ */
+export async function syncMetadataToOccupancy(locker: Locker): Promise<void> {
+  await supabase
+    .from("locker_occupancy")
+    .update({
+      locker_row: locker.row_label,
+      locker_location_by_row: locker.location,
+      key_lock_type: locker.key_lock,
+      batch_intake_date: locker.batch_intake ?? null,
+    })
+    .eq("category", "main")
+    .eq("locker_number", locker.locker_number);
+}
+
+/**
  * When a locker becomes empty/repair/unknown (i.e. no longer "active" but
  * also not a formal termination), remove any lingering Active row from the
  * occupancy history so it doesn't show a stale active occupant.
- * Existing Terminate rows are preserved as historical reference.
+ * Existing Terminate rows are preserved as historical reference, and their
+ * metadata is updated to match the latest locker details.
  */
 export async function syncStatusChangeToOccupancy(locker: Locker): Promise<void> {
   await supabase
@@ -77,17 +96,7 @@ export async function syncStatusChangeToOccupancy(locker: Locker): Promise<void>
     .eq("locker_number", locker.locker_number)
     .ilike("status", "active");
 
-  // Also propagate locker metadata edits (location, row, key lock) to any
-  // remaining historical (Terminate) rows so the occupancy page stays in sync.
-  await supabase
-    .from("locker_occupancy")
-    .update({
-      locker_row: locker.row_label,
-      locker_location_by_row: locker.location,
-      key_lock_type: locker.key_lock,
-    })
-    .eq("category", "main")
-    .eq("locker_number", locker.locker_number);
+  await syncMetadataToOccupancy(locker);
 }
 
 /**

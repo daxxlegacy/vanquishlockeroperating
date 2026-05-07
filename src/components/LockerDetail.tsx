@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { DeleteLockerDialog } from "@/components/DeleteLockerDialog";
 import { TerminateUserDialog } from "@/components/TerminateUserDialog";
 import { TransferLockerDialog } from "@/components/TransferLockerDialog";
-import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
+import { syncActivationToOccupancy, syncMetadataToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -64,6 +64,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
         key_lock: locker.key_lock,
         location: locker.location,
         row_label: locker.row_label,
+        work_location: locker.work_location,
         badge_number: locker.badge_number,
         employee_name: locker.employee_name,
         status: locker.status,
@@ -79,8 +80,10 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
       // Sync occupancy history based on the new status
       if (locker.status === "active" && (locker.employee_name || locker.badge_number)) {
         await syncActivationToOccupancy(locker);
+        await syncMetadataToOccupancy(locker);
       } else {
-        // empty / repair / unknown / etc. → drop stale Active row, keep Terminate history
+        // empty / repair / unknown / etc. → drop stale Active row, keep Terminate
+        // history but propagate metadata edits to it.
         await syncStatusChangeToOccupancy(locker);
       }
       toast.success("Locker updated");
@@ -103,6 +106,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
             <Field label="Key Lock" value={locker.key_lock ?? ""} onChange={(v) => update("key_lock", v)} disabled={!isAdmin} />
             <Field label="Badge Number" value={locker.badge_number ?? ""} onChange={(v) => update("badge_number", v)} disabled={!isAdmin} />
             <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
+            <Field label="Work Location" value={locker.work_location ?? ""} onChange={(v) => update("work_location", v)} disabled={!isAdmin} />
             <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
             <Field label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
             <SelectField label="Physical Key" value={locker.physical_key_status ?? "unknown"} options={KEYS} onChange={(v) => update("physical_key_status", v)} disabled={!isAdmin} />
