@@ -35,18 +35,8 @@ function AuthPage() {
     else navigate({ to: "/" });
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    const { error } = await signUp(email, password, fullName);
-    setBusy(false);
-    if (error) toast.error(error);
-    else {
-      toast.success("Account created — signing you in…");
-      const r = await signIn(email, password);
-      if (!r.error) navigate({ to: "/" });
-    }
-  };
+
+
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
