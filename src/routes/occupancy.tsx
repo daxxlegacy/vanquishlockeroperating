@@ -453,7 +453,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   );
 }
 
-function LockerGroup({ lockerNumber, group, onViewHistory }: { lockerNumber: string; group: Row[]; onViewHistory: () => void }) {
+function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNumber: string; group: Row[]; reason?: string | null; onViewHistory: () => void }) {
   return (
     <>
       {group.map((r, i) => {
