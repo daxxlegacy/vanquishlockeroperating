@@ -113,81 +113,131 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="grid grid-cols-[1fr_220px] gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search locker #, row, key lock…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+        {!confirming ? (
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-[1fr_220px] gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search locker #, row, key lock…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={locFilter} onValueChange={setLocFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All locations</SelectItem>
+                  {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={locFilter} onValueChange={setLocFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All locations</SelectItem>
-                {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
 
-          <div>
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-              Available lockers · {available.length}
-            </Label>
-            <div className="mt-1 border rounded-md max-h-72 overflow-auto divide-y">
-              {available.length === 0 ? (
-                <div className="px-3 py-6 text-sm text-center text-muted-foreground">
-                  No available lockers match.
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Available lockers · {available.length}
+              </Label>
+              <div className="mt-1 border rounded-md max-h-72 overflow-auto divide-y">
+                {available.length === 0 ? (
+                  <div className="px-3 py-6 text-sm text-center text-muted-foreground">
+                    No available lockers match.
+                  </div>
+                ) : available.map((l) => {
+                  const sel = l.id === targetId;
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => setTargetId(l.id)}
+                      className={`w-full text-left px-3 py-2 text-sm grid grid-cols-[110px_1fr_1fr_auto] gap-3 items-center hover:bg-muted/50 ${sel ? "bg-primary/10" : ""}`}
+                    >
+                      <span className="font-semibold">{l.locker_number}</span>
+                      <span className="truncate text-muted-foreground">{l.location}{l.row_label ? ` · ${l.row_label}` : ""}</span>
+                      <span className="truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</span>
+                      <Badge variant="outline" className="gap-1.5 capitalize">
+                        <span className={`h-2 w-2 rounded-full ${STATUS_SWATCH[l.status as LockerStatus] ?? "bg-muted-foreground"}`} />
+                        {STATUS_LABEL[l.status as LockerStatus] ?? l.status}
+                      </Badge>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label>What to do with old locker {locker.locker_number}?</Label>
+              <Select value={oldAction} onValueChange={(v) => setOldAction(v as OldAction)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {OLD_ACTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {oldActionMeta.desc}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3 py-2">
+            <div className="rounded-md border bg-muted/30 p-4 space-y-3 text-sm">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Occupant</div>
+                <div className="font-semibold">
+                  {locker.employee_name ?? "—"}
+                  {locker.badge_number ? <span className="text-muted-foreground font-normal"> · {locker.badge_number}</span> : null}
                 </div>
-              ) : available.map((l) => {
-                const sel = l.id === targetId;
-                return (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => setTargetId(l.id)}
-                    className={`w-full text-left px-3 py-2 text-sm grid grid-cols-[110px_1fr_1fr_auto] gap-3 items-center hover:bg-muted/50 ${sel ? "bg-primary/10" : ""}`}
-                  >
-                    <span className="font-semibold">{l.locker_number}</span>
-                    <span className="truncate text-muted-foreground">{l.location}{l.row_label ? ` · ${l.row_label}` : ""}</span>
-                    <span className="truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</span>
-                    <Badge variant="outline" className="gap-1.5 capitalize">
-                      <span className={`h-2 w-2 rounded-full ${STATUS_SWATCH[l.status as LockerStatus] ?? "bg-muted-foreground"}`} />
-                      {STATUS_LABEL[l.status as LockerStatus] ?? l.status}
-                    </Badge>
-                  </button>
-                );
-              })}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">From (old locker)</div>
+                  <div className="font-semibold">{locker.locker_number}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {locker.location}{locker.row_label ? ` · ${locker.row_label}` : ""}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">To (new locker)</div>
+                  <div className="font-semibold">{target?.locker_number}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {target?.location}{target?.row_label ? ` · ${target.row_label}` : ""}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Old locker action</div>
+                <div className="font-semibold">{oldActionMeta.label}</div>
+                <div className="text-xs text-muted-foreground">{oldActionMeta.desc}</div>
+              </div>
             </div>
-          </div>
-
-          <div>
-            <Label>What to do with old locker {locker.locker_number}?</Label>
-            <Select value={oldAction} onValueChange={(v) => setOldAction(v as OldAction)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {OLD_ACTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              {OLD_ACTIONS.find((o) => o.value === oldAction)?.desc}
+            <p className="text-xs text-muted-foreground">
+              Runs as a single atomic operation — the target locker is locked so two users can't claim it at the same time.
             </p>
           </div>
-        </div>
+        )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          <Button onClick={handleTransfer} disabled={!target || busy}>
-            <ArrowRightLeft className="h-4 w-4 mr-1" />
-            {busy ? "Transferring…" : target ? `Transfer → ${target.locker_number}` : "Transfer"}
-          </Button>
+          {!confirming ? (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
+              <Button onClick={() => setConfirming(true)} disabled={!target || busy}>
+                <ArrowRightLeft className="h-4 w-4 mr-1" />
+                {target ? `Review → ${target.locker_number}` : "Review transfer"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setConfirming(false)} disabled={busy}>Back</Button>
+              <Button onClick={handleTransfer} disabled={busy}>
+                <ArrowRightLeft className="h-4 w-4 mr-1" />
+                {busy ? "Transferring…" : "Confirm transfer"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
