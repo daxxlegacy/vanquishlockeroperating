@@ -475,6 +475,9 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
             <td className="px-3 py-2 text-muted-foreground">{r.department ?? "—"}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.batch_intake_date)}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.termination_date)}</td>
+            <td className="px-3 py-2 text-muted-foreground text-xs max-w-[220px] truncate" title={(!isActive ? (r.remarks || reason || "") : "") || undefined}>
+              {!isActive ? (r.remarks || reason || "—") : "—"}
+            </td>
             <td className="px-3 py-2 text-muted-foreground text-xs">
               {r.key_lock_type ?? "—"}{r.locker_row ? ` · row ${r.locker_row}` : ""}
             </td>
