@@ -51,8 +51,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn: AuthCtx["signIn"] = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return error ? { error: error.message } : {};
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    // Block sign-in if no role has been assigned (account pending admin approval).
+    if (data.user) {
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+      if (!roleRow) {
+        await supabase.auth.signOut();
+        return { error: "Your account is pending admin approval. Please try again later." };
+      }
+    }
+    return {};
   };
 
   const signUp: AuthCtx["signUp"] = async (email, password, fullName) => {
