@@ -77,14 +77,15 @@ export async function syncStatusChangeToOccupancy(locker: Locker): Promise<void>
     .eq("locker_number", locker.locker_number)
     .ilike("status", "active");
 
-  // Also propagate locker metadata edits (location, row, key lock) to any
-  // remaining historical (Terminate) rows so the occupancy page stays in sync.
+  // Propagate locker metadata edits to any remaining historical rows so the
+  // occupancy page stays in sync with the lockers page.
   await supabase
     .from("locker_occupancy")
     .update({
       locker_row: locker.row_label,
       locker_location_by_row: locker.location,
       key_lock_type: locker.key_lock,
+      batch_intake_date: locker.batch_intake ?? null,
     })
     .eq("category", "main")
     .eq("locker_number", locker.locker_number);
