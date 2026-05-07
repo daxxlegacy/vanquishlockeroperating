@@ -418,13 +418,14 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
                     <Th>Dept</Th>
                     <Th>Intake</Th>
                     <Th>Terminated</Th>
+                    <Th>Reason</Th>
                     <Th>Key / Row</Th>
                     <Th>History</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map(([lockerNumber, group]) => (
-                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} onViewHistory={() => setHistoryFor(lockerNumber)} />
+                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
                   ))}
                 </tbody>
               </table>
