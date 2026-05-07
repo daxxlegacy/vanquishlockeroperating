@@ -5,12 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, UserMinus } from "lucide-react";
+import { Trash2, UserMinus, ArrowRightLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { DeleteLockerDialog } from "@/components/DeleteLockerDialog";
 import { TerminateUserDialog } from "@/components/TerminateUserDialog";
+import { TransferLockerDialog } from "@/components/TransferLockerDialog";
 import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -33,6 +34,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [termOpen, setTermOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const isAdmin = role === "admin";
 
   useEffect(() => {
@@ -126,6 +128,14 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
                     <Button
                       size="sm"
                       disabled={saving}
+                      onClick={() => setTransferOpen(true)}
+                      variant="secondary"
+                    >
+                      <ArrowRightLeft className="h-4 w-4 mr-1" /> Transfer
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={saving}
                       onClick={() => setTermOpen(true)}
                       className="bg-warning text-warning-foreground hover:bg-warning/90"
                     >
@@ -165,6 +175,12 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
         onOpenChange={setTermOpen}
         locker={locker}
         onTerminated={() => { onUpdated?.(); onClose(); }}
+      />
+      <TransferLockerDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        locker={locker}
+        onTransferred={() => { onUpdated?.(); onClose(); }}
       />
     </>
   );
