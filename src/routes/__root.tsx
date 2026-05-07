@@ -24,8 +24,16 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LockerOps — Locker Management System" },
+      { title: "VanquishCapital — LockerOps" },
       { name: "description", content: "Manage 10,000+ lockers, track occupancy, and sync employee status from a single file upload." },
+      { property: "og:title", content: "VanquishCapital — LockerOps" },
+      { name: "twitter:title", content: "VanquishCapital — LockerOps" },
+      { property: "og:description", content: "Manage 10,000+ lockers, track occupancy, and sync employee status from a single file upload." },
+      { name: "twitter:description", content: "Manage 10,000+ lockers, track occupancy, and sync employee status from a single file upload." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1e34e11e-fdbb-4ee9-9e79-bbb1f3fa43d1/id-preview-11c5aeba--5d64ac73-9092-43d3-84f9-061c781c7a0c.lovable.app-1778143678341.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1e34e11e-fdbb-4ee9-9e79-bbb1f3fa43d1/id-preview-11c5aeba--5d64ac73-9092-43d3-84f9-061c781c7a0c.lovable.app-1778143678341.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
