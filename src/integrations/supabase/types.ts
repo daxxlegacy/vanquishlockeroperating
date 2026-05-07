@@ -252,6 +252,7 @@ export type Database = {
           status: Database["public"]["Enums"]["locker_status"]
           unit_type: string | null
           updated_at: string
+          work_location: string | null
         }
         Insert: {
           badge_number?: string | null
@@ -272,6 +273,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["locker_status"]
           unit_type?: string | null
           updated_at?: string
+          work_location?: string | null
         }
         Update: {
           badge_number?: string | null
@@ -292,6 +294,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["locker_status"]
           unit_type?: string | null
           updated_at?: string
+          work_location?: string | null
         }
         Relationships: []
       }
