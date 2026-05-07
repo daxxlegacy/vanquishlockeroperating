@@ -231,7 +231,7 @@ function LockersPage() {
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
                   <Th>Locker #</Th><Th>Location</Th><Th>Row</Th><Th>Key Lock</Th><Th>Badge</Th><Th>Employee</Th>
-                  <Th>Status</Th><Th>Phys. Key</Th><Th>Spare Key</Th><Th>Batch</Th>
+                  <Th>Work Location</Th><Th>Status</Th><Th>Phys. Key</Th><Th>Spare Key</Th><Th>Batch</Th>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
