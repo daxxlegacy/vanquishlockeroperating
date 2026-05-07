@@ -5,12 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, UserMinus } from "lucide-react";
+import { Trash2, UserMinus, ArrowRightLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { DeleteLockerDialog } from "@/components/DeleteLockerDialog";
 import { TerminateUserDialog } from "@/components/TerminateUserDialog";
+import { TransferLockerDialog } from "@/components/TransferLockerDialog";
 import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
