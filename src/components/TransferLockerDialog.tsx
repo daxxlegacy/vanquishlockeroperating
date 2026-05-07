@@ -41,6 +41,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   const [targetId, setTargetId] = useState<string | null>(null);
   const [oldAction, setOldAction] = useState<OldAction>("empty");
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const locations = useMemo(() => {
     if (!lockers) return [];
@@ -66,52 +67,26 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   }, [lockers, debounced, locFilter, locker.id]);
 
   const target = useMemo(() => available.find((l) => l.id === targetId) ?? null, [available, targetId]);
+  const oldActionMeta = OLD_ACTIONS.find((o) => o.value === oldAction)!;
 
-  const reset = () => { setSearch(""); setTargetId(null); setOldAction("empty"); };
+  const reset = () => { setSearch(""); setTargetId(null); setOldAction("empty"); setConfirming(false); };
 
   const handleTransfer = async () => {
     if (!target) { toast.error("Pick a target locker"); return; }
-    if (!locker.employee_name && !locker.badge_number) { toast.error("Old locker has no occupant to transfer"); return; }
     setBusy(true);
     try {
-      // 1. Activate target with same occupant
-      const { data: newRow, error: e1 } = await supabase
-        .from("lockers")
-        .update({
-          employee_name: locker.employee_name,
-          badge_number: locker.badge_number,
-          batch_intake: locker.batch_intake,
-          status: "active",
-          remark: locker.remark,
-        })
-        .eq("id", target.id)
-        .select("*")
-        .single();
-      if (e1) throw e1;
+      const { data, error } = await supabase.rpc("transfer_locker" as never, {
+        _from_id: locker.id,
+        _to_id: target.id,
+        _old_action: oldAction,
+      } as never);
+      if (error) throw error;
 
-      // 2. Update old locker
-      const oldUpdate: Partial<Locker> = {
-        employee_name: null,
-        badge_number: null,
-        batch_intake: null,
-      };
-      if (oldAction === "find_spare_key") {
-        oldUpdate.status = "on_hold";
-        oldUpdate.spare_key_status = "missing";
-      } else {
-        oldUpdate.status = oldAction;
+      const result = data as { from: Locker; to: Locker } | null;
+      if (result?.from && result?.to) {
+        await syncStatusChangeToOccupancy(result.from);
+        await syncActivationToOccupancy(result.to);
       }
-      const { data: oldRow, error: e2 } = await supabase
-        .from("lockers")
-        .update(oldUpdate)
-        .eq("id", locker.id)
-        .select("*")
-        .single();
-      if (e2) throw e2;
-
-      // 3. Sync occupancy history
-      await syncStatusChangeToOccupancy(oldRow as Locker);
-      await syncActivationToOccupancy(newRow as Locker);
 
       toast.success(`Transferred ${locker.employee_name ?? locker.badge_number} → ${target.locker_number}`);
       invalidateLockersCache();
@@ -138,81 +113,131 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="grid grid-cols-[1fr_220px] gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search locker #, row, key lock…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+        {!confirming ? (
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-[1fr_220px] gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search locker #, row, key lock…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={locFilter} onValueChange={setLocFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All locations</SelectItem>
+                  {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={locFilter} onValueChange={setLocFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All locations</SelectItem>
-                {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
 
-          <div>
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-              Available lockers · {available.length}
-            </Label>
-            <div className="mt-1 border rounded-md max-h-72 overflow-auto divide-y">
-              {available.length === 0 ? (
-                <div className="px-3 py-6 text-sm text-center text-muted-foreground">
-                  No available lockers match.
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Available lockers · {available.length}
+              </Label>
+              <div className="mt-1 border rounded-md max-h-72 overflow-auto divide-y">
+                {available.length === 0 ? (
+                  <div className="px-3 py-6 text-sm text-center text-muted-foreground">
+                    No available lockers match.
+                  </div>
+                ) : available.map((l) => {
+                  const sel = l.id === targetId;
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => setTargetId(l.id)}
+                      className={`w-full text-left px-3 py-2 text-sm grid grid-cols-[110px_1fr_1fr_auto] gap-3 items-center hover:bg-muted/50 ${sel ? "bg-primary/10" : ""}`}
+                    >
+                      <span className="font-semibold">{l.locker_number}</span>
+                      <span className="truncate text-muted-foreground">{l.location}{l.row_label ? ` · ${l.row_label}` : ""}</span>
+                      <span className="truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</span>
+                      <Badge variant="outline" className="gap-1.5 capitalize">
+                        <span className={`h-2 w-2 rounded-full ${STATUS_SWATCH[l.status as LockerStatus] ?? "bg-muted-foreground"}`} />
+                        {STATUS_LABEL[l.status as LockerStatus] ?? l.status}
+                      </Badge>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label>What to do with old locker {locker.locker_number}?</Label>
+              <Select value={oldAction} onValueChange={(v) => setOldAction(v as OldAction)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {OLD_ACTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {oldActionMeta.desc}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3 py-2">
+            <div className="rounded-md border bg-muted/30 p-4 space-y-3 text-sm">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Occupant</div>
+                <div className="font-semibold">
+                  {locker.employee_name ?? "—"}
+                  {locker.badge_number ? <span className="text-muted-foreground font-normal"> · {locker.badge_number}</span> : null}
                 </div>
-              ) : available.map((l) => {
-                const sel = l.id === targetId;
-                return (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => setTargetId(l.id)}
-                    className={`w-full text-left px-3 py-2 text-sm grid grid-cols-[110px_1fr_1fr_auto] gap-3 items-center hover:bg-muted/50 ${sel ? "bg-primary/10" : ""}`}
-                  >
-                    <span className="font-semibold">{l.locker_number}</span>
-                    <span className="truncate text-muted-foreground">{l.location}{l.row_label ? ` · ${l.row_label}` : ""}</span>
-                    <span className="truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</span>
-                    <Badge variant="outline" className="gap-1.5 capitalize">
-                      <span className={`h-2 w-2 rounded-full ${STATUS_SWATCH[l.status as LockerStatus] ?? "bg-muted-foreground"}`} />
-                      {STATUS_LABEL[l.status as LockerStatus] ?? l.status}
-                    </Badge>
-                  </button>
-                );
-              })}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">From (old locker)</div>
+                  <div className="font-semibold">{locker.locker_number}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {locker.location}{locker.row_label ? ` · ${locker.row_label}` : ""}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">To (new locker)</div>
+                  <div className="font-semibold">{target?.locker_number}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {target?.location}{target?.row_label ? ` · ${target.row_label}` : ""}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Old locker action</div>
+                <div className="font-semibold">{oldActionMeta.label}</div>
+                <div className="text-xs text-muted-foreground">{oldActionMeta.desc}</div>
+              </div>
             </div>
-          </div>
-
-          <div>
-            <Label>What to do with old locker {locker.locker_number}?</Label>
-            <Select value={oldAction} onValueChange={(v) => setOldAction(v as OldAction)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {OLD_ACTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              {OLD_ACTIONS.find((o) => o.value === oldAction)?.desc}
+            <p className="text-xs text-muted-foreground">
+              Runs as a single atomic operation — the target locker is locked so two users can't claim it at the same time.
             </p>
           </div>
-        </div>
+        )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          <Button onClick={handleTransfer} disabled={!target || busy}>
-            <ArrowRightLeft className="h-4 w-4 mr-1" />
-            {busy ? "Transferring…" : target ? `Transfer → ${target.locker_number}` : "Transfer"}
-          </Button>
+          {!confirming ? (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
+              <Button onClick={() => setConfirming(true)} disabled={!target || busy}>
+                <ArrowRightLeft className="h-4 w-4 mr-1" />
+                {target ? `Review → ${target.locker_number}` : "Review transfer"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setConfirming(false)} disabled={busy}>Back</Button>
+              <Button onClick={handleTransfer} disabled={busy}>
+                <ArrowRightLeft className="h-4 w-4 mr-1" />
+                {busy ? "Transferring…" : "Confirm transfer"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

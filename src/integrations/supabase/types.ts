@@ -467,6 +467,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      transfer_locker: {
+        Args: { _from_id: string; _old_action: string; _to_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_permission:
