@@ -41,6 +41,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   const [targetId, setTargetId] = useState<string | null>(null);
   const [oldAction, setOldAction] = useState<OldAction>("empty");
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const locations = useMemo(() => {
     if (!lockers) return [];
@@ -66,52 +67,26 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   }, [lockers, debounced, locFilter, locker.id]);
 
   const target = useMemo(() => available.find((l) => l.id === targetId) ?? null, [available, targetId]);
+  const oldActionMeta = OLD_ACTIONS.find((o) => o.value === oldAction)!;
 
-  const reset = () => { setSearch(""); setTargetId(null); setOldAction("empty"); };
+  const reset = () => { setSearch(""); setTargetId(null); setOldAction("empty"); setConfirming(false); };
 
   const handleTransfer = async () => {
     if (!target) { toast.error("Pick a target locker"); return; }
-    if (!locker.employee_name && !locker.badge_number) { toast.error("Old locker has no occupant to transfer"); return; }
     setBusy(true);
     try {
-      // 1. Activate target with same occupant
-      const { data: newRow, error: e1 } = await supabase
-        .from("lockers")
-        .update({
-          employee_name: locker.employee_name,
-          badge_number: locker.badge_number,
-          batch_intake: locker.batch_intake,
-          status: "active",
-          remark: locker.remark,
-        })
-        .eq("id", target.id)
-        .select("*")
-        .single();
-      if (e1) throw e1;
+      const { data, error } = await supabase.rpc("transfer_locker" as never, {
+        _from_id: locker.id,
+        _to_id: target.id,
+        _old_action: oldAction,
+      } as never);
+      if (error) throw error;
 
-      // 2. Update old locker
-      const oldUpdate: Partial<Locker> = {
-        employee_name: null,
-        badge_number: null,
-        batch_intake: null,
-      };
-      if (oldAction === "find_spare_key") {
-        oldUpdate.status = "on_hold";
-        oldUpdate.spare_key_status = "missing";
-      } else {
-        oldUpdate.status = oldAction;
+      const result = data as { from: Locker; to: Locker } | null;
+      if (result?.from && result?.to) {
+        await syncStatusChangeToOccupancy(result.from);
+        await syncActivationToOccupancy(result.to);
       }
-      const { data: oldRow, error: e2 } = await supabase
-        .from("lockers")
-        .update(oldUpdate)
-        .eq("id", locker.id)
-        .select("*")
-        .single();
-      if (e2) throw e2;
-
-      // 3. Sync occupancy history
-      await syncStatusChangeToOccupancy(oldRow as Locker);
-      await syncActivationToOccupancy(newRow as Locker);
 
       toast.success(`Transferred ${locker.employee_name ?? locker.badge_number} → ${target.locker_number}`);
       invalidateLockersCache();
