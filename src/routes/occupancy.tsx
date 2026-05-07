@@ -108,6 +108,8 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   const importingRef = useRef(false);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [reasons, setReasons] = useState<Map<string, string>>(new Map());
+
   useEffect(() => {
     (async () => {
       setRows(null);
@@ -126,6 +128,22 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         from += 1000;
       }
       setRows(all);
+
+      // Latest termination reason per locker (for Reason column)
+      if (category === "main") {
+        const { data: terms } = await supabase
+          .from("terminations")
+          .select("locker_number,reason,termination_date")
+          .order("termination_date", { ascending: false });
+        const map = new Map<string, string>();
+        for (const t of terms ?? []) {
+          if (!t.locker_number || !t.reason) continue;
+          if (!map.has(t.locker_number)) map.set(t.locker_number, t.reason);
+        }
+        setReasons(map);
+      } else {
+        setReasons(new Map());
+      }
     })();
   }, [category, refresh]);
 
