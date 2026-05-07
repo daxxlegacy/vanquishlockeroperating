@@ -70,28 +70,14 @@ function AuthPage() {
           <h2 className="font-display text-2xl font-bold">Welcome back</h2>
           <p className="text-muted-foreground text-sm mt-1">Sign in to manage lockers.</p>
 
-          <Tabs defaultValue="signin" className="mt-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign in</TabsTrigger>
-              <TabsTrigger value="signup">Create account</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4 mt-4">
-                <Field id="email" label="Email" type="email" value={email} onChange={setEmail} required />
-                <Field id="password" label="Password" type="password" value={password} onChange={setPassword} required />
-                <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-4">
-                <Field id="name" label="Full name" value={fullName} onChange={setFullName} required />
-                <Field id="email2" label="Email" type="email" value={email} onChange={setEmail} required />
-                <Field id="password2" label="Password" type="password" value={password} onChange={setPassword} required minLength={6} />
-                <Button type="submit" className="w-full" disabled={busy}>{busy ? "Creating…" : "Create account"}</Button>
-                <p className="text-xs text-muted-foreground">First account becomes admin automatically.</p>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={handleSignIn} className="space-y-4 mt-6">
+            <Field id="email" label="Email" type="email" value={email} onChange={setEmail} required />
+            <Field id="password" label="Password" type="password" value={password} onChange={setPassword} required />
+            <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
+            <p className="text-xs text-muted-foreground">
+              Public sign-up is disabled. Contact an administrator to request access.
+            </p>
+          </form>
         </div>
       </div>
     </div>
