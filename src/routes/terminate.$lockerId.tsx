@@ -34,9 +34,16 @@ function TerminatePage() {
   const navigate = useNavigate();
   const [locker, setLocker] = useState<Locker | null | undefined>(undefined);
 
-  const today = new Date();
-  const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
-  const [date, setDate] = useState(todayStr);
+  const initialDateStr = (() => {
+    if (typeof window !== "undefined") {
+      const param = new URLSearchParams(window.location.search).get("date");
+      const m = param && /^\d{4}-\d{2}-\d{2}$/.test(param) ? param.match(/^(\d{4})-(\d{2})-(\d{2})$/) : null;
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+    const today = new Date();
+    return `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+  })();
+  const [date, setDate] = useState(initialDateStr);
   const [reason, setReason] = useState("");
   const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "find_spare_key" | "repair" | "on_hold">("empty");
   const [confirmText, setConfirmText] = useState("");
