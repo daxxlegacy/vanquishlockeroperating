@@ -91,7 +91,7 @@ function ReconcilePage() {
   const [restored, setRestored] = useState<{ filename: string | null; savedAt: number } | null>(null);
 
   const clearSaved = (silent = false) => {
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    void clearReconcileState();
     setResults(null);
     setFilename(null);
     setHrCount({ current: 0, terminated: 0 });
@@ -106,28 +106,26 @@ function ReconcilePage() {
     if (!silent) toast.success("Saved reconcile data cleared.");
   };
 
-  // Restore previously reconciled results so navigating away (e.g. opening
-  // a Terminate tab) doesn't force the user to re-upload their HR file.
+  // Restore previously reconciled results (IndexedDB) so navigating away —
+  // e.g. opening a Terminate tab and coming back — doesn't force a re-upload.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw) as SavedState;
-      const savedAt = saved.savedAt ?? 0;
-      if (Date.now() - savedAt > EXPIRY_MS) {
-        localStorage.removeItem(STORAGE_KEY);
+    (async () => {
+      const meta = readReconcileMeta();
+      if (!meta) return;
+      if (Date.now() - meta.savedAt > EXPIRY_MS) {
+        await clearReconcileState();
         toast.info("Previous reconcile data expired — please re-upload.");
         return;
       }
-      if (saved.results?.length >= 0) {
-        setFilename(saved.filename);
-        setResults(saved.results);
-        setHrCount(saved.hrCount);
-        setDbCount(saved.dbCount);
-        if (saved.tab) setTab(saved.tab);
-        setRestored({ filename: saved.filename, savedAt });
-      }
-    } catch { /* ignore */ }
+      const saved = await loadReconcileState<SavedState>();
+      if (!saved || !saved.results) return;
+      setFilename(saved.filename);
+      setResults(saved.results);
+      setHrCount(saved.hrCount);
+      setDbCount(saved.dbCount);
+      if (saved.tab) setTab(saved.tab);
+      setRestored({ filename: saved.filename, savedAt: saved.savedAt });
+    })();
   }, []);
 
   // Auto-clear when the saved state passes its expiry while the page is open.
@@ -142,16 +140,12 @@ function ReconcilePage() {
     return () => clearTimeout(t);
   }, [restored]);
 
-  // Persist whenever results change
+  // Persist whenever results change (IndexedDB — no 5MB quota).
   useEffect(() => {
     if (results === null) return;
-    try {
-      const payload: SavedState = {
-        filename, results, hrCount, dbCount, tab,
-        savedAt: Date.now(),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch { /* ignore quota */ }
+    const savedAt = Date.now();
+    const payload: SavedState = { filename, results, hrCount, dbCount, tab, savedAt };
+    void saveReconcileState(payload, { filename, savedAt });
   }, [filename, results, hrCount, dbCount, tab]);
 
   // Cross-tab + multi-admin realtime sync.
