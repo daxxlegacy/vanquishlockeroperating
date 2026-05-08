@@ -112,9 +112,13 @@ function TerminatePage() {
       });
       if (e1) throw e1;
 
+      const updatePayload: { employee_name: null; badge_number: null; status: "empty" | "cleaning" | "repair" | "on_hold"; spare_key_status?: "missing" } =
+        newStatus === "find_spare_key"
+          ? { employee_name: null, badge_number: null, status: "on_hold", spare_key_status: "missing" }
+          : { employee_name: null, badge_number: null, status: newStatus };
       const { error: e2 } = await supabase
         .from("lockers")
-        .update({ employee_name: null, badge_number: null, status: newStatus })
+        .update(updatePayload)
         .eq("id", locker.id);
       if (e2) throw e2;
 
