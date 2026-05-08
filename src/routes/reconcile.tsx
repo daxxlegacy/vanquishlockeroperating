@@ -63,6 +63,18 @@ interface RowResult {
   reason: string;
 }
 
+const STORAGE_KEY = "reconcile:state";
+const EXPIRY_MS = 8 * 60 * 60 * 1000; // 8 hours
+
+type SavedState = {
+  filename: string | null;
+  results: RowResult[];
+  hrCount: { current: number; terminated: number };
+  dbCount: number;
+  tab: Bucket;
+  savedAt: number;
+};
+
 function ReconcilePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -75,39 +87,116 @@ function ReconcilePage() {
   const [dbCount, setDbCount] = useState(0);
   const [tab, setTab] = useState<Bucket>("must_terminate");
   const [search, setSearch] = useState("");
+  const [restored, setRestored] = useState<{ filename: string | null; savedAt: number } | null>(null);
+
+  const clearSaved = (silent = false) => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    setResults(null);
+    setFilename(null);
+    setHrCount({ current: 0, terminated: 0 });
+    setDbCount(0);
+    setRestored(null);
+    setSearch("");
+    try {
+      const bc = new BroadcastChannel("reconcile:sync");
+      bc.postMessage({ type: "clear" });
+      bc.close();
+    } catch { /* ignore */ }
+    if (!silent) toast.success("Saved reconcile data cleared.");
+  };
 
   // Restore previously reconciled results so navigating away (e.g. opening
   // a Terminate tab) doesn't force the user to re-upload their HR file.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("reconcile:state");
+      const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const saved = JSON.parse(raw) as {
-        filename: string | null;
-        results: RowResult[];
-        hrCount: { current: number; terminated: number };
-        dbCount: number;
-        tab: Bucket;
-      };
+      const saved = JSON.parse(raw) as SavedState;
+      const savedAt = saved.savedAt ?? 0;
+      if (Date.now() - savedAt > EXPIRY_MS) {
+        localStorage.removeItem(STORAGE_KEY);
+        toast.info("Previous reconcile data expired — please re-upload.");
+        return;
+      }
       if (saved.results?.length >= 0) {
         setFilename(saved.filename);
         setResults(saved.results);
         setHrCount(saved.hrCount);
         setDbCount(saved.dbCount);
         if (saved.tab) setTab(saved.tab);
+        setRestored({ filename: saved.filename, savedAt });
       }
     } catch { /* ignore */ }
   }, []);
+
+  // Auto-clear when the saved state passes its expiry while the page is open.
+  useEffect(() => {
+    if (!restored) return;
+    const remaining = restored.savedAt + EXPIRY_MS - Date.now();
+    if (remaining <= 0) { clearSaved(true); return; }
+    const t = setTimeout(() => {
+      clearSaved(true);
+      toast.info("Reconcile data expired and was cleared.");
+    }, remaining);
+    return () => clearTimeout(t);
+  }, [restored]);
 
   // Persist whenever results change
   useEffect(() => {
     if (results === null) return;
     try {
-      localStorage.setItem("reconcile:state", JSON.stringify({
+      const payload: SavedState = {
         filename, results, hrCount, dbCount, tab,
-      }));
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch { /* ignore quota */ }
   }, [filename, results, hrCount, dbCount, tab]);
+
+  // Cross-tab + multi-admin realtime sync.
+  // 1) BroadcastChannel — same-browser tabs share dataset changes instantly.
+  // 2) Supabase realtime on `lockers` — when any admin terminates / updates a
+  //    locker that's part of the current reconcile results, remove that row
+  //    from the bucket so tabs stay consistent.
+  useEffect(() => {
+    if (!results) return;
+
+    const bc = new BroadcastChannel("reconcile:sync");
+    bc.onmessage = (ev) => {
+      const msg = ev.data as { type: string; lockerId?: string };
+      if (msg.type === "clear") {
+        setResults(null); setFilename(null); setRestored(null);
+      } else if (msg.type === "remove" && msg.lockerId) {
+        setResults((prev) => prev ? prev.filter((r) => r.db.id !== msg.lockerId) : prev);
+      }
+    };
+
+    const ids = new Set(results.map((r) => r.db.id));
+    const channel = supabase
+      .channel("reconcile-lockers-sync")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lockers" }, (payload) => {
+        const row = payload.new as { id: string; status?: string; deleted_at?: string | null };
+        if (!ids.has(row.id)) return;
+        // If a locker has been terminated/changed by another admin, drop it
+        // from the reconcile results so the tab reflects the latest state.
+        if (row.status !== "occupied" || row.deleted_at) {
+          setResults((prev) => prev ? prev.filter((r) => r.db.id !== row.id) : prev);
+          bc.postMessage({ type: "remove", lockerId: row.id });
+        }
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "lockers" }, (payload) => {
+        const row = payload.old as { id: string };
+        if (!ids.has(row.id)) return;
+        setResults((prev) => prev ? prev.filter((r) => r.db.id !== row.id) : prev);
+        bc.postMessage({ type: "remove", lockerId: row.id });
+      })
+      .subscribe();
+
+    return () => {
+      bc.close();
+      supabase.removeChannel(channel);
+    };
+  }, [results]);
 
   const handleFile = async (f: File) => {
     setBusy(true);
