@@ -10,6 +10,10 @@ const CreateUserSchema = z.object({
   role: z.enum(["admin", "viewer"]).default("viewer"),
 });
 
+const DeleteUserSchema = z.object({
+  userId: z.string().uuid(),
+});
+
 async function assertAdmin(userId: string) {
   const { data: isAdmin, error } = await supabaseAdmin.rpc("has_role", {
     _user_id: userId,
@@ -48,4 +52,25 @@ export const createUserAccount = createServerFn({ method: "POST" })
     if (insertErr) throw new Error(insertErr.message);
 
     return { ok: true, userId: newUserId };
+  });
+
+export const deleteUserAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => DeleteUserSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    if (data.userId === context.userId) {
+      throw new Error("You cannot delete your own account");
+    }
+
+    // Clean up related rows first (no FK cascade to auth.users in this schema)
+    await supabaseAdmin.from("user_permissions").delete().eq("user_id", data.userId);
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+    await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
+
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message);
+
+    return { ok: true };
   });
