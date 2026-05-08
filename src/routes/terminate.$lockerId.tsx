@@ -198,6 +198,7 @@ function TerminatePage() {
                   <SelectContent>
                     <SelectItem value="empty">Empty (ready for next user)</SelectItem>
                     <SelectItem value="cleaning">Cleaning</SelectItem>
+                    <SelectItem value="find_spare_key">Find spare key</SelectItem>
                     <SelectItem value="repair">Damage / Repair</SelectItem>
                     <SelectItem value="on_hold">On hold</SelectItem>
                   </SelectContent>
