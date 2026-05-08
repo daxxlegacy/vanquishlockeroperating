@@ -35,6 +35,26 @@ function AdminPage() {
   const [roles, setRoles] = useState<Map<string, "admin" | "viewer">>(new Map());
   const [perms, setPerms] = useState<Map<string, Set<AppPermission>>>(new Map());
   const [busy, setBusy] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "viewer">("viewer");
+  const [inviting, setInviting] = useState(false);
+  const invite = useServerFn(inviteUser);
+
+  const sendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    try {
+      await invite({ data: { email: inviteEmail.trim(), role: inviteRole } });
+      toast.success(`Invitation sent to ${inviteEmail}`);
+      setInviteEmail("");
+      await refresh();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to send invite");
+    } finally {
+      setInviting(false);
+    }
+  };
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
