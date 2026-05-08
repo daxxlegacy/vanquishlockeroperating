@@ -127,8 +127,37 @@ function AdminPage() {
           <h1 className="font-display text-3xl font-bold">Admin — User Permissions</h1>
         </div>
         <p className="text-muted-foreground text-sm mb-6">
-          New users sign up via the Auth page and appear here as Pending. Approve them to grant access, then assign role and granular permissions.
+          Invite users by email — they'll receive a sign-in link and gain access immediately with the role you choose. You can adjust granular permissions below.
         </p>
+
+        <Card className="p-4 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Mail className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg font-semibold">Invite a user</h2>
+          </div>
+          <form onSubmit={sendInvite} className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[220px]">
+              <label className="text-xs text-muted-foreground">Email</label>
+              <Input
+                type="email"
+                required
+                placeholder="person@company.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                disabled={inviting}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant={inviteRole === "viewer" ? "default" : "outline"}
+                      onClick={() => setInviteRole("viewer")} disabled={inviting}>Viewer</Button>
+              <Button type="button" size="sm" variant={inviteRole === "admin" ? "default" : "outline"}
+                      onClick={() => setInviteRole("admin")} disabled={inviting}>Admin</Button>
+            </div>
+            <Button type="submit" disabled={inviting}>
+              {inviting ? "Sending…" : "Send invite"}
+            </Button>
+          </form>
+        </Card>
 
         {(() => {
           const pending = profiles.filter((p) => !roles.has(p.id));
