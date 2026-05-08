@@ -553,7 +553,11 @@ function ResultsTable({
                     <Button
                       size="sm"
                       variant={bucket === "rehire_suspect" ? "outline" : "destructive"}
-                      onClick={() => window.open(`/terminate/${r.db.id}`, "_blank")}
+                      onClick={() => {
+                        const td = r.hr?.terminateDate;
+                        const url = td ? `/terminate/${r.db.id}?date=${td}` : `/terminate/${r.db.id}`;
+                        window.open(url, "_blank");
+                      }}
                     >
                       <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate
                     </Button>
