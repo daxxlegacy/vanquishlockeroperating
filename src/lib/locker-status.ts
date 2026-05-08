@@ -31,6 +31,7 @@ export const STATUS_CELL: Record<LockerStatus, string> = {
   empty: "bg-success border-success text-success-foreground",
   repair: "bg-warning border-warning text-warning-foreground",
   cleaning: "bg-sky-500 border-sky-500 text-white",
+  find_spare_key: "bg-orange-500 border-orange-500 text-white",
   broken_door: "bg-rose-700 border-rose-700 text-white",
   on_hold: "bg-amber-300 border-amber-300 text-amber-950",
   reserved: "bg-violet-500 border-violet-500 text-white",
