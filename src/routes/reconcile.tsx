@@ -64,7 +64,6 @@ interface RowResult {
   reason: string;
 }
 
-const STORAGE_KEY = "reconcile:state";
 const EXPIRY_MS = 8 * 60 * 60 * 1000; // 8 hours
 
 type SavedState = {
