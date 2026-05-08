@@ -3,48 +3,44 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const InviteSchema = z.object({
+const CreateUserSchema = z.object({
   email: z.string().trim().email().max(255),
+  password: z.string().min(8).max(128),
+  fullName: z.string().trim().max(120).optional(),
   role: z.enum(["admin", "viewer"]).default("viewer"),
 });
 
-export const inviteUser = createServerFn({ method: "POST" })
+async function assertAdmin(userId: string) {
+  const { data: isAdmin, error } = await supabaseAdmin.rpc("has_role", {
+    _user_id: userId,
+    _role: "admin",
+  });
+  if (error) throw new Error(error.message);
+  if (!isAdmin) throw new Response("Forbidden", { status: 403 });
+}
+
+export const createUserAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => InviteSchema.parse(input))
+  .inputValidator((input: unknown) => CreateUserSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { userId } = context;
+    await assertAdmin(context.userId);
 
-    // Verify caller is admin
-    const { data: isAdmin, error: roleErr } = await supabaseAdmin.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: data.fullName ? { full_name: data.fullName } : undefined,
     });
-    if (roleErr) throw new Error(roleErr.message);
-    if (!isAdmin) throw new Response("Forbidden", { status: 403 });
+    if (error) throw new Error(error.message);
 
-    const redirectTo =
-      process.env.SITE_URL ?? "https://vanquishlockeroperating.lovable.app";
+    const newUserId = created.user?.id;
+    if (!newUserId) throw new Error("User created but no id returned");
 
-    const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      data.email,
-      { redirectTo: `${redirectTo}/auth` }
-    );
-
-    if (error) {
-      // If user already exists, surface a clear message
-      throw new Error(error.message);
-    }
-
-    const newUserId = invited.user?.id;
-    if (!newUserId) throw new Error("Invite succeeded but no user id returned");
-
-    // Ensure profile exists (trigger should create it, but be safe)
     await supabaseAdmin.from("profiles").upsert(
-      { id: newUserId, email: data.email },
+      { id: newUserId, email: data.email, full_name: data.fullName ?? null },
       { onConflict: "id" }
     );
 
-    // Assign role immediately so they aren't stuck pending
     await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
     const { error: insertErr } = await supabaseAdmin
       .from("user_roles")

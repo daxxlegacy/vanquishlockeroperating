@@ -8,9 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Shield, AlertCircle, UserCog } from "lucide-react";
+import { Shield, AlertCircle, UserCog, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { createUserAccount } from "@/lib/admin-invite.functions";
 import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISSIONS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
@@ -37,6 +40,35 @@ function AdminPage() {
   const [perms, setPerms] = useState<Map<string, Set<AppPermission>>>(new Map());
   const [busy, setBusy] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Map<string, CategoryKey>>(new Map());
+  const [newEmail, setNewEmail] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState<"admin" | "viewer">("viewer");
+  const [creating, setCreating] = useState(false);
+  const createUser = useServerFn(createUserAccount);
+
+  const submitCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail.trim() || newPassword.length < 8) return;
+    setCreating(true);
+    try {
+      await createUser({
+        data: {
+          email: newEmail.trim(),
+          password: newPassword,
+          fullName: newName.trim() || undefined,
+          role: newRole,
+        },
+      });
+      toast.success(`Account created for ${newEmail}`);
+      setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("viewer");
+      await refresh();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to create user");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
@@ -118,6 +150,47 @@ function AdminPage() {
         <p className="text-muted-foreground text-sm mb-6">
           Approve pending sign-ups and manage each user's role and granular permissions by category.
         </p>
+
+        <Card className="p-4 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <UserPlus className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg font-semibold">Create user account</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Creates an account immediately with the chosen role. The user can sign in with the email and password you set.
+          </p>
+          <form onSubmit={submitCreate} className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-xs text-muted-foreground">Email</label>
+              <Input type="email" required placeholder="person@company.com"
+                     value={newEmail} onChange={(e) => setNewEmail(e.target.value)} disabled={creating} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Full name (optional)</label>
+              <Input type="text" placeholder="Jane Doe"
+                     value={newName} onChange={(e) => setNewName(e.target.value)} disabled={creating} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Temporary password (min 8 chars)</label>
+              <Input type="text" required minLength={8} placeholder="set a password"
+                     value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={creating} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Role</label>
+              <div className="flex items-center gap-2">
+                <Button type="button" size="sm" variant={newRole === "viewer" ? "default" : "outline"}
+                        onClick={() => setNewRole("viewer")} disabled={creating}>Viewer</Button>
+                <Button type="button" size="sm" variant={newRole === "admin" ? "default" : "outline"}
+                        onClick={() => setNewRole("admin")} disabled={creating}>Admin</Button>
+              </div>
+            </div>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={creating}>
+                {creating ? "Creating…" : "Create account"}
+              </Button>
+            </div>
+          </form>
+        </Card>
 
         {pending.length > 0 && (
           <section className="mb-8">
