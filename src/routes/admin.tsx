@@ -151,6 +151,47 @@ function AdminPage() {
           Approve pending sign-ups and manage each user's role and granular permissions by category.
         </p>
 
+        <Card className="p-4 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <UserPlus className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg font-semibold">Create user account</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Creates an account immediately with the chosen role. The user can sign in with the email and password you set.
+          </p>
+          <form onSubmit={submitCreate} className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-xs text-muted-foreground">Email</label>
+              <Input type="email" required placeholder="person@company.com"
+                     value={newEmail} onChange={(e) => setNewEmail(e.target.value)} disabled={creating} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Full name (optional)</label>
+              <Input type="text" placeholder="Jane Doe"
+                     value={newName} onChange={(e) => setNewName(e.target.value)} disabled={creating} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Temporary password (min 8 chars)</label>
+              <Input type="text" required minLength={8} placeholder="set a password"
+                     value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={creating} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Role</label>
+              <div className="flex items-center gap-2">
+                <Button type="button" size="sm" variant={newRole === "viewer" ? "default" : "outline"}
+                        onClick={() => setNewRole("viewer")} disabled={creating}>Viewer</Button>
+                <Button type="button" size="sm" variant={newRole === "admin" ? "default" : "outline"}
+                        onClick={() => setNewRole("admin")} disabled={creating}>Admin</Button>
+              </div>
+            </div>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={creating}>
+                {creating ? "Creating…" : "Create account"}
+              </Button>
+            </div>
+          </form>
+        </Card>
+
         {pending.length > 0 && (
           <section className="mb-8">
             <h2 className="font-display text-lg font-semibold mb-3 flex items-center gap-2">
