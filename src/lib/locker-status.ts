@@ -4,6 +4,7 @@ export const LOCKER_STATUSES = [
   "empty",
   "repair",
   "cleaning",
+  "find_spare_key",
   "broken_door",
   "on_hold",
   "reserved",
