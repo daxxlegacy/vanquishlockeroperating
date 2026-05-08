@@ -527,7 +527,7 @@ function ResultsTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {visible.map((r, i) => (
               <tr key={r.db.id} className={i % 2 ? "bg-muted/20" : ""}>
                 <Td mono>{r.db.locker_number}</Td>
                 <Td>
