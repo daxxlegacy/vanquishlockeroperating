@@ -18,7 +18,6 @@ import { Route as OperationsRouteImport } from './routes/operations'
 import { Route as OccupancyRouteImport } from './routes/occupancy'
 import { Route as LockersRouteImport } from './routes/lockers'
 import { Route as DuplicatesRouteImport } from './routes/duplicates'
-import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
 import { Route as AutomationRouteImport } from './routes/automation'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -72,11 +71,6 @@ const DuplicatesRoute = DuplicatesRouteImport.update({
   path: '/duplicates',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ChangePasswordRoute = ChangePasswordRouteImport.update({
-  id: '/change-password',
-  path: '/change-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AutomationHistoryRoute = AutomationHistoryRouteImport.update({
   id: '/automation-history',
   path: '/automation-history',
@@ -120,7 +114,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/change-password': typeof ChangePasswordRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -139,7 +132,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/change-password': typeof ChangePasswordRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -159,7 +151,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/change-password': typeof ChangePasswordRoute
   '/duplicates': typeof DuplicatesRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -180,7 +171,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/change-password'
     | '/duplicates'
     | '/lockers'
     | '/occupancy'
@@ -199,7 +189,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/change-password'
     | '/duplicates'
     | '/lockers'
     | '/occupancy'
@@ -218,7 +207,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/change-password'
     | '/duplicates'
     | '/lockers'
     | '/occupancy'
@@ -238,7 +226,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   AutomationRoute: typeof AutomationRoute
   AutomationHistoryRoute: typeof AutomationHistoryRoute
-  ChangePasswordRoute: typeof ChangePasswordRoute
   DuplicatesRoute: typeof DuplicatesRoute
   LockersRoute: typeof LockersRoute
   OccupancyRoute: typeof OccupancyRoute
@@ -316,13 +303,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DuplicatesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/change-password': {
-      id: '/change-password'
-      path: '/change-password'
-      fullPath: '/change-password'
-      preLoaderRoute: typeof ChangePasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/automation-history': {
       id: '/automation-history'
       path: '/automation-history'
@@ -382,7 +362,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   AutomationRoute: AutomationRoute,
   AutomationHistoryRoute: AutomationHistoryRoute,
-  ChangePasswordRoute: ChangePasswordRoute,
   DuplicatesRoute: DuplicatesRoute,
   LockersRoute: LockersRoute,
   OccupancyRoute: OccupancyRoute,
@@ -397,3 +376,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

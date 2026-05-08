@@ -62,13 +62,6 @@ export function AppHeader() {
             {role ?? "..."}
           </Badge>
           <span className="text-sm text-sidebar-foreground/70 hidden md:inline">{user.email}</span>
-          <Link
-            to="/change-password"
-            className="text-sidebar-foreground/80 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent rounded-md p-2"
-            title="Change password"
-          >
-            <Key className="h-4 w-4" />
-          </Link>
           <Button
             variant="ghost"
             size="sm"
