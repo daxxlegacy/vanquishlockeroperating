@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Shield, AlertCircle, UserCog, UserPlus } from "lucide-react";
+import { Shield, AlertCircle, UserCog, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { createUserAccount } from "@/lib/admin-invite.functions";
+import { createUserAccount, deleteUserAccount } from "@/lib/admin-invite.functions";
 import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISSIONS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
@@ -70,6 +70,20 @@ function AdminPage() {
     }
   };
 
+  const removeUser = useServerFn(deleteUserAccount);
+  const handleRemove = async (uid: string, label: string) => {
+    if (!confirm(`Remove ${label}? This permanently deletes their account and all access.`)) return;
+    setBusy(true);
+    try {
+      await removeUser({ data: { userId: uid } });
+      toast.success("User removed");
+      await refresh();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to remove user");
+    } finally {
+      setBusy(false);
+    }
+  };
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
   const refresh = async () => {
@@ -214,6 +228,11 @@ function AdminPage() {
                       <Button size="sm" variant="outline" disabled={busy} onClick={() => setRole(p.id, "admin")}>
                         Approve as Admin
                       </Button>
+                      <Button size="sm" variant="destructive" disabled={busy}
+                              onClick={() => handleRemove(p.id, p.email ?? "this user")}
+                              title="Remove user">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -247,6 +266,11 @@ function AdminPage() {
                                 onClick={() => setRole(p.id, "viewer")}>Viewer</Button>
                         <Button size="sm" variant={r === "admin" ? "default" : "outline"} disabled={busy}
                                 onClick={() => setRole(p.id, "admin")}>Admin</Button>
+                        <Button size="sm" variant="destructive" disabled={busy}
+                                onClick={() => handleRemove(p.id, p.email ?? p.full_name ?? "this user")}
+                                title="Remove user">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </>
                     )}
                   </div>
