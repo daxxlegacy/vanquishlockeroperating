@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +26,7 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
   const [reason, setReason] = useState("");
+  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "repair" | "on_hold">("empty");
   const [busy, setBusy] = useState(false);
 
   const iso = parseBatchIntake(date);
@@ -54,7 +56,7 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
 
       const { error: e2 } = await supabase
         .from("lockers")
-        .update({ employee_name: null, badge_number: null, status: "empty" })
+        .update({ employee_name: null, badge_number: null, status: newStatus })
         .eq("id", locker.id);
       if (e2) throw e2;
 
@@ -94,6 +96,18 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
               className="font-mono"
             />
             {!dateOk && date && <p className="text-xs text-destructive mt-1">Use format dd/mm/yyyy</p>}
+          </div>
+          <div>
+            <Label htmlFor="term-status">Locker status after termination *</Label>
+            <Select value={newStatus} onValueChange={(v) => setNewStatus(v as typeof newStatus)}>
+              <SelectTrigger id="term-status"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="empty">Empty (ready for next user)</SelectItem>
+                <SelectItem value="cleaning">Cleaning</SelectItem>
+                <SelectItem value="repair">Damage / Repair</SelectItem>
+                <SelectItem value="on_hold">On hold</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="term-reason">Reason (optional)</Label>
