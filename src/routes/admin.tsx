@@ -40,6 +40,35 @@ function AdminPage() {
   const [perms, setPerms] = useState<Map<string, Set<AppPermission>>>(new Map());
   const [busy, setBusy] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Map<string, CategoryKey>>(new Map());
+  const [newEmail, setNewEmail] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState<"admin" | "viewer">("viewer");
+  const [creating, setCreating] = useState(false);
+  const createUser = useServerFn(createUserAccount);
+
+  const submitCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail.trim() || newPassword.length < 8) return;
+    setCreating(true);
+    try {
+      await createUser({
+        data: {
+          email: newEmail.trim(),
+          password: newPassword,
+          fullName: newName.trim() || undefined,
+          role: newRole,
+        },
+      });
+      toast.success(`Account created for ${newEmail}`);
+      setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("viewer");
+      await refresh();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to create user");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
