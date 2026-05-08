@@ -44,6 +44,7 @@ export const STATUS_SWATCH: Record<LockerStatus, string> = {
   empty: "bg-success",
   repair: "bg-warning",
   cleaning: "bg-sky-500",
+  find_spare_key: "bg-orange-500",
   broken_door: "bg-rose-700",
   on_hold: "bg-amber-300",
   reserved: "bg-violet-500",
