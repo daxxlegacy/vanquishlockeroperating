@@ -507,6 +507,7 @@ export type Database = {
         | "broken_door"
         | "on_hold"
         | "reserved"
+        | "find_spare_key"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -667,6 +668,7 @@ export const Constants = {
         "broken_door",
         "on_hold",
         "reserved",
+        "find_spare_key",
       ],
     },
   },
