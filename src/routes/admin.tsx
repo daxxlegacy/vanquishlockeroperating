@@ -8,9 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Shield, AlertCircle, UserCog } from "lucide-react";
+import { Shield, AlertCircle, UserCog, Mail } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { inviteUser } from "@/lib/admin-invite.functions";
 import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISSIONS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
@@ -32,6 +35,26 @@ function AdminPage() {
   const [roles, setRoles] = useState<Map<string, "admin" | "viewer">>(new Map());
   const [perms, setPerms] = useState<Map<string, Set<AppPermission>>>(new Map());
   const [busy, setBusy] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "viewer">("viewer");
+  const [inviting, setInviting] = useState(false);
+  const invite = useServerFn(inviteUser);
+
+  const sendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    try {
+      await invite({ data: { email: inviteEmail.trim(), role: inviteRole } });
+      toast.success(`Invitation sent to ${inviteEmail}`);
+      setInviteEmail("");
+      await refresh();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to send invite");
+    } finally {
+      setInviting(false);
+    }
+  };
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
@@ -104,8 +127,37 @@ function AdminPage() {
           <h1 className="font-display text-3xl font-bold">Admin — User Permissions</h1>
         </div>
         <p className="text-muted-foreground text-sm mb-6">
-          New users sign up via the Auth page and appear here as Pending. Approve them to grant access, then assign role and granular permissions.
+          Invite users by email — they'll receive a sign-in link and gain access immediately with the role you choose. You can adjust granular permissions below.
         </p>
+
+        <Card className="p-4 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Mail className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg font-semibold">Invite a user</h2>
+          </div>
+          <form onSubmit={sendInvite} className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[220px]">
+              <label className="text-xs text-muted-foreground">Email</label>
+              <Input
+                type="email"
+                required
+                placeholder="person@company.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                disabled={inviting}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant={inviteRole === "viewer" ? "default" : "outline"}
+                      onClick={() => setInviteRole("viewer")} disabled={inviting}>Viewer</Button>
+              <Button type="button" size="sm" variant={inviteRole === "admin" ? "default" : "outline"}
+                      onClick={() => setInviteRole("admin")} disabled={inviting}>Admin</Button>
+            </div>
+            <Button type="submit" disabled={inviting}>
+              {inviting ? "Sending…" : "Send invite"}
+            </Button>
+          </form>
+        </Card>
 
         {(() => {
           const pending = profiles.filter((p) => !roles.has(p.id));
