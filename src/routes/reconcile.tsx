@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert } from "lucide-react";
+import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 
@@ -63,6 +63,18 @@ interface RowResult {
   reason: string;
 }
 
+const STORAGE_KEY = "reconcile:state";
+const EXPIRY_MS = 8 * 60 * 60 * 1000; // 8 hours
+
+type SavedState = {
+  filename: string | null;
+  results: RowResult[];
+  hrCount: { current: number; terminated: number };
+  dbCount: number;
+  tab: Bucket;
+  savedAt: number;
+};
+
 function ReconcilePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -75,43 +87,121 @@ function ReconcilePage() {
   const [dbCount, setDbCount] = useState(0);
   const [tab, setTab] = useState<Bucket>("must_terminate");
   const [search, setSearch] = useState("");
+  const [restored, setRestored] = useState<{ filename: string | null; savedAt: number } | null>(null);
+
+  const clearSaved = (silent = false) => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    setResults(null);
+    setFilename(null);
+    setHrCount({ current: 0, terminated: 0 });
+    setDbCount(0);
+    setRestored(null);
+    setSearch("");
+    try {
+      const bc = new BroadcastChannel("reconcile:sync");
+      bc.postMessage({ type: "clear" });
+      bc.close();
+    } catch { /* ignore */ }
+    if (!silent) toast.success("Saved reconcile data cleared.");
+  };
 
   // Restore previously reconciled results so navigating away (e.g. opening
   // a Terminate tab) doesn't force the user to re-upload their HR file.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("reconcile:state");
+      const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const saved = JSON.parse(raw) as {
-        filename: string | null;
-        results: RowResult[];
-        hrCount: { current: number; terminated: number };
-        dbCount: number;
-        tab: Bucket;
-      };
+      const saved = JSON.parse(raw) as SavedState;
+      const savedAt = saved.savedAt ?? 0;
+      if (Date.now() - savedAt > EXPIRY_MS) {
+        localStorage.removeItem(STORAGE_KEY);
+        toast.info("Previous reconcile data expired — please re-upload.");
+        return;
+      }
       if (saved.results?.length >= 0) {
         setFilename(saved.filename);
         setResults(saved.results);
         setHrCount(saved.hrCount);
         setDbCount(saved.dbCount);
         if (saved.tab) setTab(saved.tab);
+        setRestored({ filename: saved.filename, savedAt });
       }
     } catch { /* ignore */ }
   }, []);
+
+  // Auto-clear when the saved state passes its expiry while the page is open.
+  useEffect(() => {
+    if (!restored) return;
+    const remaining = restored.savedAt + EXPIRY_MS - Date.now();
+    if (remaining <= 0) { clearSaved(true); return; }
+    const t = setTimeout(() => {
+      clearSaved(true);
+      toast.info("Reconcile data expired and was cleared.");
+    }, remaining);
+    return () => clearTimeout(t);
+  }, [restored]);
 
   // Persist whenever results change
   useEffect(() => {
     if (results === null) return;
     try {
-      localStorage.setItem("reconcile:state", JSON.stringify({
+      const payload: SavedState = {
         filename, results, hrCount, dbCount, tab,
-      }));
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch { /* ignore quota */ }
   }, [filename, results, hrCount, dbCount, tab]);
+
+  // Cross-tab + multi-admin realtime sync.
+  // 1) BroadcastChannel — same-browser tabs share dataset changes instantly.
+  // 2) Supabase realtime on `lockers` — when any admin terminates / updates a
+  //    locker that's part of the current reconcile results, remove that row
+  //    from the bucket so tabs stay consistent.
+  useEffect(() => {
+    if (!results) return;
+
+    const bc = new BroadcastChannel("reconcile:sync");
+    bc.onmessage = (ev) => {
+      const msg = ev.data as { type: string; lockerId?: string };
+      if (msg.type === "clear") {
+        setResults(null); setFilename(null); setRestored(null);
+      } else if (msg.type === "remove" && msg.lockerId) {
+        setResults((prev) => prev ? prev.filter((r) => r.db.id !== msg.lockerId) : prev);
+      }
+    };
+
+    const ids = new Set(results.map((r) => r.db.id));
+    const channel = supabase
+      .channel("reconcile-lockers-sync")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lockers" }, (payload) => {
+        const row = payload.new as { id: string; status?: string; deleted_at?: string | null };
+        if (!ids.has(row.id)) return;
+        // If a locker has been terminated/changed by another admin, drop it
+        // from the reconcile results so the tab reflects the latest state.
+        if (row.status !== "occupied" || row.deleted_at) {
+          setResults((prev) => prev ? prev.filter((r) => r.db.id !== row.id) : prev);
+          bc.postMessage({ type: "remove", lockerId: row.id });
+        }
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "lockers" }, (payload) => {
+        const row = payload.old as { id: string };
+        if (!ids.has(row.id)) return;
+        setResults((prev) => prev ? prev.filter((r) => r.db.id !== row.id) : prev);
+        bc.postMessage({ type: "remove", lockerId: row.id });
+      })
+      .subscribe();
+
+    return () => {
+      bc.close();
+      supabase.removeChannel(channel);
+    };
+  }, [results]);
 
   const handleFile = async (f: File) => {
     setBusy(true);
     setResults(null);
+    setRestored(null);
     setFilename(f.name);
     try {
       const hr = await parseHr(f);
@@ -288,6 +378,19 @@ function ReconcilePage() {
           </div>
         </div>
 
+        {restored && results && (
+          <Alert className="mt-6 border-primary/40 bg-primary/5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertTitle>Restored from previous upload</AlertTitle>
+            <AlertDescription className="text-xs flex items-center gap-2 flex-wrap">
+              File: <span className="font-mono font-semibold">{restored.filename ?? "(unknown)"}</span>
+              <span className="text-muted-foreground">
+                · saved {new Date(restored.savedAt).toLocaleString()} · auto-clears in {formatRemaining(restored.savedAt + EXPIRY_MS - Date.now())}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card className="mt-6 p-6">
           <div className="flex flex-wrap items-center gap-3">
             <Input
@@ -299,6 +402,11 @@ function ReconcilePage() {
             />
             {filename && <Badge variant="outline" className="font-mono">{filename}</Badge>}
             {busy && <span className="text-sm text-muted-foreground">Comparing…</span>}
+            {results && (
+              <Button variant="outline" size="sm" className="ml-auto" onClick={() => clearSaved()}>
+                <RotateCcw className="h-4 w-4 mr-1.5" /> Clear saved data
+              </Button>
+            )}
           </div>
           {results && (
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -371,6 +479,14 @@ function bucketCounts(rs: RowResult[]) {
   const c = { must_terminate: 0, rehire_suspect: 0, missing_from_hr: 0, ok_current: 0 } as Record<Bucket, number>;
   for (const r of rs) c[r.bucket]++;
   return c;
+}
+
+function formatRemaining(ms: number) {
+  if (ms <= 0) return "moments";
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 function ResultsTable({
