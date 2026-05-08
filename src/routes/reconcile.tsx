@@ -481,6 +481,14 @@ function bucketCounts(rs: RowResult[]) {
   return c;
 }
 
+function formatRemaining(ms: number) {
+  if (ms <= 0) return "moments";
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 function ResultsTable({
   rows, bucket, navigate,
 }: {
