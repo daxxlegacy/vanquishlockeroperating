@@ -320,9 +320,10 @@ function ReconcilePage() {
     }
   };
 
+  const debouncedSearch = useDebounced(search, 200);
   const filtered = useMemo(() => {
     if (!results) return [];
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     const inBucket = results.filter((r) => r.bucket === tab);
     if (!q) return inBucket;
     return inBucket.filter((r) => {
@@ -333,7 +334,7 @@ function ReconcilePage() {
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
-  }, [results, tab, search]);
+  }, [results, tab, debouncedSearch]);
 
   const counts = results ? bucketCounts(results) : { must_terminate: 0, rehire_suspect: 0, missing_from_hr: 0, ok_current: 0 };
 
