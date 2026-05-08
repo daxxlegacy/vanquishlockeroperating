@@ -261,6 +261,11 @@ function AdminPage() {
                                 onClick={() => setRole(p.id, "viewer")}>Viewer</Button>
                         <Button size="sm" variant={r === "admin" ? "default" : "outline"} disabled={busy}
                                 onClick={() => setRole(p.id, "admin")}>Admin</Button>
+                        <Button size="sm" variant="destructive" disabled={busy}
+                                onClick={() => handleRemove(p.id, p.email ?? p.full_name ?? "this user")}
+                                title="Remove user">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </>
                     )}
                   </div>
