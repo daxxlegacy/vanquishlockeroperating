@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDebounced } from "@/hooks/use-debounced";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,18 +141,26 @@ function ReconcilePage() {
   }, [restored]);
 
   // Persist whenever results change (IndexedDB — no 5MB quota).
+  // Only re-save when the dataset actually changes, not on tab/search clicks.
+  // Tab is saved alongside but doesn't trigger a write by itself.
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
   useEffect(() => {
     if (results === null) return;
-    const savedAt = Date.now();
-    const payload: SavedState = { filename, results, hrCount, dbCount, tab, savedAt };
+    const savedAt = restored?.savedAt ?? Date.now();
+    const payload: SavedState = { filename, results, hrCount, dbCount, tab: tabRef.current, savedAt };
     void saveReconcileState(payload, { filename, savedAt });
-  }, [filename, results, hrCount, dbCount, tab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results]);
 
-  // Cross-tab + multi-admin realtime sync.
-  // 1) BroadcastChannel — same-browser tabs share dataset changes instantly.
-  // 2) Supabase realtime on `lockers` — when any admin terminates / updates a
-  //    locker that's part of the current reconcile results, remove that row
-  //    from the bucket so tabs stay consistent.
+  // Cross-tab + multi-admin realtime sync — subscribe ONCE per dataset
+  // (results identity), not on every render. Use a ref to read the latest
+  // ids set without re-subscribing.
+  const idsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    idsRef.current = new Set(results?.map((r) => r.db.id) ?? []);
+  }, [results]);
+
   useEffect(() => {
     if (!results) return;
 
@@ -165,14 +174,11 @@ function ReconcilePage() {
       }
     };
 
-    const ids = new Set(results.map((r) => r.db.id));
     const channel = supabase
       .channel("reconcile-lockers-sync")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lockers" }, (payload) => {
         const row = payload.new as { id: string; status?: string; deleted_at?: string | null };
-        if (!ids.has(row.id)) return;
-        // If a locker has been terminated/changed by another admin, drop it
-        // from the reconcile results so the tab reflects the latest state.
+        if (!idsRef.current.has(row.id)) return;
         if (row.status !== "occupied" || row.deleted_at) {
           setResults((prev) => prev ? prev.filter((r) => r.db.id !== row.id) : prev);
           bc.postMessage({ type: "remove", lockerId: row.id });
@@ -180,7 +186,7 @@ function ReconcilePage() {
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "lockers" }, (payload) => {
         const row = payload.old as { id: string };
-        if (!ids.has(row.id)) return;
+        if (!idsRef.current.has(row.id)) return;
         setResults((prev) => prev ? prev.filter((r) => r.db.id !== row.id) : prev);
         bc.postMessage({ type: "remove", lockerId: row.id });
       })
@@ -190,7 +196,9 @@ function ReconcilePage() {
       bc.close();
       supabase.removeChannel(channel);
     };
-  }, [results]);
+    // Only (re)subscribe when we transition between "no results" and "has results".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results === null]);
 
   const handleFile = async (f: File) => {
     setBusy(true);
@@ -312,9 +320,10 @@ function ReconcilePage() {
     }
   };
 
+  const debouncedSearch = useDebounced(search, 200);
   const filtered = useMemo(() => {
     if (!results) return [];
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     const inBucket = results.filter((r) => r.bucket === tab);
     if (!q) return inBucket;
     return inBucket.filter((r) => {
@@ -325,7 +334,7 @@ function ReconcilePage() {
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
-  }, [results, tab, search]);
+  }, [results, tab, debouncedSearch]);
 
   const counts = results ? bucketCounts(results) : { must_terminate: 0, rehire_suspect: 0, missing_from_hr: 0, ok_current: 0 };
 
@@ -493,8 +502,15 @@ function ResultsTable({
   if (rows.length === 0) {
     return <Card className="p-10 text-center text-sm text-muted-foreground">No rows in this bucket.</Card>;
   }
+  const MAX = 500;
+  const visible = rows.slice(0, MAX);
   return (
     <Card className="overflow-hidden">
+      {rows.length > MAX && (
+        <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-b">
+          Showing first {MAX.toLocaleString()} of {rows.length.toLocaleString()} rows — refine search to narrow down.
+        </div>
+      )}
       <div className="max-h-[60vh] overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 sticky top-0 z-10">
@@ -511,7 +527,7 @@ function ResultsTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {visible.map((r, i) => (
               <tr key={r.db.id} className={i % 2 ? "bg-muted/20" : ""}>
                 <Td mono>{r.db.locker_number}</Td>
                 <Td>
