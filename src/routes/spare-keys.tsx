@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -59,7 +60,7 @@ export const Route = createFileRoute("/spare-keys")({
       { name: "description", content: "Listing of every locker's spare key status, synced from the spare key sheet." },
     ],
   }),
-  component: SpareKeysPage,
+  component: () => (<PageGuard permission="page_spare_keys"><SpareKeysPage /></PageGuard>),
 });
 
 function SpareKeysPage() {

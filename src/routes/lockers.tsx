@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -53,7 +54,7 @@ export const Route = createFileRoute("/lockers")({
       { name: "description", content: "Searchable, filterable table of every locker and assigned employee." },
     ],
   }),
-  component: LockersPage,
+  component: () => (<PageGuard permission="page_lockers"><LockersPage /></PageGuard>),
 });
 
 function LockersPage() {

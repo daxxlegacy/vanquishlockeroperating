@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/reconcile")({
       { name: "description", content: "Compare HR listing against active locker occupants to find users who must be terminated, rehired, or are missing from HR." },
     ],
   }),
-  component: ReconcilePage,
+  component: () => (<PageGuard permission="page_reconcile"><ReconcilePage /></PageGuard>),
 });
 
 type HrPerson = {
