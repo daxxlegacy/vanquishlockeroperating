@@ -11,14 +11,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Shield, AlertCircle, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { type AppPermission, PERMISSION_LABELS } from "@/lib/permissions";
+import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISSIONS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — LockerOps" }] }),
   component: AdminPage,
 });
 
-const ALL_PERMS: AppPermission[] = ["locker_management", "termination_actions", "upload_roster", "run_automation"];
+const ALL_PERMS: AppPermission[] = [...PAGE_PERMISSIONS, ...ACTION_PERMISSIONS];
 
 type Profile = { id: string; email: string | null; full_name: string | null };
 type RoleRow = { user_id: string; role: "admin" | "viewer" };
