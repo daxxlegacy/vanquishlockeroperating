@@ -942,7 +942,7 @@ function getStr(row: Record<string, unknown>, key: string | undefined): string |
 }
 
 function mapStatus(raw: string | null, hasBadge: boolean): LockerRow["status"] {
-  return normalizeLockerStatus(raw, hasBadge);
+  return normalizeLockerStatus(raw, hasBadge) as LockerRow["status"];
 }
 
 function mapKeyStatus(raw: string | null): LockerRow["physical_key_status"] {

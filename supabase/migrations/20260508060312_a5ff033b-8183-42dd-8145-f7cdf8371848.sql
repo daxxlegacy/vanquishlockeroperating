@@ -1,0 +1,1 @@
+ALTER TYPE locker_status ADD VALUE IF NOT EXISTS 'find_spare_key';
