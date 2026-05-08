@@ -81,7 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    try { localStorage.removeItem("reconcile:state"); } catch { /* ignore */ }
+    try {
+      const { clearReconcileState } = await import("@/lib/reconcile-store");
+      await clearReconcileState();
+    } catch { /* ignore */ }
     await supabase.auth.signOut();
   };
 
