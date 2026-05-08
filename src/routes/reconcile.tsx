@@ -378,6 +378,19 @@ function ReconcilePage() {
           </div>
         </div>
 
+        {restored && results && (
+          <Alert className="mt-6 border-primary/40 bg-primary/5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertTitle>Restored from previous upload</AlertTitle>
+            <AlertDescription className="text-xs flex items-center gap-2 flex-wrap">
+              File: <span className="font-mono font-semibold">{restored.filename ?? "(unknown)"}</span>
+              <span className="text-muted-foreground">
+                · saved {new Date(restored.savedAt).toLocaleString()} · auto-clears in {formatRemaining(restored.savedAt + EXPIRY_MS - Date.now())}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card className="mt-6 p-6">
           <div className="flex flex-wrap items-center gap-3">
             <Input
@@ -389,6 +402,11 @@ function ReconcilePage() {
             />
             {filename && <Badge variant="outline" className="font-mono">{filename}</Badge>}
             {busy && <span className="text-sm text-muted-foreground">Comparing…</span>}
+            {results && (
+              <Button variant="outline" size="sm" className="ml-auto" onClick={() => clearSaved()}>
+                <RotateCcw className="h-4 w-4 mr-1.5" /> Clear saved data
+              </Button>
+            )}
           </div>
           {results && (
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
