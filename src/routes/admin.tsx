@@ -11,14 +11,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Shield, AlertCircle, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { type AppPermission, PERMISSION_LABELS } from "@/lib/permissions";
+import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISSIONS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — LockerOps" }] }),
   component: AdminPage,
 });
 
-const ALL_PERMS: AppPermission[] = ["locker_management", "termination_actions", "upload_roster", "run_automation"];
+const ALL_PERMS: AppPermission[] = [...PAGE_PERMISSIONS, ...ACTION_PERMISSIONS];
 
 type Profile = { id: string; email: string | null; full_name: string | null };
 type RoleRow = { user_id: string; role: "admin" | "viewer" };
@@ -169,19 +169,41 @@ function AdminPage() {
                           )}
                         </div>
                       </div>
-                      <div className="grid sm:grid-cols-2 gap-2 pt-3 border-t">
-                        {ALL_PERMS.map((perm) => {
-                          const checked = r === "admin" || userPerms.has(perm);
-                          return (
-                            <label key={perm} className={`flex items-start gap-2 text-sm ${r === "admin" ? "opacity-60" : ""}`}>
-                              <Checkbox
-                                checked={checked} disabled={busy || r === "admin"}
-                                onCheckedChange={(v) => togglePerm(p.id, perm, !!v)}
-                              />
-                              <span>{PERMISSION_LABELS[perm]}</span>
-                            </label>
-                          );
-                        })}
+                      <div className="pt-3 border-t space-y-3">
+                        <div>
+                          <div className="text-xs font-semibold uppercase text-muted-foreground mb-2">Page access</div>
+                          <div className="grid sm:grid-cols-2 gap-2">
+                            {PAGE_PERMISSIONS.map((perm) => {
+                              const checked = r === "admin" || userPerms.has(perm);
+                              return (
+                                <label key={perm} className={`flex items-start gap-2 text-sm ${r === "admin" ? "opacity-60" : ""}`}>
+                                  <Checkbox
+                                    checked={checked} disabled={busy || r === "admin"}
+                                    onCheckedChange={(v) => togglePerm(p.id, perm, !!v)}
+                                  />
+                                  <span>{PERMISSION_LABELS[perm]}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold uppercase text-muted-foreground mb-2">Actions</div>
+                          <div className="grid sm:grid-cols-2 gap-2">
+                            {ACTION_PERMISSIONS.map((perm) => {
+                              const checked = r === "admin" || userPerms.has(perm);
+                              return (
+                                <label key={perm} className={`flex items-start gap-2 text-sm ${r === "admin" ? "opacity-60" : ""}`}>
+                                  <Checkbox
+                                    checked={checked} disabled={busy || r === "admin"}
+                                    onCheckedChange={(v) => togglePerm(p.id, perm, !!v)}
+                                  />
+                                  <span>{PERMISSION_LABELS[perm]}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                       {r === "admin" && (
                         <p className="text-xs text-muted-foreground mt-2">Admins automatically have all permissions.</p>

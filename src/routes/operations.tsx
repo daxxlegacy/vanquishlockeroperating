@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageGuard } from "@/components/PageGuard";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/operations")({
       { name: "description", content: "Terminations, automation, run history, and deletion audit in one place." },
     ],
   }),
-  component: OperationsPage,
+  component: () => (<PageGuard permission="page_operations"><OperationsPage /></PageGuard>),
 });
 
 function OperationsPage() {

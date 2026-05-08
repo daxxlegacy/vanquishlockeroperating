@@ -481,6 +481,14 @@ export type Database = {
         | "termination_actions"
         | "upload_roster"
         | "run_automation"
+        | "page_map"
+        | "page_lockers"
+        | "page_spare_keys"
+        | "page_occupancy"
+        | "page_duplicates"
+        | "page_operations"
+        | "page_reconcile"
+        | "page_upload"
       app_role: "admin" | "viewer"
       key_status:
         | "available"
@@ -631,6 +639,14 @@ export const Constants = {
         "termination_actions",
         "upload_roster",
         "run_automation",
+        "page_map",
+        "page_lockers",
+        "page_spare_keys",
+        "page_occupancy",
+        "page_duplicates",
+        "page_operations",
+        "page_reconcile",
+        "page_upload",
       ],
       app_role: ["admin", "viewer"],
       key_status: [

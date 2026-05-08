@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,7 +54,7 @@ export const Route = createFileRoute("/occupancy")({
       { name: "description", content: "Current and historical locker occupancy across Main, Staff, and Shoe lockers, including previous owners and terminations." },
     ],
   }),
-  component: OccupancyPage,
+  component: () => (<PageGuard permission="page_occupancy"><OccupancyPage /></PageGuard>),
 });
 
 function OccupancyPage() {

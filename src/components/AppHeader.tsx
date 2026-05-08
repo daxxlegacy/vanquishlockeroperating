@@ -1,25 +1,27 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Users, Settings, Key, UserCog, History, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { usePermissions, type AppPermission } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export function AppHeader() {
   const { user, role, signOut } = useAuth();
+  const { has } = usePermissions();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
   if (!user) return null;
 
-  const navItems = [
-    { to: "/", label: "Map", icon: LayoutGrid },
-    { to: "/lockers", label: "Lockers", icon: TableIcon },
-    { to: "/spare-keys", label: "Spare Keys", icon: Key },
-    { to: "/occupancy", label: "Occupancy", icon: History },
-    { to: "/duplicates", label: "Duplicates", icon: Users },
-    { to: "/operations", label: "Operations", icon: Settings },
-    { to: "/reconcile", label: "Reconcile", icon: ShieldAlert, adminOnly: true },
-    { to: "/upload", label: "Upload", icon: Upload, adminOnly: true },
+  const navItems: { to: string; label: string; icon: typeof LayoutGrid; perm?: AppPermission; adminOnly?: boolean }[] = [
+    { to: "/", label: "Map", icon: LayoutGrid, perm: "page_map" },
+    { to: "/lockers", label: "Lockers", icon: TableIcon, perm: "page_lockers" },
+    { to: "/spare-keys", label: "Spare Keys", icon: Key, perm: "page_spare_keys" },
+    { to: "/occupancy", label: "Occupancy", icon: History, perm: "page_occupancy" },
+    { to: "/duplicates", label: "Duplicates", icon: Users, perm: "page_duplicates" },
+    { to: "/operations", label: "Operations", icon: Settings, perm: "page_operations" },
+    { to: "/reconcile", label: "Reconcile", icon: ShieldAlert, perm: "page_reconcile" },
+    { to: "/upload", label: "Upload", icon: Upload, perm: "page_upload" },
     { to: "/admin", label: "Admin", icon: UserCog, adminOnly: true },
   ];
 
@@ -35,6 +37,7 @@ export function AppHeader() {
         <nav className="flex items-center gap-1">
           {navItems.map((item) => {
             if (item.adminOnly && role !== "admin") return null;
+            if (item.perm && !has(item.perm)) return null;
             const active = path === item.to;
             const Icon = item.icon;
             return (

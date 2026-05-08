@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState } from "react";
 // supabase client no longer needed here — data comes from useLockers cache
 import { useAuth } from "@/lib/auth";
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/duplicates")({
       { name: "description", content: "Employee names assigned to more than one locker." },
     ],
   }),
-  component: DuplicatesPage,
+  component: () => (<PageGuard permission="page_duplicates"><DuplicatesPage /></PageGuard>),
 });
 
 function normName(s: string | null | undefined) {

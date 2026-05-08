@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Interactive locker map mirroring the physical layout of each area." },
     ],
   }),
-  component: MapPage,
+  component: () => (<PageGuard permission="page_map"><MapPage /></PageGuard>),
 });
 
 import { STATUS_CELL, STATUS_SWATCH, STATUS_LABEL, LOCKER_STATUSES, type LockerStatus } from "@/lib/locker-status";

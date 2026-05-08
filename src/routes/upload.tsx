@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/upload")({
       { name: "description", content: "Upload locker data file. The system auto-detects columns and syncs records." },
     ],
   }),
-  component: UploadPage,
+  component: () => (<PageGuard permission="page_upload"><UploadPage /></PageGuard>),
 });
 
 interface UploadHistoryRow {
