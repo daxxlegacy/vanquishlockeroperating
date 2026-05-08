@@ -141,18 +141,26 @@ function ReconcilePage() {
   }, [restored]);
 
   // Persist whenever results change (IndexedDB — no 5MB quota).
+  // Only re-save when the dataset actually changes, not on tab/search clicks.
+  // Tab is saved alongside but doesn't trigger a write by itself.
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
   useEffect(() => {
     if (results === null) return;
-    const savedAt = Date.now();
-    const payload: SavedState = { filename, results, hrCount, dbCount, tab, savedAt };
+    const savedAt = restored?.savedAt ?? Date.now();
+    const payload: SavedState = { filename, results, hrCount, dbCount, tab: tabRef.current, savedAt };
     void saveReconcileState(payload, { filename, savedAt });
-  }, [filename, results, hrCount, dbCount, tab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results]);
 
-  // Cross-tab + multi-admin realtime sync.
-  // 1) BroadcastChannel — same-browser tabs share dataset changes instantly.
-  // 2) Supabase realtime on `lockers` — when any admin terminates / updates a
-  //    locker that's part of the current reconcile results, remove that row
-  //    from the bucket so tabs stay consistent.
+  // Cross-tab + multi-admin realtime sync — subscribe ONCE per dataset
+  // (results identity), not on every render. Use a ref to read the latest
+  // ids set without re-subscribing.
+  const idsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    idsRef.current = new Set(results?.map((r) => r.db.id) ?? []);
+  }, [results]);
+
   useEffect(() => {
     if (!results) return;
 
@@ -166,14 +174,11 @@ function ReconcilePage() {
       }
     };
 
-    const ids = new Set(results.map((r) => r.db.id));
     const channel = supabase
       .channel("reconcile-lockers-sync")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "lockers" }, (payload) => {
         const row = payload.new as { id: string; status?: string; deleted_at?: string | null };
-        if (!ids.has(row.id)) return;
-        // If a locker has been terminated/changed by another admin, drop it
-        // from the reconcile results so the tab reflects the latest state.
+        if (!idsRef.current.has(row.id)) return;
         if (row.status !== "occupied" || row.deleted_at) {
           setResults((prev) => prev ? prev.filter((r) => r.db.id !== row.id) : prev);
           bc.postMessage({ type: "remove", lockerId: row.id });
@@ -181,7 +186,7 @@ function ReconcilePage() {
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "lockers" }, (payload) => {
         const row = payload.old as { id: string };
-        if (!ids.has(row.id)) return;
+        if (!idsRef.current.has(row.id)) return;
         setResults((prev) => prev ? prev.filter((r) => r.db.id !== row.id) : prev);
         bc.postMessage({ type: "remove", lockerId: row.id });
       })
@@ -191,7 +196,9 @@ function ReconcilePage() {
       bc.close();
       supabase.removeChannel(channel);
     };
-  }, [results]);
+    // Only (re)subscribe when we transition between "no results" and "has results".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results === null]);
 
   const handleFile = async (f: File) => {
     setBusy(true);
