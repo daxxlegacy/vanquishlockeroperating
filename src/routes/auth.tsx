@@ -89,6 +89,13 @@ function AuthPage() {
                 <Field id="email" label="Email" type="email" value={email} onChange={setEmail} required />
                 <Field id="password" label="Password" type="password" value={password} onChange={setPassword} required />
                 <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                >
+                  Forgot your password?
+                </button>
               </form>
             </TabsContent>
 
