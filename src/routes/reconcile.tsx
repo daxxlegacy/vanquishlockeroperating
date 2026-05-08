@@ -76,6 +76,39 @@ function ReconcilePage() {
   const [tab, setTab] = useState<Bucket>("must_terminate");
   const [search, setSearch] = useState("");
 
+  // Restore previously reconciled results so navigating away (e.g. opening
+  // a Terminate tab) doesn't force the user to re-upload their HR file.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("reconcile:state");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        filename: string | null;
+        results: RowResult[];
+        hrCount: { current: number; terminated: number };
+        dbCount: number;
+        tab: Bucket;
+      };
+      if (saved.results?.length >= 0) {
+        setFilename(saved.filename);
+        setResults(saved.results);
+        setHrCount(saved.hrCount);
+        setDbCount(saved.dbCount);
+        if (saved.tab) setTab(saved.tab);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist whenever results change
+  useEffect(() => {
+    if (results === null) return;
+    try {
+      localStorage.setItem("reconcile:state", JSON.stringify({
+        filename, results, hrCount, dbCount, tab,
+      }));
+    } catch { /* ignore quota */ }
+  }, [filename, results, hrCount, dbCount, tab]);
+
   const handleFile = async (f: File) => {
     setBusy(true);
     setResults(null);
