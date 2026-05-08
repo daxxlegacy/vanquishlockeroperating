@@ -502,8 +502,15 @@ function ResultsTable({
   if (rows.length === 0) {
     return <Card className="p-10 text-center text-sm text-muted-foreground">No rows in this bucket.</Card>;
   }
+  const MAX = 500;
+  const visible = rows.slice(0, MAX);
   return (
     <Card className="overflow-hidden">
+      {rows.length > MAX && (
+        <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-b">
+          Showing first {MAX.toLocaleString()} of {rows.length.toLocaleString()} rows — refine search to narrow down.
+        </div>
+      )}
       <div className="max-h-[60vh] overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 sticky top-0 z-10">
