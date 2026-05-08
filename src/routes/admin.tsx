@@ -70,6 +70,20 @@ function AdminPage() {
     }
   };
 
+  const removeUser = useServerFn(deleteUserAccount);
+  const handleRemove = async (uid: string, label: string) => {
+    if (!confirm(`Remove ${label}? This permanently deletes their account and all access.`)) return;
+    setBusy(true);
+    try {
+      await removeUser({ data: { userId: uid } });
+      toast.success("User removed");
+      await refresh();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to remove user");
+    } finally {
+      setBusy(false);
+    }
+  };
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
   const refresh = async () => {
