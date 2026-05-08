@@ -18,6 +18,7 @@ export const STATUS_LABEL: Record<LockerStatus, string> = {
   empty: "Empty",
   repair: "Repair",
   cleaning: "Cleaning",
+  find_spare_key: "Find spare key",
   broken_door: "Broken door",
   on_hold: "On hold",
   reserved: "Reserved",
