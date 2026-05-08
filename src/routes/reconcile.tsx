@@ -201,6 +201,7 @@ function ReconcilePage() {
   const handleFile = async (f: File) => {
     setBusy(true);
     setResults(null);
+    setRestored(null);
     setFilename(f.name);
     try {
       const hr = await parseHr(f);
