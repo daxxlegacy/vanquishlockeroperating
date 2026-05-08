@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserMinus, ArrowLeft, AlertCircle } from "lucide-react";
@@ -37,6 +38,7 @@ function TerminatePage() {
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
   const [reason, setReason] = useState("");
+  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "repair" | "on_hold">("empty");
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -112,7 +114,7 @@ function TerminatePage() {
 
       const { error: e2 } = await supabase
         .from("lockers")
-        .update({ employee_name: null, badge_number: null, status: "empty" })
+        .update({ employee_name: null, badge_number: null, status: newStatus })
         .eq("id", locker.id);
       if (e2) throw e2;
 
@@ -184,6 +186,19 @@ function TerminatePage() {
                 ) : (
                   <p className="text-xs text-muted-foreground mt-1">Looks good — will save as {iso}.</p>
                 )}
+              </div>
+              <div>
+                <Label htmlFor="ts">Locker status after termination *</Label>
+                <Select value={newStatus} onValueChange={(v) => setNewStatus(v as typeof newStatus)}>
+                  <SelectTrigger id="ts"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="empty">Empty (ready for next user)</SelectItem>
+                    <SelectItem value="cleaning">Cleaning</SelectItem>
+                    <SelectItem value="repair">Damage / Repair</SelectItem>
+                    <SelectItem value="on_hold">On hold</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Choose what happens to the locker after the user is released.</p>
               </div>
               <div>
                 <Label htmlFor="tr">Reason (optional)</Label>
