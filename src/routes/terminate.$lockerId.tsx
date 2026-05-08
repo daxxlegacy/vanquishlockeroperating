@@ -38,7 +38,7 @@ function TerminatePage() {
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
   const [reason, setReason] = useState("");
-  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "repair" | "on_hold">("empty");
+  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "find_spare_key" | "repair" | "on_hold">("empty");
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -112,9 +112,13 @@ function TerminatePage() {
       });
       if (e1) throw e1;
 
+      const updatePayload: { employee_name: null; badge_number: null; status: "empty" | "cleaning" | "repair" | "on_hold"; spare_key_status?: "missing" } =
+        newStatus === "find_spare_key"
+          ? { employee_name: null, badge_number: null, status: "on_hold", spare_key_status: "missing" }
+          : { employee_name: null, badge_number: null, status: newStatus };
       const { error: e2 } = await supabase
         .from("lockers")
-        .update({ employee_name: null, badge_number: null, status: newStatus })
+        .update(updatePayload)
         .eq("id", locker.id);
       if (e2) throw e2;
 
@@ -194,6 +198,7 @@ function TerminatePage() {
                   <SelectContent>
                     <SelectItem value="empty">Empty (ready for next user)</SelectItem>
                     <SelectItem value="cleaning">Cleaning</SelectItem>
+                    <SelectItem value="find_spare_key">Find spare key</SelectItem>
                     <SelectItem value="repair">Damage / Repair</SelectItem>
                     <SelectItem value="on_hold">On hold</SelectItem>
                   </SelectContent>
