@@ -38,7 +38,7 @@ function TerminatePage() {
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
   const [reason, setReason] = useState("");
-  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "repair" | "on_hold">("empty");
+  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "find_spare_key" | "repair" | "on_hold">("empty");
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
