@@ -68,7 +68,6 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
         badge_number: locker.badge_number,
         employee_name: locker.employee_name,
         status: locker.status,
-        physical_key_status: locker.physical_key_status,
         spare_key_status: locker.spare_key_status,
         remark: locker.remark,
         batch_intake: locker.batch_intake,
@@ -109,7 +108,6 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
             <Field label="Work Location" value={locker.work_location ?? ""} onChange={(v) => update("work_location", v)} disabled={!isAdmin} />
             <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
             <Field label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
-            <SelectField label="Physical Key" value={locker.physical_key_status ?? "unknown"} options={KEYS} onChange={(v) => update("physical_key_status", v)} disabled={!isAdmin} />
             <SelectField label="Spare Key" value={locker.spare_key_status ?? "unknown"} options={KEYS} onChange={(v) => update("spare_key_status", v)} disabled={!isAdmin} />
             <div className="col-span-2">
               <Label>Remark</Label>
