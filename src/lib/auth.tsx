@@ -25,7 +25,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      setUser(s?.user ?? null);
+      setUser((prev) => {
+        const next = s?.user ?? null;
+        if (prev?.id === next?.id) return prev;
+        return next;
+      });
       if (s?.user) {
         setTimeout(() => fetchRole(s.user.id), 0);
       } else {
