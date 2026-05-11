@@ -58,6 +58,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
         (l.status === "empty" || l.status === "cleaning" || l.status === "repair") &&
         !l.badge_number && !l.employee_name &&
         (locFilter === "all" || l.location === locFilter) &&
+        (statusFilter === "all" || l.status === statusFilter) &&
         (!q ||
           l.locker_number.toLowerCase().includes(q) ||
           (l.row_label ?? "").toLowerCase().includes(q) ||
@@ -65,7 +66,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
       )
       .sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number))
       .slice(0, 200);
-  }, [lockers, debounced, locFilter, locker.id]);
+  }, [lockers, debounced, locFilter, statusFilter, locker.id]);
 
   const target = useMemo(() => available.find((l) => l.id === targetId) ?? null, [available, targetId]);
   const oldActionMeta = OLD_ACTIONS.find((o) => o.value === oldAction)!;
