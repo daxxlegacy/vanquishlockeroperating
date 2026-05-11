@@ -55,14 +55,15 @@ export function usePermissions() {
   const [perms, setPerms] = useState<Set<AppPermission>>(new Set());
   const [loaded, setLoaded] = useState(false);
 
+  const userId = user?.id ?? null;
   useEffect(() => {
-    if (!user) { setPerms(new Set()); setLoaded(true); return; }
+    if (!userId) { setPerms(new Set()); setLoaded(true); return; }
     setLoaded(false);
-    supabase.from("user_permissions").select("permission").eq("user_id", user.id).then(({ data }) => {
+    supabase.from("user_permissions").select("permission").eq("user_id", userId).then(({ data }) => {
       setPerms(new Set((data ?? []).map((d) => d.permission as AppPermission)));
       setLoaded(true);
     });
-  }, [user]);
+  }, [userId]);
 
   const has = (p: AppPermission) => role === "admin" || perms.has(p);
   return { has, perms, loaded, isAdmin: role === "admin" };
