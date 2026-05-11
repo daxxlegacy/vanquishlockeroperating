@@ -46,6 +46,42 @@ const COLS = [
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
 const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
+const LOCKERS_FILTER_STORAGE_KEY = "lockerops.lockers.filters";
+
+type LockerFilterState = {
+  search: string;
+  statusFilter: string;
+  locFilter: string;
+  keyLockFilter: string;
+};
+
+const DEFAULT_LOCKER_FILTERS: LockerFilterState = {
+  search: "",
+  statusFilter: "all",
+  locFilter: "all",
+  keyLockFilter: "all",
+};
+
+function readLockerFilters(): LockerFilterState {
+  if (typeof window === "undefined") return DEFAULT_LOCKER_FILTERS;
+  try {
+    const stored = window.localStorage.getItem(LOCKERS_FILTER_STORAGE_KEY);
+    if (!stored) return DEFAULT_LOCKER_FILTERS;
+    const parsed = JSON.parse(stored) as Partial<LockerFilterState>;
+    return { ...DEFAULT_LOCKER_FILTERS, ...parsed };
+  } catch {
+    return DEFAULT_LOCKER_FILTERS;
+  }
+}
+
+function writeLockerFilters(filters: LockerFilterState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LOCKERS_FILTER_STORAGE_KEY, JSON.stringify(filters));
+  } catch {
+    // Ignore storage failures so filters still work normally for the current session.
+  }
+}
 
 export const Route = createFileRoute("/lockers")({
   head: () => ({
@@ -66,10 +102,25 @@ function LockersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [keyLockFilter, setKeyLockFilter] = useState("all");
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
+
+  useEffect(() => {
+    const stored = readLockerFilters();
+    setSearch(stored.search);
+    setStatusFilter(stored.statusFilter);
+    setLocFilter(stored.locFilter);
+    setKeyLockFilter(stored.keyLockFilter);
+    setFiltersHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    writeLockerFilters({ search, statusFilter, locFilter, keyLockFilter });
+  }, [filtersHydrated, search, statusFilter, locFilter, keyLockFilter]);
 
   // Sort once when underlying data changes (avoid re-sorting on every render)
   const lockers = useMemo(() => {
