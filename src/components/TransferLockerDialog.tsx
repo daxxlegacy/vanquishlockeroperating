@@ -38,6 +38,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   const [search, setSearch] = useState("");
   const debounced = useDebounced(search, 180);
   const [locFilter, setLocFilter] = useState<string>(locker.location);
+  const [statusFilter, setStatusFilter] = useState<"all" | "empty" | "cleaning" | "repair">("all");
   const [targetId, setTargetId] = useState<string | null>(null);
   const [oldAction, setOldAction] = useState<OldAction>("empty");
   const [busy, setBusy] = useState(false);
