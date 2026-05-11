@@ -38,6 +38,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   const [search, setSearch] = useState("");
   const debounced = useDebounced(search, 180);
   const [locFilter, setLocFilter] = useState<string>(locker.location);
+  const [statusFilter, setStatusFilter] = useState<"all" | "empty" | "cleaning" | "repair">("all");
   const [targetId, setTargetId] = useState<string | null>(null);
   const [oldAction, setOldAction] = useState<OldAction>("empty");
   const [busy, setBusy] = useState(false);
@@ -57,6 +58,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
         (l.status === "empty" || l.status === "cleaning" || l.status === "repair") &&
         !l.badge_number && !l.employee_name &&
         (locFilter === "all" || l.location === locFilter) &&
+        (statusFilter === "all" || l.status === statusFilter) &&
         (!q ||
           l.locker_number.toLowerCase().includes(q) ||
           (l.row_label ?? "").toLowerCase().includes(q) ||
@@ -64,7 +66,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
       )
       .sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number))
       .slice(0, 200);
-  }, [lockers, debounced, locFilter, locker.id]);
+  }, [lockers, debounced, locFilter, statusFilter, locker.id]);
 
   const target = useMemo(() => available.find((l) => l.id === targetId) ?? null, [available, targetId]);
   const oldActionMeta = OLD_ACTIONS.find((o) => o.value === oldAction)!;
@@ -115,7 +117,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
 
         {!confirming ? (
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-[1fr_220px] gap-2">
+            <div className="grid grid-cols-[1fr_180px_180px] gap-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -125,6 +127,15 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                   className="pl-9"
                 />
               </div>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="empty">Empty only</SelectItem>
+                  <SelectItem value="cleaning">Cleaning</SelectItem>
+                  <SelectItem value="repair">Repair</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={locFilter} onValueChange={setLocFilter}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
