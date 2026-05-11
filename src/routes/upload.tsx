@@ -48,7 +48,7 @@ type LockerRow = {
   badge_number: string | null;
   employee_name: string | null;
   status: "active" | "empty" | "repair" | "cleaning" | "broken_door" | "on_hold" | "reserved" | "unknown";
-  physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
+  
   spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
   remark: string | null;
   batch_intake: string | null;
@@ -79,7 +79,7 @@ interface SpareSyncResult {
   fileCount: number;
   matched: number;
   unmatched: { locker_number: string; status: string }[];
-  updates: { locker_number: string; spare_key_status: LockerRow["spare_key_status"]; physical_key_status: LockerRow["physical_key_status"]; prevSpare: string | null; prevPhys: string | null }[];
+  updates: { locker_number: string; spare_key_status: LockerRow["spare_key_status"]; prevSpare: string | null }[];
 }
 
 function UploadPage() {
@@ -244,7 +244,7 @@ function UploadPage() {
       while (true) {
         const { data, error } = await supabase
           .from("lockers")
-          .select("locker_number, location, row_label, unit_type, key_lock, badge_number, employee_name, status, physical_key_status, spare_key_status, remark, batch_intake, deleted_at, created_at, updated_at")
+          .select("locker_number, location, row_label, unit_type, key_lock, badge_number, employee_name, status, spare_key_status, remark, batch_intake, deleted_at, created_at, updated_at")
           .range(from, from + 999);
         if (error) throw error;
         if (!data || data.length === 0) break;
@@ -296,24 +296,24 @@ function UploadPage() {
         return;
       }
 
-      const incoming = new Map<string, { spare: LockerRow["spare_key_status"]; phys: LockerRow["physical_key_status"] }>();
+      const incoming = new Map<string, { spare: LockerRow["spare_key_status"] }>();
       for (const r of allRows) {
         const ln = getStr(r, lockerKey);
         if (!ln) continue;
         const spareRaw = spareKey ? getStr(r, spareKey) : null;
         const physRaw = physKey ? getStr(r, physKey) : null;
-        // Sheet "Status" col = "Spare Key" (presence). The "Physicial Key" col carries the live state (Yes/Taken/Taken For Cleaning).
-        const phys: LockerRow["physical_key_status"] = mapKeyStatus(physRaw);
+        // Sheet "Status" col = "Spare Key" (presence). Fall back to the physical-key column for the live state.
+        const physMapped = mapKeyStatus(physRaw);
         const hasSpareMarker = !!spareRaw && spareRaw.toLowerCase().includes("spare");
-        const spare: LockerRow["spare_key_status"] = hasSpareMarker ? phys : mapKeyStatus(spareRaw);
-        incoming.set(ln.trim().toUpperCase(), { spare, phys });
+        const spare: LockerRow["spare_key_status"] = hasSpareMarker ? physMapped : mapKeyStatus(spareRaw);
+        incoming.set(ln.trim().toUpperCase(), { spare });
       }
 
-      const dbLockers: { locker_number: string; spare_key_status: string | null; physical_key_status: string | null }[] = [];
+      const dbLockers: { locker_number: string; spare_key_status: string | null }[] = [];
       let from = 0;
       while (true) {
         const { data, error } = await supabase.from("lockers")
-          .select("locker_number, spare_key_status, physical_key_status")
+          .select("locker_number, spare_key_status")
           .is("deleted_at", null)
           .range(from, from + 999);
         if (error) throw error;
@@ -332,9 +332,7 @@ function UploadPage() {
         updates.push({
           locker_number: db.locker_number,
           spare_key_status: v.spare,
-          physical_key_status: v.phys,
           prevSpare: db.spare_key_status,
-          prevPhys: db.physical_key_status,
         });
       }
 
@@ -343,7 +341,7 @@ function UploadPage() {
         try {
           for (const u of updates) {
             const { error } = await supabase.from("lockers")
-              .update({ spare_key_status: u.spare_key_status, physical_key_status: u.physical_key_status })
+              .update({ spare_key_status: u.spare_key_status })
               .eq("locker_number", u.locker_number);
             if (error) throw error;
           }
@@ -750,7 +748,7 @@ function UploadPage() {
               <h2 className="font-display text-xl font-bold">Spare key sync</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              Upload your <code className="bg-muted px-1 rounded">Spare_Key_Physical.xlsx</code> (multiple sheets supported). The system matches by <code className="bg-muted px-1 rounded">Combine Locker</code> and updates each locker's <strong>Spare Key Status</strong> and <strong>Physical Key Status</strong>. Lockers not listed are marked spare-key <em>missing</em>.
+              Upload your <code className="bg-muted px-1 rounded">Spare_Key_Physical.xlsx</code> (multiple sheets supported). The system matches by <code className="bg-muted px-1 rounded">Combine Locker</code> and updates each locker's <strong>Spare Key Status</strong>. Lockers not listed are marked spare-key <em>missing</em>.
             </p>
             <div className="flex gap-3 items-center flex-wrap">
               <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
@@ -769,14 +767,13 @@ function UploadPage() {
 
                 <div className="border rounded-md max-h-72 overflow-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Locker</Th><Th>Spare key</Th><Th>Physical key</Th><Th>Was</Th></tr></thead>
+                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Locker</Th><Th>Spare key</Th><Th>Was</Th></tr></thead>
                     <tbody>
                       {spareResult.updates.slice(0, 200).map((u) => (
                         <tr key={u.locker_number} className="border-t">
                           <td className="px-3 py-1.5 font-medium">{u.locker_number}</td>
                           <td className="px-3 py-1.5"><Badge variant="outline">{u.spare_key_status}</Badge></td>
-                          <td className="px-3 py-1.5"><Badge variant="outline">{u.physical_key_status}</Badge></td>
-                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{u.prevSpare ?? "—"} / {u.prevPhys ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{u.prevSpare ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -945,7 +942,7 @@ function mapStatus(raw: string | null, hasBadge: boolean): LockerRow["status"] {
   return normalizeLockerStatus(raw, hasBadge) as LockerRow["status"];
 }
 
-function mapKeyStatus(raw: string | null): LockerRow["physical_key_status"] {
+function mapKeyStatus(raw: string | null): LockerRow["spare_key_status"] {
   if (!raw) return "unknown";
   const n = raw.toLowerCase();
   if (n.includes("clean")) return "taken_for_cleaning";
@@ -965,7 +962,6 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
   const badge_number = getStr(row, cols.badge_number);
   const employee_name = getStr(row, cols.employee_name);
   const statusRaw = getStr(row, cols.status);
-  const physRaw = getStr(row, cols.physical_key_status);
 
   const hasBadge = !!badge_number;
   const status = mapStatus(statusRaw, hasBadge);
@@ -980,7 +976,6 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
     badge_number,
     employee_name,
     status,
-    physical_key_status: mapKeyStatus(physRaw),
     spare_key_status: mapKeyStatus(getStr(row, cols.spare_key_status)),
     remark: getStr(row, cols.remark),
     batch_intake: cols.batch_intake ? parseBatchIntake(row[cols.batch_intake]) : null,
