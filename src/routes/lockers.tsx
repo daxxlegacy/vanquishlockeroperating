@@ -76,7 +76,11 @@ function readLockerFilters(): LockerFilterState {
 
 function writeLockerFilters(filters: LockerFilterState) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(LOCKERS_FILTER_STORAGE_KEY, JSON.stringify(filters));
+  try {
+    window.localStorage.setItem(LOCKERS_FILTER_STORAGE_KEY, JSON.stringify(filters));
+  } catch {
+    // Ignore storage failures so filters still work normally for the current session.
+  }
 }
 
 export const Route = createFileRoute("/lockers")({
