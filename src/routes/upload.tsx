@@ -48,7 +48,7 @@ type LockerRow = {
   badge_number: string | null;
   employee_name: string | null;
   status: "active" | "empty" | "repair" | "cleaning" | "broken_door" | "on_hold" | "reserved" | "unknown";
-  physical_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
+  
   spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
   remark: string | null;
   batch_intake: string | null;
@@ -962,7 +962,6 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
   const badge_number = getStr(row, cols.badge_number);
   const employee_name = getStr(row, cols.employee_name);
   const statusRaw = getStr(row, cols.status);
-  const physRaw = getStr(row, cols.physical_key_status);
 
   const hasBadge = !!badge_number;
   const status = mapStatus(statusRaw, hasBadge);
@@ -977,7 +976,6 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
     badge_number,
     employee_name,
     status,
-    physical_key_status: mapKeyStatus(physRaw),
     spare_key_status: mapKeyStatus(getStr(row, cols.spare_key_status)),
     remark: getStr(row, cols.remark),
     batch_intake: cols.batch_intake ? parseBatchIntake(row[cols.batch_intake]) : null,
