@@ -942,7 +942,7 @@ function mapStatus(raw: string | null, hasBadge: boolean): LockerRow["status"] {
   return normalizeLockerStatus(raw, hasBadge) as LockerRow["status"];
 }
 
-function mapKeyStatus(raw: string | null): LockerRow["physical_key_status"] {
+function mapKeyStatus(raw: string | null): LockerRow["spare_key_status"] {
   if (!raw) return "unknown";
   const n = raw.toLowerCase();
   if (n.includes("clean")) return "taken_for_cleaning";
