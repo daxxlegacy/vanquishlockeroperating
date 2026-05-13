@@ -19,6 +19,7 @@ import { toast } from "sonner";
 
 type LockerLite = { id: string; locker_number: string; location: string | null; row_label: string | null; employee_name: string | null; badge_number: string | null; status: string };
 type Candidate = LockerLite & { reason: "no_badge_match" | "no_name_match" };
+type RosterMissing = { badge: string | null; name: string | null; rowIndex: number };
 
 function detectCols(keys: string[]): { badge?: string; name?: string } {
   const lc = keys.map((k) => ({ k, n: k.toLowerCase().replace(/[^a-z0-9]/g, "") }));
