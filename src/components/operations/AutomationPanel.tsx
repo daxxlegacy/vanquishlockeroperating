@@ -55,6 +55,7 @@ export function AutomationPanel() {
   const [rosterCount, setRosterCount] = useState(0);
   const [activeCount, setActiveCount] = useState<number | null>(null);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+  const [missingFromDb, setMissingFromDb] = useState<RosterMissing[] | null>(null);
   const [reason, setReason] = useState("Auto-terminated — not present in latest roster");
   const today = new Date();
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
