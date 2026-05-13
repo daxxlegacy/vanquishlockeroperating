@@ -356,7 +356,7 @@ export function AutomationPanel() {
               )}
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setCandidates(null); setRosterName(null); setConfirmText(""); }} disabled={running}>
+                <Button variant="outline" onClick={() => { setCandidates(null); setMissingFromDb(null); setRosterName(null); setConfirmText(""); }} disabled={running}>
                   Cancel
                 </Button>
                 <Button onClick={runBatch} disabled={!canCommit || running}
