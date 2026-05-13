@@ -196,6 +196,32 @@ function Field({ label, value, onChange, disabled }: { label: string; value: str
     </div>
   );
 }
+
+function DateField({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  // Stored as ISO yyyy-mm-dd; displayed as dd/mm/yyyy.
+  const isoToDisplay = (iso: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+  };
+  const displayToIso = (s: string) => {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s.trim());
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
+  };
+  const [text, setText] = useState(isoToDisplay(value));
+  useEffect(() => { setText(isoToDisplay(value)); }, [value]);
+  return (
+    <div>
+      <Label>{label}</Label>
+      <Input
+        value={text}
+        placeholder="dd/mm/yyyy"
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => onChange(displayToIso(text))}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
 function SelectField({ label, value, options, onChange, disabled }: { label: string; value: string; options: readonly string[]; onChange: (v: string) => void; disabled?: boolean }) {
   return (
     <div>
