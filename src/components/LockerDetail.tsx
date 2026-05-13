@@ -107,7 +107,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
             <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
             <Field label="Work Location" value={locker.work_location ?? ""} onChange={(v) => update("work_location", v)} disabled={!isAdmin} />
             <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
-            <Field label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
+            <DateField label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
             <SelectField label="Spare Key" value={locker.spare_key_status ?? "unknown"} options={KEYS} onChange={(v) => update("spare_key_status", v)} disabled={!isAdmin} />
             <div className="col-span-2">
               <Label>Remark</Label>
