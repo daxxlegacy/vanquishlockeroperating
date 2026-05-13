@@ -369,6 +369,50 @@ export function AutomationPanel() {
           )}
         </Card>
       )}
+
+      {missingFromDb && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              <h3 className="font-display text-lg font-bold">Roster employees not in our data ({missingFromDb.length})</h3>
+            </div>
+            {missingFromDb.length > 0 && (
+              <Button size="sm" variant="outline" onClick={exportMissingFromDbCsv}>
+                <Download className="h-4 w-4 mr-1" />Export CSV
+              </Button>
+            )}
+          </div>
+          {missingFromDb.length === 0 ? (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle>All matched</AlertTitle>
+              <AlertDescription>Every roster employee was found in our locker data.</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="overflow-x-auto border rounded-md max-h-96 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted-foreground">Roster Row</th>
+                    <th className="px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted-foreground">Badge</th>
+                    <th className="px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted-foreground">Employee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missingFromDb.map((r, i) => (
+                    <tr key={`${r.rowIndex}-${i}`} className="border-t">
+                      <td className="px-3 py-2 font-mono text-muted-foreground">{r.rowIndex}</td>
+                      <td className="px-3 py-2 font-mono">{r.badge ?? "—"}</td>
+                      <td className="px-3 py-2">{r.name ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
