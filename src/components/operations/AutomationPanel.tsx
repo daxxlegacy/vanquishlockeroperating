@@ -19,6 +19,7 @@ import { toast } from "sonner";
 
 type LockerLite = { id: string; locker_number: string; location: string | null; row_label: string | null; employee_name: string | null; badge_number: string | null; status: string };
 type Candidate = LockerLite & { reason: "no_badge_match" | "no_name_match" };
+type RosterMissing = { badge: string | null; name: string | null; rowIndex: number };
 
 function detectCols(keys: string[]): { badge?: string; name?: string } {
   const lc = keys.map((k) => ({ k, n: k.toLowerCase().replace(/[^a-z0-9]/g, "") }));
@@ -54,6 +55,7 @@ export function AutomationPanel() {
   const [rosterCount, setRosterCount] = useState(0);
   const [activeCount, setActiveCount] = useState<number | null>(null);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+  const [missingFromDb, setMissingFromDb] = useState<RosterMissing[] | null>(null);
   const [reason, setReason] = useState("Auto-terminated — not present in latest roster");
   const today = new Date();
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
@@ -75,19 +77,21 @@ export function AutomationPanel() {
   const iso = !dateError ? (() => { const [dd, mm, yyyy] = date.trim().split("/"); return `${yyyy}-${mm}-${dd}`; })() : null;
 
   const runPreview = async (f: File) => {
-    setBusy(true); setCandidates(null); setRosterName(f.name);
+    setBusy(true); setCandidates(null); setMissingFromDb(null); setRosterName(f.name);
     try {
       const rows = await parseRoster(f);
       if (rows.length === 0) throw new Error("Roster file is empty");
       const cols = detectCols(Object.keys(rows[0]));
       if (!cols.badge && !cols.name) throw new Error("Couldn't find a badge or name column");
       const badges = new Set<string>(); const names = new Set<string>();
-      for (const r of rows) {
+      const rosterEntries: RosterMissing[] = [];
+      rows.forEach((r, i) => {
         const b = cols.badge ? getStr(r, cols.badge) : undefined;
         const n = cols.name ? getStr(r, cols.name) : undefined;
         if (b) badges.add(b.toLowerCase().trim());
         if (n) names.add(n.toLowerCase().trim());
-      }
+        if (b || n) rosterEntries.push({ badge: b ?? null, name: n ?? null, rowIndex: i + 2 });
+      });
       setRosterCount(rows.length);
 
       const all: LockerLite[] = [];
@@ -107,6 +111,17 @@ export function AutomationPanel() {
       }
       setActiveCount(all.length);
 
+      // Build DB-side sets for reverse lookup.
+      const dbBadges = new Set<string>();
+      const dbNames = new Set<string>();
+      for (const l of all) {
+        const b = l.badge_number?.toLowerCase().trim();
+        const n = l.employee_name?.toLowerCase().trim();
+        if (b) dbBadges.add(b);
+        if (n) dbNames.add(n);
+      }
+
+      // Direction 1: active lockers whose user is NOT in roster.
       const cands: Candidate[] = [];
       for (const l of all) {
         const b = l.badge_number?.toLowerCase().trim();
@@ -116,7 +131,19 @@ export function AutomationPanel() {
         if (!badgeMatch && !nameMatch) cands.push({ ...l, reason: b ? "no_badge_match" : "no_name_match" });
       }
       setCandidates(cands);
-      toast.success(`Found ${cands.length} active lockers not in the roster.`);
+
+      // Direction 2: roster employees who do NOT exist in our DB.
+      const missing: RosterMissing[] = [];
+      for (const r of rosterEntries) {
+        const b = r.badge?.toLowerCase().trim();
+        const n = r.name?.toLowerCase().trim();
+        const badgeMatch = b ? dbBadges.has(b) : false;
+        const nameMatch = n ? dbNames.has(n) : false;
+        if (!badgeMatch && !nameMatch) missing.push(r);
+      }
+      setMissingFromDb(missing);
+
+      toast.success(`${cands.length} not in roster · ${missing.length} not in DB.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Preview failed");
       setRosterName(null);
@@ -129,6 +156,13 @@ export function AutomationPanel() {
     downloadCsv(`automation-preview-${Date.now()}.csv`, candidates.map((c) => ({
       locker: c.locker_number, location: c.location ?? "", row: c.row_label ?? "",
       employee: c.employee_name ?? "", badge: c.badge_number ?? "", reason: c.reason,
+    })));
+  };
+
+  const exportMissingFromDbCsv = () => {
+    if (!missingFromDb) return;
+    downloadCsv(`roster-not-in-db-${Date.now()}.csv`, missingFromDb.map((r) => ({
+      roster_row: r.rowIndex, badge: r.badge ?? "", employee: r.name ?? "",
     })));
   };
 
@@ -322,7 +356,7 @@ export function AutomationPanel() {
               )}
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setCandidates(null); setRosterName(null); setConfirmText(""); }} disabled={running}>
+                <Button variant="outline" onClick={() => { setCandidates(null); setMissingFromDb(null); setRosterName(null); setConfirmText(""); }} disabled={running}>
                   Cancel
                 </Button>
                 <Button onClick={runBatch} disabled={!canCommit || running}
@@ -332,6 +366,50 @@ export function AutomationPanel() {
                 </Button>
               </div>
             </>
+          )}
+        </Card>
+      )}
+
+      {missingFromDb && (
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              <h3 className="font-display text-lg font-bold">Roster employees not in our data ({missingFromDb.length})</h3>
+            </div>
+            {missingFromDb.length > 0 && (
+              <Button size="sm" variant="outline" onClick={exportMissingFromDbCsv}>
+                <Download className="h-4 w-4 mr-1" />Export CSV
+              </Button>
+            )}
+          </div>
+          {missingFromDb.length === 0 ? (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle>All matched</AlertTitle>
+              <AlertDescription>Every roster employee was found in our locker data.</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="overflow-x-auto border rounded-md max-h-96 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted-foreground">Roster Row</th>
+                    <th className="px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted-foreground">Badge</th>
+                    <th className="px-3 py-2 font-semibold text-xs uppercase tracking-wide text-muted-foreground">Employee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missingFromDb.map((r, i) => (
+                    <tr key={`${r.rowIndex}-${i}`} className="border-t">
+                      <td className="px-3 py-2 font-mono text-muted-foreground">{r.rowIndex}</td>
+                      <td className="px-3 py-2 font-mono">{r.badge ?? "—"}</td>
+                      <td className="px-3 py-2">{r.name ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
       )}
