@@ -77,19 +77,21 @@ export function AutomationPanel() {
   const iso = !dateError ? (() => { const [dd, mm, yyyy] = date.trim().split("/"); return `${yyyy}-${mm}-${dd}`; })() : null;
 
   const runPreview = async (f: File) => {
-    setBusy(true); setCandidates(null); setRosterName(f.name);
+    setBusy(true); setCandidates(null); setMissingFromDb(null); setRosterName(f.name);
     try {
       const rows = await parseRoster(f);
       if (rows.length === 0) throw new Error("Roster file is empty");
       const cols = detectCols(Object.keys(rows[0]));
       if (!cols.badge && !cols.name) throw new Error("Couldn't find a badge or name column");
       const badges = new Set<string>(); const names = new Set<string>();
-      for (const r of rows) {
+      const rosterEntries: RosterMissing[] = [];
+      rows.forEach((r, i) => {
         const b = cols.badge ? getStr(r, cols.badge) : undefined;
         const n = cols.name ? getStr(r, cols.name) : undefined;
         if (b) badges.add(b.toLowerCase().trim());
         if (n) names.add(n.toLowerCase().trim());
-      }
+        if (b || n) rosterEntries.push({ badge: b ?? null, name: n ?? null, rowIndex: i + 2 });
+      });
       setRosterCount(rows.length);
 
       const all: LockerLite[] = [];
@@ -109,6 +111,17 @@ export function AutomationPanel() {
       }
       setActiveCount(all.length);
 
+      // Build DB-side sets for reverse lookup.
+      const dbBadges = new Set<string>();
+      const dbNames = new Set<string>();
+      for (const l of all) {
+        const b = l.badge_number?.toLowerCase().trim();
+        const n = l.employee_name?.toLowerCase().trim();
+        if (b) dbBadges.add(b);
+        if (n) dbNames.add(n);
+      }
+
+      // Direction 1: active lockers whose user is NOT in roster.
       const cands: Candidate[] = [];
       for (const l of all) {
         const b = l.badge_number?.toLowerCase().trim();
@@ -118,7 +131,19 @@ export function AutomationPanel() {
         if (!badgeMatch && !nameMatch) cands.push({ ...l, reason: b ? "no_badge_match" : "no_name_match" });
       }
       setCandidates(cands);
-      toast.success(`Found ${cands.length} active lockers not in the roster.`);
+
+      // Direction 2: roster employees who do NOT exist in our DB.
+      const missing: RosterMissing[] = [];
+      for (const r of rosterEntries) {
+        const b = r.badge?.toLowerCase().trim();
+        const n = r.name?.toLowerCase().trim();
+        const badgeMatch = b ? dbBadges.has(b) : false;
+        const nameMatch = n ? dbNames.has(n) : false;
+        if (!badgeMatch && !nameMatch) missing.push(r);
+      }
+      setMissingFromDb(missing);
+
+      toast.success(`${cands.length} not in roster · ${missing.length} not in DB.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Preview failed");
       setRosterName(null);
@@ -131,6 +156,13 @@ export function AutomationPanel() {
     downloadCsv(`automation-preview-${Date.now()}.csv`, candidates.map((c) => ({
       locker: c.locker_number, location: c.location ?? "", row: c.row_label ?? "",
       employee: c.employee_name ?? "", badge: c.badge_number ?? "", reason: c.reason,
+    })));
+  };
+
+  const exportMissingFromDbCsv = () => {
+    if (!missingFromDb) return;
+    downloadCsv(`roster-not-in-db-${Date.now()}.csv`, missingFromDb.map((r) => ({
+      roster_row: r.rowIndex, badge: r.badge ?? "", employee: r.name ?? "",
     })));
   };
 
