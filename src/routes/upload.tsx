@@ -472,11 +472,29 @@ function UploadPage() {
     setCheckBusy(true);
     setCheckResult(null);
     try {
-      const rows = await parseFile(f);
-      if (rows.length === 0) { toast.error("Roster file is empty."); setCheckBusy(false); return; }
-      const detected = detectColumns(Object.keys(rows[0]));
+      // Read every sheet in the roster file so multi-sheet workbooks are supported.
+      const sheets = await parseFileAllSheets(f);
+      const allRows: Record<string, unknown>[] = [];
+      for (const { rows } of sheets) allRows.push(...rows);
+      if (allRows.length === 0) { toast.error("Roster file is empty."); setCheckBusy(false); return; }
+
+      // Detect across the union of headers in all sheets.
+      const headerSet = new Set<string>();
+      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
+      const detected = detectColumns([...headerSet]);
       const badgeKey = detected.badge_number;
       const nameKey = detected.employee_name;
+
+      if (matchMode === "badge" && !badgeKey) {
+        toast.error("Match mode is 'Badge' but no badge column was found.");
+        setCheckBusy(false);
+        return;
+      }
+      if (matchMode === "name" && !nameKey) {
+        toast.error("Match mode is 'Name' but no employee name column was found.");
+        setCheckBusy(false);
+        return;
+      }
       if (!badgeKey && !nameKey) {
         toast.error("Couldn't find a badge or name column in the file.");
         setCheckBusy(false);
@@ -486,13 +504,15 @@ function UploadPage() {
       const peopleInFile: RosterPerson[] = [];
       const fileBadges = new Set<string>();
       const fileNames = new Set<string>();
-      for (const r of rows) {
-        const badge = badgeKey ? (getStr(r, badgeKey) ?? null) : null;
-        const name = nameKey ? (getStr(r, nameKey) ?? null) : null;
+      let rowIdx = 0;
+      for (const r of allRows) {
+        rowIdx++;
+        const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, normCfg);
+        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, normCfg);
         if (!badge && !name) continue;
-        peopleInFile.push({ badge, name });
-        if (badge) fileBadges.add(badge.toLowerCase().trim());
-        if (name) fileNames.add(name.toLowerCase().trim());
+        peopleInFile.push({ badge, name, rowIndex: rowIdx });
+        if (badge) fileBadges.add(badgeKeyOf(badge, normCfg));
+        if (name) fileNames.add(nameKeyOf(name, normCfg));
       }
 
       const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null }[] = [];
@@ -514,30 +534,45 @@ function UploadPage() {
       const dbByBadge = new Map<string, typeof dbPeople[number]>();
       const dbByName = new Map<string, typeof dbPeople[number]>();
       for (const p of dbPeople) {
-        if (p.badge_number) dbByBadge.set(p.badge_number.toLowerCase().trim(), p);
-        if (p.employee_name) dbByName.set(p.employee_name.toLowerCase().trim(), p);
+        if (p.badge_number) dbByBadge.set(badgeKeyOf(p.badge_number, normCfg), p);
+        if (p.employee_name) dbByName.set(nameKeyOf(p.employee_name, normCfg), p);
       }
 
       const inFileNotInDb: RosterPerson[] = [];
       const badgeMatchedNameDiffers: RosterCheckResult["badgeMatchedNameDiffers"] = [];
+      const nameMatchedBadgeDiffers: RosterCheckResult["nameMatchedBadgeDiffers"] = [];
+
       for (const p of peopleInFile) {
-        const bMatch = p.badge ? dbByBadge.get(p.badge.toLowerCase().trim()) : undefined;
-        const nMatch = p.name ? dbByName.get(p.name.toLowerCase().trim()) : undefined;
-        if (!bMatch && !nMatch) inFileNotInDb.push(p);
+        const bMatch = p.badge ? dbByBadge.get(badgeKeyOf(p.badge, normCfg)) : undefined;
+        const nMatch = p.name ? dbByName.get(nameKeyOf(p.name, normCfg)) : undefined;
+
+        // "Not in DB" depends on the selected match mode.
+        let consideredMatched: boolean;
+        if (matchMode === "badge") consideredMatched = !!bMatch;
+        else if (matchMode === "name") consideredMatched = !!nMatch;
+        else consideredMatched = !!bMatch || !!nMatch;
+        if (!consideredMatched) inFileNotInDb.push(p);
+
+        // Partial-match diagnostics are always computed when both columns exist.
         if (bMatch && p.name && bMatch.employee_name &&
-            bMatch.employee_name.toLowerCase().trim() !== p.name.toLowerCase().trim()) {
+            nameKeyOf(bMatch.employee_name, normCfg) !== nameKeyOf(p.name, normCfg)) {
           badgeMatchedNameDiffers.push({
-            badge: p.badge!,
-            fileName: p.name,
-            dbName: bMatch.employee_name,
-            locker_number: bMatch.locker_number,
+            badge: p.badge!, fileName: p.name, dbName: bMatch.employee_name, locker_number: bMatch.locker_number,
+          });
+        }
+        if (nMatch && p.badge && nMatch.badge_number &&
+            badgeKeyOf(nMatch.badge_number, normCfg) !== badgeKeyOf(p.badge, normCfg)) {
+          nameMatchedBadgeDiffers.push({
+            name: p.name!, fileBadge: p.badge, dbBadge: nMatch.badge_number, locker_number: nMatch.locker_number,
           });
         }
       }
 
       const inDbNotInFile = dbPeople.filter((p) => {
-        const badgeIn = p.badge_number && fileBadges.has(p.badge_number.toLowerCase().trim());
-        const nameIn = p.employee_name && fileNames.has(p.employee_name.toLowerCase().trim());
+        const badgeIn = p.badge_number && fileBadges.has(badgeKeyOf(p.badge_number, normCfg));
+        const nameIn = p.employee_name && fileNames.has(nameKeyOf(p.employee_name, normCfg));
+        if (matchMode === "badge") return !badgeIn;
+        if (matchMode === "name") return !nameIn;
         return !badgeIn && !nameIn;
       });
 
@@ -545,9 +580,11 @@ function UploadPage() {
         filename: f.name,
         fileCount: peopleInFile.length,
         dbCount: dbPeople.length,
+        matchMode,
         inFileNotInDb,
         inDbNotInFile,
         badgeMatchedNameDiffers,
+        nameMatchedBadgeDiffers,
       });
       toast.success(`Roster compared — ${inFileNotInDb.length} not in DB, ${inDbNotInFile.length} not in file.`);
     } catch (e) {
