@@ -667,6 +667,51 @@ function UploadPage() {
           </div>
         </Card>
 
+        <Card className="mt-4 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Settings2 className="h-4 w-4 text-primary" />
+            <h3 className="font-display text-sm font-bold uppercase tracking-wide">Merge & normalization rules</h3>
+          </div>
+          <div className="grid md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <ToggleRow
+              label="Prefer rows with badge + name"
+              hint="When the same locker appears more than once, keep the row that has both fields filled."
+              checked={mergeCfg.preferRowsWithBadgeAndName}
+              onChange={(v) => setMergeCfg((c) => ({ ...c, preferRowsWithBadgeAndName: v }))}
+            />
+            <ToggleRow
+              label="Prefer newest batch intake"
+              hint="Tie-breaker — keep the assignment whose Batch Intake date is more recent."
+              checked={mergeCfg.preferNewestBatchIntake}
+              onChange={(v) => setMergeCfg((c) => ({ ...c, preferNewestBatchIntake: v }))}
+            />
+            <ToggleRow
+              label="Trim & strip spaces in badge"
+              hint='So "10 059 113" matches "10059113".'
+              checked={normCfg.trimBadge}
+              onChange={(v) => setNormCfg((c) => ({ ...c, trimBadge: v }))}
+            />
+            <ToggleRow
+              label="Uppercase badge"
+              hint='So "cs2869" matches "CS2869".'
+              checked={normCfg.uppercaseBadge}
+              onChange={(v) => setNormCfg((c) => ({ ...c, uppercaseBadge: v }))}
+            />
+            <ToggleRow
+              label="Collapse extra spaces in name"
+              hint='So "John  Doe" matches "John Doe".'
+              checked={normCfg.collapseNameSpaces}
+              onChange={(v) => setNormCfg((c) => ({ ...c, collapseNameSpaces: v }))}
+            />
+            <ToggleRow
+              label="Uppercase employee name"
+              hint='Case-insensitive matching of names.'
+              checked={normCfg.uppercaseName}
+              onChange={(v) => setNormCfg((c) => ({ ...c, uppercaseName: v }))}
+            />
+          </div>
+        </Card>
+
         {preview && (
           <Card className="mt-6 p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -680,6 +725,38 @@ function UploadPage() {
               <Stat icon={RefreshCw} label="Updates" value={preview.toUpdate} accent="text-primary" />
               <Stat icon={UserMinus} label="To resign" value={preview.newlyResigned.length} accent="text-destructive" />
             </div>
+
+            <div className="grid md:grid-cols-3 gap-3 mb-4">
+              <Stat icon={Layers} label="Sheets read" value={preview.sheetReports.filter((s) => s.status === "ok").length} />
+              <Stat icon={FileSpreadsheet} label="Sheets skipped" value={preview.sheetReports.filter((s) => s.status === "skipped").length} accent="text-warning" />
+              <Stat icon={GitMerge} label="Duplicates merged" value={preview.duplicatesMerged} accent="text-primary" />
+            </div>
+
+            <details className="mb-4 rounded-md border" open={preview.sheetReports.some((s) => s.status === "skipped")}>
+              <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30 text-sm">
+                Sheet report ({preview.sheetReports.length})
+              </summary>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30"><tr><Th>Sheet</Th><Th>Status</Th><Th>Rows</Th><Th>Lockers</Th><Th>Notes</Th></tr></thead>
+                  <tbody>
+                    {preview.sheetReports.map((s) => (
+                      <tr key={s.sheet} className="border-t">
+                        <td className="px-3 py-1.5 font-medium">{s.sheet}</td>
+                        <td className="px-3 py-1.5">
+                          <Badge variant={s.status === "ok" ? "outline" : "secondary"} className={s.status === "ok" ? "border-success text-success" : "border-warning text-warning"}>
+                            {s.status === "ok" ? "Used" : "Skipped"}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{s.rowsRead.toLocaleString()}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{s.lockersFound.toLocaleString()}</td>
+                        <td className="px-3 py-1.5 text-xs text-muted-foreground">{s.reason ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
 
             <div className="mb-4 rounded-md border p-3 bg-muted/30">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Detected column mapping</div>
