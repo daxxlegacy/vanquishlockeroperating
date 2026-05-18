@@ -1062,6 +1062,18 @@ function Stat({ icon: Icon, label, value, accent }: { icon: React.ComponentType<
   );
 }
 
+function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer">
+      <Switch checked={checked} onCheckedChange={onChange} className="mt-0.5" />
+      <span className="flex-1">
+        <span className="font-medium">{label}</span>
+        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+      </span>
+    </label>
+  );
+}
+
 // ---------- helpers ----------
 async function parseFile(f: File): Promise<Record<string, unknown>[]> {
   const sheets = await parseFileAllSheets(f);
