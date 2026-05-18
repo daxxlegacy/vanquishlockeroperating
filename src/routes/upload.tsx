@@ -854,14 +854,39 @@ function UploadPage() {
           </div>
           <p className="text-sm text-muted-foreground mb-3">
             Upload a roster Excel/CSV with badge numbers and/or names. We'll compare it to the locker database and show:
-            people in the file but missing from the DB, people assigned to lockers but missing from the file, and badges where the name doesn't match.
+            people in the file but missing from the DB, people assigned to lockers but missing from the file, and partial matches.
             Nothing is changed — this is a report.
           </p>
+
+          <div className="mb-4 rounded-md border p-3 bg-muted/30">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Match by</div>
+            <RadioGroup
+              value={matchMode}
+              onValueChange={(v) => setMatchMode(v as RosterMatchMode)}
+              className="flex flex-wrap gap-4 text-sm"
+            >
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="badge" id="mm-badge" /> Badge only
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="name" id="mm-name" /> Employee name only
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="both" id="mm-both" /> Either badge or name
+              </label>
+            </RadioGroup>
+          </div>
+
           <div className="flex gap-3 items-center flex-wrap">
             <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) { setCheckFile(f); runRosterCheck(f); } }} />
             {checkBusy && <Badge variant="secondary">Comparing…</Badge>}
             {checkFile && !checkBusy && <span className="text-xs text-muted-foreground">{checkFile.name}</span>}
+            {checkFile && !checkBusy && (
+              <Button variant="outline" size="sm" onClick={() => runRosterCheck(checkFile)}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Re-run with current settings
+              </Button>
+            )}
           </div>
 
           {checkResult && (
