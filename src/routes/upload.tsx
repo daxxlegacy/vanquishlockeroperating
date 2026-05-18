@@ -123,10 +123,22 @@ function UploadPage() {
   const [checkFile, setCheckFile] = useState<File | null>(null);
   const [checkBusy, setCheckBusy] = useState(false);
   const [checkResult, setCheckResult] = useState<RosterCheckResult | null>(null);
+  const [matchMode, setMatchMode] = useState<RosterMatchMode>("both");
   // Spare Key sync
   const [spareFile, setSpareFile] = useState<File | null>(null);
   const [spareBusy, setSpareBusy] = useState(false);
   const [spareResult, setSpareResult] = useState<SpareSyncResult | null>(null);
+  // Configurable merge & normalization rules
+  const [mergeCfg, setMergeCfg] = useState<MergeConfig>({
+    preferRowsWithBadgeAndName: true,
+    preferNewestBatchIntake: true,
+  });
+  const [normCfg, setNormCfg] = useState<NormalizationConfig>({
+    uppercaseBadge: true,
+    trimBadge: true,
+    collapseNameSpaces: true,
+    uppercaseName: true,
+  });
 
   useEffect(() => {
     if (!loading) {
