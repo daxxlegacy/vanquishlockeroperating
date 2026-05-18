@@ -165,55 +165,74 @@ function UploadPage() {
         return;
       }
 
-      // Detect columns per sheet, skip sheets without a locker column (e.g. pivots/summary).
+      // Detect columns per sheet. Skip pivot/summary or invalid sheets, with a recorded reason.
       const mergedDetected: Record<string, string> = {};
-      // Dedupe across sheets — prefer rows that carry a badge (occupied) over empty ones.
       const byKey = new Map<string, LockerRow>();
-      const usedSheets: string[] = [];
+      const sheetReports: SheetReport[] = [];
+      let duplicatesMerged = 0;
 
       for (const { sheet, rows } of sheets) {
-        if (rows.length === 0) continue;
-        // Union of all keys across the sheet (some rows may have blank headers).
+        if (rows.length === 0) {
+          sheetReports.push({ sheet, status: "skipped", reason: "Empty sheet", rowsRead: 0, lockersFound: 0 });
+          continue;
+        }
+        // Union of headers across the sheet.
         const headerSet = new Set<string>();
         for (const r of rows.slice(0, 50)) for (const k of Object.keys(r)) headerSet.add(k);
         const detected = detectColumns([...headerSet]);
-        if (!detected.locker_number) continue; // skip pivot/summary sheets
-        usedSheets.push(sheet);
+
+        const missing: string[] = [];
+        if (!detected.locker_number) missing.push("locker number");
+        // Sheets must have at least one of badge or employee name to be useful for matching.
+        const hasIdent = !!detected.badge_number || !!detected.employee_name;
+        if (!hasIdent) missing.push("badge or employee name");
+
+        if (missing.length > 0) {
+          sheetReports.push({
+            sheet,
+            status: "skipped",
+            reason: `Missing required column${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}`,
+            rowsRead: rows.length,
+            lockersFound: 0,
+          });
+          continue;
+        }
+
         for (const [k, v] of Object.entries(detected)) if (!mergedDetected[k]) mergedDetected[k] = `${sheet}: ${v}`;
 
+        let lockersFound = 0;
         for (const r of rows) {
           const row = mapRow(r, detected);
           if (!row) continue;
+          // Apply normalization to badge/name early so dedup keys match across sheets.
+          row.badge_number = normalizeBadge(row.badge_number, normCfg);
+          row.employee_name = normalizeName(row.employee_name, normCfg);
+
+          lockersFound++;
           const key = row.locker_number.trim().toUpperCase();
           const prev = byKey.get(key);
           if (!prev) { byKey.set(key, row); continue; }
-          // Merge: prefer entry with badge/name; fill missing fields from the other.
-          const winner = prev.badge_number || prev.employee_name ? prev : (row.badge_number || row.employee_name ? row : prev);
-          const other = winner === prev ? row : prev;
-          const merged: LockerRow = {
-            ...winner,
-            badge_number: winner.badge_number ?? other.badge_number,
-            employee_name: winner.employee_name ?? other.employee_name,
-            row_label: winner.row_label ?? other.row_label,
-            unit_type: winner.unit_type ?? other.unit_type,
-            key_lock: winner.key_lock ?? other.key_lock,
-            location: winner.location !== "Unassigned" ? winner.location : other.location,
-            remark: winner.remark ?? other.remark,
-            batch_intake: winner.batch_intake ?? other.batch_intake,
-            spare_key_status: winner.spare_key_status !== "unknown" ? winner.spare_key_status : other.spare_key_status,
-          };
-          byKey.set(key, merged);
+          duplicatesMerged++;
+          byKey.set(key, mergeLockerRows(prev, row, mergeCfg));
         }
+        sheetReports.push({ sheet, status: "ok", rowsRead: rows.length, lockersFound });
       }
 
       if (byKey.size === 0) {
-        toast.error("Couldn't find a locker column in any sheet. Expected something like 'Combine Locker' or 'Locker Number'.");
+        toast.error("No usable sheets found. Check the Sheet report for the reason each sheet was skipped.");
+        // Still surface the report so the user understands why.
+        setPreview({
+          totalRows: 0, toCreate: 0, toUpdate: 0, activeAfter: 0,
+          newlyResigned: [], parsed: [], detectedColumns: mergedDetected,
+          sheetReports, duplicatesMerged: 0,
+        });
         setParsing(false);
         return;
       }
 
       const parsed: LockerRow[] = [...byKey.values()];
-      toast.success(`Parsed ${parsed.length.toLocaleString()} lockers from ${usedSheets.length} sheet${usedSheets.length === 1 ? "" : "s"}.`);
+      const usedCount = sheetReports.filter((s) => s.status === "ok").length;
+      toast.success(`Parsed ${parsed.length.toLocaleString()} lockers from ${usedCount} sheet${usedCount === 1 ? "" : "s"}${duplicatesMerged ? ` (${duplicatesMerged} duplicate${duplicatesMerged === 1 ? "" : "s"} merged)` : ""}.`);
 
       // Load existing lockers for diff
       const existing: { id: string; locker_number: string; employee_name: string | null; badge_number: string | null; status: string }[] = [];
