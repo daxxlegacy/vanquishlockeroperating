@@ -1027,6 +1027,85 @@ function norm(s: string): string {
   return s.toLowerCase().replace(/[\s_\-/+()]/g, "");
 }
 
+// ---------- Normalization & merge helpers ----------
+function normalizeBadge(raw: string | null | undefined, cfg: NormalizationConfig): string | null {
+  if (raw == null) return null;
+  let s = String(raw);
+  if (cfg.trimBadge) s = s.trim().replace(/\s+/g, "");
+  if (cfg.uppercaseBadge) s = s.toUpperCase();
+  return s === "" ? null : s;
+}
+
+function normalizeName(raw: string | null | undefined, cfg: NormalizationConfig): string | null {
+  if (raw == null) return null;
+  let s = String(raw).trim();
+  if (cfg.collapseNameSpaces) s = s.replace(/\s+/g, " ");
+  if (cfg.uppercaseName) s = s.toUpperCase();
+  return s === "" ? null : s;
+}
+
+// Lookup keys are always aggressively normalized so matching is reliable
+// regardless of the user's display normalization toggles.
+function badgeKeyOf(raw: string | null | undefined, _cfg: NormalizationConfig): string {
+  return String(raw ?? "").trim().replace(/\s+/g, "").toUpperCase();
+}
+
+function nameKeyOf(raw: string | null | undefined, _cfg: NormalizationConfig): string {
+  return String(raw ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+// Try to parse our stored batch_intake (string) back to a comparable timestamp.
+function batchIntakeTs(b: string | null): number {
+  if (!b) return -Infinity;
+  // ISO yyyy-mm-dd
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(b);
+  if (iso) return Date.UTC(+iso[1], +iso[2] - 1, +iso[3]);
+  // dd/mm/yyyy
+  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(b);
+  if (dmy) return Date.UTC(+dmy[3], +dmy[2] - 1, +dmy[1]);
+  const t = Date.parse(b);
+  return Number.isFinite(t) ? t : -Infinity;
+}
+
+function mergeLockerRows(a: LockerRow, b: LockerRow, cfg: MergeConfig): LockerRow {
+  // Score each candidate; higher score wins. Tie-breaker: newest batch_intake.
+  const score = (r: LockerRow) => {
+    let s = 0;
+    if (cfg.preferRowsWithBadgeAndName) {
+      if (r.badge_number && r.employee_name) s += 10;
+      else if (r.badge_number || r.employee_name) s += 5;
+    }
+    if (r.status === "active") s += 2;
+    if (r.spare_key_status !== "unknown") s += 1;
+    return s;
+  };
+  const sa = score(a);
+  const sb = score(b);
+  let winner: LockerRow;
+  let loser: LockerRow;
+  if (sa !== sb) { winner = sa > sb ? a : b; loser = winner === a ? b : a; }
+  else if (cfg.preferNewestBatchIntake) {
+    winner = batchIntakeTs(a.batch_intake) >= batchIntakeTs(b.batch_intake) ? a : b;
+    loser = winner === a ? b : a;
+  } else { winner = a; loser = b; }
+
+  return {
+    ...winner,
+    badge_number: winner.badge_number ?? loser.badge_number,
+    employee_name: winner.employee_name ?? loser.employee_name,
+    row_label: winner.row_label ?? loser.row_label,
+    unit_type: winner.unit_type ?? loser.unit_type,
+    key_lock: winner.key_lock ?? loser.key_lock,
+    location: winner.location !== "Unassigned" ? winner.location : loser.location,
+    remark: winner.remark ?? loser.remark,
+    batch_intake: cfg.preferNewestBatchIntake
+      ? (batchIntakeTs(winner.batch_intake) >= batchIntakeTs(loser.batch_intake) ? winner.batch_intake : loser.batch_intake)
+      : (winner.batch_intake ?? loser.batch_intake),
+    spare_key_status: winner.spare_key_status !== "unknown" ? winner.spare_key_status : loser.spare_key_status,
+  };
+}
+
+
 // Maps our internal field → matching column header from the file
 function detectColumns(headers: string[]): Record<string, string> {
   const out: Record<string, string> = {};
