@@ -13,7 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
@@ -54,6 +56,14 @@ type LockerRow = {
   batch_intake: string | null;
 };
 
+interface SheetReport {
+  sheet: string;
+  status: "ok" | "skipped";
+  reason?: string;
+  rowsRead: number;
+  lockersFound: number;
+}
+
 interface PreviewResult {
   totalRows: number;
   toCreate: number;
@@ -62,16 +72,34 @@ interface PreviewResult {
   newlyResigned: { locker_number: string; employee_name: string | null; badge_number: string | null }[];
   parsed: LockerRow[];
   detectedColumns: Record<string, string>;
+  sheetReports: SheetReport[];
+  duplicatesMerged: number;
 }
 
-type RosterPerson = { badge: string | null; name: string | null };
+type RosterPerson = { badge: string | null; name: string | null; rowIndex: number };
+type RosterMatchMode = "badge" | "name" | "both";
+
 interface RosterCheckResult {
   filename: string;
   fileCount: number;
   dbCount: number;
-  inFileNotInDb: RosterPerson[];   // employees on the uploaded list with no badge/name match in DB
+  matchMode: RosterMatchMode;
+  inFileNotInDb: RosterPerson[];
   inDbNotInFile: { locker_number: string; employee_name: string | null; badge_number: string | null }[];
   badgeMatchedNameDiffers: { badge: string; fileName: string; dbName: string; locker_number: string }[];
+  nameMatchedBadgeDiffers: { name: string; fileBadge: string; dbBadge: string; locker_number: string }[];
+}
+
+interface MergeConfig {
+  preferRowsWithBadgeAndName: boolean;
+  preferNewestBatchIntake: boolean;
+}
+
+interface NormalizationConfig {
+  uppercaseBadge: boolean;
+  trimBadge: boolean;
+  collapseNameSpaces: boolean;
+  uppercaseName: boolean;
 }
 
 interface SpareSyncResult {
@@ -95,10 +123,22 @@ function UploadPage() {
   const [checkFile, setCheckFile] = useState<File | null>(null);
   const [checkBusy, setCheckBusy] = useState(false);
   const [checkResult, setCheckResult] = useState<RosterCheckResult | null>(null);
+  const [matchMode, setMatchMode] = useState<RosterMatchMode>("both");
   // Spare Key sync
   const [spareFile, setSpareFile] = useState<File | null>(null);
   const [spareBusy, setSpareBusy] = useState(false);
   const [spareResult, setSpareResult] = useState<SpareSyncResult | null>(null);
+  // Configurable merge & normalization rules
+  const [mergeCfg, setMergeCfg] = useState<MergeConfig>({
+    preferRowsWithBadgeAndName: true,
+    preferNewestBatchIntake: true,
+  });
+  const [normCfg, setNormCfg] = useState<NormalizationConfig>({
+    uppercaseBadge: true,
+    trimBadge: true,
+    collapseNameSpaces: true,
+    uppercaseName: true,
+  });
 
   useEffect(() => {
     if (!loading) {
@@ -125,55 +165,74 @@ function UploadPage() {
         return;
       }
 
-      // Detect columns per sheet, skip sheets without a locker column (e.g. pivots/summary).
+      // Detect columns per sheet. Skip pivot/summary or invalid sheets, with a recorded reason.
       const mergedDetected: Record<string, string> = {};
-      // Dedupe across sheets — prefer rows that carry a badge (occupied) over empty ones.
       const byKey = new Map<string, LockerRow>();
-      const usedSheets: string[] = [];
+      const sheetReports: SheetReport[] = [];
+      let duplicatesMerged = 0;
 
       for (const { sheet, rows } of sheets) {
-        if (rows.length === 0) continue;
-        // Union of all keys across the sheet (some rows may have blank headers).
+        if (rows.length === 0) {
+          sheetReports.push({ sheet, status: "skipped", reason: "Empty sheet", rowsRead: 0, lockersFound: 0 });
+          continue;
+        }
+        // Union of headers across the sheet.
         const headerSet = new Set<string>();
         for (const r of rows.slice(0, 50)) for (const k of Object.keys(r)) headerSet.add(k);
         const detected = detectColumns([...headerSet]);
-        if (!detected.locker_number) continue; // skip pivot/summary sheets
-        usedSheets.push(sheet);
+
+        const missing: string[] = [];
+        if (!detected.locker_number) missing.push("locker number");
+        // Sheets must have at least one of badge or employee name to be useful for matching.
+        const hasIdent = !!detected.badge_number || !!detected.employee_name;
+        if (!hasIdent) missing.push("badge or employee name");
+
+        if (missing.length > 0) {
+          sheetReports.push({
+            sheet,
+            status: "skipped",
+            reason: `Missing required column${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}`,
+            rowsRead: rows.length,
+            lockersFound: 0,
+          });
+          continue;
+        }
+
         for (const [k, v] of Object.entries(detected)) if (!mergedDetected[k]) mergedDetected[k] = `${sheet}: ${v}`;
 
+        let lockersFound = 0;
         for (const r of rows) {
           const row = mapRow(r, detected);
           if (!row) continue;
+          // Apply normalization to badge/name early so dedup keys match across sheets.
+          row.badge_number = normalizeBadge(row.badge_number, normCfg);
+          row.employee_name = normalizeName(row.employee_name, normCfg);
+
+          lockersFound++;
           const key = row.locker_number.trim().toUpperCase();
           const prev = byKey.get(key);
           if (!prev) { byKey.set(key, row); continue; }
-          // Merge: prefer entry with badge/name; fill missing fields from the other.
-          const winner = prev.badge_number || prev.employee_name ? prev : (row.badge_number || row.employee_name ? row : prev);
-          const other = winner === prev ? row : prev;
-          const merged: LockerRow = {
-            ...winner,
-            badge_number: winner.badge_number ?? other.badge_number,
-            employee_name: winner.employee_name ?? other.employee_name,
-            row_label: winner.row_label ?? other.row_label,
-            unit_type: winner.unit_type ?? other.unit_type,
-            key_lock: winner.key_lock ?? other.key_lock,
-            location: winner.location !== "Unassigned" ? winner.location : other.location,
-            remark: winner.remark ?? other.remark,
-            batch_intake: winner.batch_intake ?? other.batch_intake,
-            spare_key_status: winner.spare_key_status !== "unknown" ? winner.spare_key_status : other.spare_key_status,
-          };
-          byKey.set(key, merged);
+          duplicatesMerged++;
+          byKey.set(key, mergeLockerRows(prev, row, mergeCfg));
         }
+        sheetReports.push({ sheet, status: "ok", rowsRead: rows.length, lockersFound });
       }
 
       if (byKey.size === 0) {
-        toast.error("Couldn't find a locker column in any sheet. Expected something like 'Combine Locker' or 'Locker Number'.");
+        toast.error("No usable sheets found. Check the Sheet report for the reason each sheet was skipped.");
+        // Still surface the report so the user understands why.
+        setPreview({
+          totalRows: 0, toCreate: 0, toUpdate: 0, activeAfter: 0,
+          newlyResigned: [], parsed: [], detectedColumns: mergedDetected,
+          sheetReports, duplicatesMerged: 0,
+        });
         setParsing(false);
         return;
       }
 
       const parsed: LockerRow[] = [...byKey.values()];
-      toast.success(`Parsed ${parsed.length.toLocaleString()} lockers from ${usedSheets.length} sheet${usedSheets.length === 1 ? "" : "s"}.`);
+      const usedCount = sheetReports.filter((s) => s.status === "ok").length;
+      toast.success(`Parsed ${parsed.length.toLocaleString()} lockers from ${usedCount} sheet${usedCount === 1 ? "" : "s"}${duplicatesMerged ? ` (${duplicatesMerged} duplicate${duplicatesMerged === 1 ? "" : "s"} merged)` : ""}.`);
 
       // Load existing lockers for diff
       const existing: { id: string; locker_number: string; employee_name: string | null; badge_number: string | null; status: string }[] = [];
@@ -215,6 +274,8 @@ function UploadPage() {
         newlyResigned: resigned,
         parsed,
         detectedColumns: mergedDetected,
+        sheetReports,
+        duplicatesMerged,
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
@@ -411,11 +472,29 @@ function UploadPage() {
     setCheckBusy(true);
     setCheckResult(null);
     try {
-      const rows = await parseFile(f);
-      if (rows.length === 0) { toast.error("Roster file is empty."); setCheckBusy(false); return; }
-      const detected = detectColumns(Object.keys(rows[0]));
+      // Read every sheet in the roster file so multi-sheet workbooks are supported.
+      const sheets = await parseFileAllSheets(f);
+      const allRows: Record<string, unknown>[] = [];
+      for (const { rows } of sheets) allRows.push(...rows);
+      if (allRows.length === 0) { toast.error("Roster file is empty."); setCheckBusy(false); return; }
+
+      // Detect across the union of headers in all sheets.
+      const headerSet = new Set<string>();
+      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
+      const detected = detectColumns([...headerSet]);
       const badgeKey = detected.badge_number;
       const nameKey = detected.employee_name;
+
+      if (matchMode === "badge" && !badgeKey) {
+        toast.error("Match mode is 'Badge' but no badge column was found.");
+        setCheckBusy(false);
+        return;
+      }
+      if (matchMode === "name" && !nameKey) {
+        toast.error("Match mode is 'Name' but no employee name column was found.");
+        setCheckBusy(false);
+        return;
+      }
       if (!badgeKey && !nameKey) {
         toast.error("Couldn't find a badge or name column in the file.");
         setCheckBusy(false);
@@ -425,13 +504,15 @@ function UploadPage() {
       const peopleInFile: RosterPerson[] = [];
       const fileBadges = new Set<string>();
       const fileNames = new Set<string>();
-      for (const r of rows) {
-        const badge = badgeKey ? (getStr(r, badgeKey) ?? null) : null;
-        const name = nameKey ? (getStr(r, nameKey) ?? null) : null;
+      let rowIdx = 0;
+      for (const r of allRows) {
+        rowIdx++;
+        const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, normCfg);
+        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, normCfg);
         if (!badge && !name) continue;
-        peopleInFile.push({ badge, name });
-        if (badge) fileBadges.add(badge.toLowerCase().trim());
-        if (name) fileNames.add(name.toLowerCase().trim());
+        peopleInFile.push({ badge, name, rowIndex: rowIdx });
+        if (badge) fileBadges.add(badgeKeyOf(badge, normCfg));
+        if (name) fileNames.add(nameKeyOf(name, normCfg));
       }
 
       const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null }[] = [];
@@ -453,30 +534,45 @@ function UploadPage() {
       const dbByBadge = new Map<string, typeof dbPeople[number]>();
       const dbByName = new Map<string, typeof dbPeople[number]>();
       for (const p of dbPeople) {
-        if (p.badge_number) dbByBadge.set(p.badge_number.toLowerCase().trim(), p);
-        if (p.employee_name) dbByName.set(p.employee_name.toLowerCase().trim(), p);
+        if (p.badge_number) dbByBadge.set(badgeKeyOf(p.badge_number, normCfg), p);
+        if (p.employee_name) dbByName.set(nameKeyOf(p.employee_name, normCfg), p);
       }
 
       const inFileNotInDb: RosterPerson[] = [];
       const badgeMatchedNameDiffers: RosterCheckResult["badgeMatchedNameDiffers"] = [];
+      const nameMatchedBadgeDiffers: RosterCheckResult["nameMatchedBadgeDiffers"] = [];
+
       for (const p of peopleInFile) {
-        const bMatch = p.badge ? dbByBadge.get(p.badge.toLowerCase().trim()) : undefined;
-        const nMatch = p.name ? dbByName.get(p.name.toLowerCase().trim()) : undefined;
-        if (!bMatch && !nMatch) inFileNotInDb.push(p);
+        const bMatch = p.badge ? dbByBadge.get(badgeKeyOf(p.badge, normCfg)) : undefined;
+        const nMatch = p.name ? dbByName.get(nameKeyOf(p.name, normCfg)) : undefined;
+
+        // "Not in DB" depends on the selected match mode.
+        let consideredMatched: boolean;
+        if (matchMode === "badge") consideredMatched = !!bMatch;
+        else if (matchMode === "name") consideredMatched = !!nMatch;
+        else consideredMatched = !!bMatch || !!nMatch;
+        if (!consideredMatched) inFileNotInDb.push(p);
+
+        // Partial-match diagnostics are always computed when both columns exist.
         if (bMatch && p.name && bMatch.employee_name &&
-            bMatch.employee_name.toLowerCase().trim() !== p.name.toLowerCase().trim()) {
+            nameKeyOf(bMatch.employee_name, normCfg) !== nameKeyOf(p.name, normCfg)) {
           badgeMatchedNameDiffers.push({
-            badge: p.badge!,
-            fileName: p.name,
-            dbName: bMatch.employee_name,
-            locker_number: bMatch.locker_number,
+            badge: p.badge!, fileName: p.name, dbName: bMatch.employee_name, locker_number: bMatch.locker_number,
+          });
+        }
+        if (nMatch && p.badge && nMatch.badge_number &&
+            badgeKeyOf(nMatch.badge_number, normCfg) !== badgeKeyOf(p.badge, normCfg)) {
+          nameMatchedBadgeDiffers.push({
+            name: p.name!, fileBadge: p.badge, dbBadge: nMatch.badge_number, locker_number: nMatch.locker_number,
           });
         }
       }
 
       const inDbNotInFile = dbPeople.filter((p) => {
-        const badgeIn = p.badge_number && fileBadges.has(p.badge_number.toLowerCase().trim());
-        const nameIn = p.employee_name && fileNames.has(p.employee_name.toLowerCase().trim());
+        const badgeIn = p.badge_number && fileBadges.has(badgeKeyOf(p.badge_number, normCfg));
+        const nameIn = p.employee_name && fileNames.has(nameKeyOf(p.employee_name, normCfg));
+        if (matchMode === "badge") return !badgeIn;
+        if (matchMode === "name") return !nameIn;
         return !badgeIn && !nameIn;
       });
 
@@ -484,9 +580,11 @@ function UploadPage() {
         filename: f.name,
         fileCount: peopleInFile.length,
         dbCount: dbPeople.length,
+        matchMode,
         inFileNotInDb,
         inDbNotInFile,
         badgeMatchedNameDiffers,
+        nameMatchedBadgeDiffers,
       });
       toast.success(`Roster compared — ${inFileNotInDb.length} not in DB, ${inDbNotInFile.length} not in file.`);
     } catch (e) {
@@ -569,6 +667,51 @@ function UploadPage() {
           </div>
         </Card>
 
+        <Card className="mt-4 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Settings2 className="h-4 w-4 text-primary" />
+            <h3 className="font-display text-sm font-bold uppercase tracking-wide">Merge & normalization rules</h3>
+          </div>
+          <div className="grid md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <ToggleRow
+              label="Prefer rows with badge + name"
+              hint="When the same locker appears more than once, keep the row that has both fields filled."
+              checked={mergeCfg.preferRowsWithBadgeAndName}
+              onChange={(v) => setMergeCfg((c) => ({ ...c, preferRowsWithBadgeAndName: v }))}
+            />
+            <ToggleRow
+              label="Prefer newest batch intake"
+              hint="Tie-breaker — keep the assignment whose Batch Intake date is more recent."
+              checked={mergeCfg.preferNewestBatchIntake}
+              onChange={(v) => setMergeCfg((c) => ({ ...c, preferNewestBatchIntake: v }))}
+            />
+            <ToggleRow
+              label="Trim & strip spaces in badge"
+              hint='So "10 059 113" matches "10059113".'
+              checked={normCfg.trimBadge}
+              onChange={(v) => setNormCfg((c) => ({ ...c, trimBadge: v }))}
+            />
+            <ToggleRow
+              label="Uppercase badge"
+              hint='So "cs2869" matches "CS2869".'
+              checked={normCfg.uppercaseBadge}
+              onChange={(v) => setNormCfg((c) => ({ ...c, uppercaseBadge: v }))}
+            />
+            <ToggleRow
+              label="Collapse extra spaces in name"
+              hint='So "John  Doe" matches "John Doe".'
+              checked={normCfg.collapseNameSpaces}
+              onChange={(v) => setNormCfg((c) => ({ ...c, collapseNameSpaces: v }))}
+            />
+            <ToggleRow
+              label="Uppercase employee name"
+              hint='Case-insensitive matching of names.'
+              checked={normCfg.uppercaseName}
+              onChange={(v) => setNormCfg((c) => ({ ...c, uppercaseName: v }))}
+            />
+          </div>
+        </Card>
+
         {preview && (
           <Card className="mt-6 p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -582,6 +725,38 @@ function UploadPage() {
               <Stat icon={RefreshCw} label="Updates" value={preview.toUpdate} accent="text-primary" />
               <Stat icon={UserMinus} label="To resign" value={preview.newlyResigned.length} accent="text-destructive" />
             </div>
+
+            <div className="grid md:grid-cols-3 gap-3 mb-4">
+              <Stat icon={Layers} label="Sheets read" value={preview.sheetReports.filter((s) => s.status === "ok").length} />
+              <Stat icon={FileSpreadsheet} label="Sheets skipped" value={preview.sheetReports.filter((s) => s.status === "skipped").length} accent="text-warning" />
+              <Stat icon={GitMerge} label="Duplicates merged" value={preview.duplicatesMerged} accent="text-primary" />
+            </div>
+
+            <details className="mb-4 rounded-md border" open={preview.sheetReports.some((s) => s.status === "skipped")}>
+              <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30 text-sm">
+                Sheet report ({preview.sheetReports.length})
+              </summary>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30"><tr><Th>Sheet</Th><Th>Status</Th><Th>Rows</Th><Th>Lockers</Th><Th>Notes</Th></tr></thead>
+                  <tbody>
+                    {preview.sheetReports.map((s) => (
+                      <tr key={s.sheet} className="border-t">
+                        <td className="px-3 py-1.5 font-medium">{s.sheet}</td>
+                        <td className="px-3 py-1.5">
+                          <Badge variant={s.status === "ok" ? "outline" : "secondary"} className={s.status === "ok" ? "border-success text-success" : "border-warning text-warning"}>
+                            {s.status === "ok" ? "Used" : "Skipped"}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{s.rowsRead.toLocaleString()}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{s.lockersFound.toLocaleString()}</td>
+                        <td className="px-3 py-1.5 text-xs text-muted-foreground">{s.reason ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
 
             <div className="mb-4 rounded-md border p-3 bg-muted/30">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Detected column mapping</div>
@@ -679,14 +854,39 @@ function UploadPage() {
           </div>
           <p className="text-sm text-muted-foreground mb-3">
             Upload a roster Excel/CSV with badge numbers and/or names. We'll compare it to the locker database and show:
-            people in the file but missing from the DB, people assigned to lockers but missing from the file, and badges where the name doesn't match.
+            people in the file but missing from the DB, people assigned to lockers but missing from the file, and partial matches.
             Nothing is changed — this is a report.
           </p>
+
+          <div className="mb-4 rounded-md border p-3 bg-muted/30">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Match by</div>
+            <RadioGroup
+              value={matchMode}
+              onValueChange={(v) => setMatchMode(v as RosterMatchMode)}
+              className="flex flex-wrap gap-4 text-sm"
+            >
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="badge" id="mm-badge" /> Badge only
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="name" id="mm-name" /> Employee name only
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="both" id="mm-both" /> Either badge or name
+              </label>
+            </RadioGroup>
+          </div>
+
           <div className="flex gap-3 items-center flex-wrap">
             <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) { setCheckFile(f); runRosterCheck(f); } }} />
             {checkBusy && <Badge variant="secondary">Comparing…</Badge>}
             {checkFile && !checkBusy && <span className="text-xs text-muted-foreground">{checkFile.name}</span>}
+            {checkFile && !checkBusy && (
+              <Button variant="outline" size="sm" onClick={() => runRosterCheck(checkFile)}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Re-run with current settings
+              </Button>
+            )}
           </div>
 
           {checkResult && (
@@ -766,6 +966,29 @@ function UploadPage() {
                             <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
                             <td className="px-3 py-1.5">{p.fileName}</td>
                             <td className="px-3 py-1.5 text-muted-foreground">{p.dbName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+
+              {checkResult.nameMatchedBadgeDiffers.length > 0 && (
+                <details className="rounded-md border">
+                  <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                    Name matched but badge differs ({checkResult.nameMatchedBadgeDiffers.length})
+                  </summary>
+                  <div className="max-h-64 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0"><tr><Th>Name</Th><Th>Locker</Th><Th>Badge in file</Th><Th>Badge in DB</Th></tr></thead>
+                      <tbody>
+                        {checkResult.nameMatchedBadgeDiffers.map((p, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-1.5">{p.name}</td>
+                            <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
+                            <td className="px-3 py-1.5 font-mono">{p.fileBadge}</td>
+                            <td className="px-3 py-1.5 font-mono text-muted-foreground">{p.dbBadge}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -887,6 +1110,18 @@ function Stat({ icon: Icon, label, value, accent }: { icon: React.ComponentType<
   );
 }
 
+function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer">
+      <Switch checked={checked} onCheckedChange={onChange} className="mt-0.5" />
+      <span className="flex-1">
+        <span className="font-medium">{label}</span>
+        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+      </span>
+    </label>
+  );
+}
+
 // ---------- helpers ----------
 async function parseFile(f: File): Promise<Record<string, unknown>[]> {
   const sheets = await parseFileAllSheets(f);
@@ -928,6 +1163,85 @@ function downloadBlob(blob: Blob, filename: string) {
 function norm(s: string): string {
   return s.toLowerCase().replace(/[\s_\-/+()]/g, "");
 }
+
+// ---------- Normalization & merge helpers ----------
+function normalizeBadge(raw: string | null | undefined, cfg: NormalizationConfig): string | null {
+  if (raw == null) return null;
+  let s = String(raw);
+  if (cfg.trimBadge) s = s.trim().replace(/\s+/g, "");
+  if (cfg.uppercaseBadge) s = s.toUpperCase();
+  return s === "" ? null : s;
+}
+
+function normalizeName(raw: string | null | undefined, cfg: NormalizationConfig): string | null {
+  if (raw == null) return null;
+  let s = String(raw).trim();
+  if (cfg.collapseNameSpaces) s = s.replace(/\s+/g, " ");
+  if (cfg.uppercaseName) s = s.toUpperCase();
+  return s === "" ? null : s;
+}
+
+// Lookup keys are always aggressively normalized so matching is reliable
+// regardless of the user's display normalization toggles.
+function badgeKeyOf(raw: string | null | undefined, _cfg: NormalizationConfig): string {
+  return String(raw ?? "").trim().replace(/\s+/g, "").toUpperCase();
+}
+
+function nameKeyOf(raw: string | null | undefined, _cfg: NormalizationConfig): string {
+  return String(raw ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+// Try to parse our stored batch_intake (string) back to a comparable timestamp.
+function batchIntakeTs(b: string | null): number {
+  if (!b) return -Infinity;
+  // ISO yyyy-mm-dd
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(b);
+  if (iso) return Date.UTC(+iso[1], +iso[2] - 1, +iso[3]);
+  // dd/mm/yyyy
+  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(b);
+  if (dmy) return Date.UTC(+dmy[3], +dmy[2] - 1, +dmy[1]);
+  const t = Date.parse(b);
+  return Number.isFinite(t) ? t : -Infinity;
+}
+
+function mergeLockerRows(a: LockerRow, b: LockerRow, cfg: MergeConfig): LockerRow {
+  // Score each candidate; higher score wins. Tie-breaker: newest batch_intake.
+  const score = (r: LockerRow) => {
+    let s = 0;
+    if (cfg.preferRowsWithBadgeAndName) {
+      if (r.badge_number && r.employee_name) s += 10;
+      else if (r.badge_number || r.employee_name) s += 5;
+    }
+    if (r.status === "active") s += 2;
+    if (r.spare_key_status !== "unknown") s += 1;
+    return s;
+  };
+  const sa = score(a);
+  const sb = score(b);
+  let winner: LockerRow;
+  let loser: LockerRow;
+  if (sa !== sb) { winner = sa > sb ? a : b; loser = winner === a ? b : a; }
+  else if (cfg.preferNewestBatchIntake) {
+    winner = batchIntakeTs(a.batch_intake) >= batchIntakeTs(b.batch_intake) ? a : b;
+    loser = winner === a ? b : a;
+  } else { winner = a; loser = b; }
+
+  return {
+    ...winner,
+    badge_number: winner.badge_number ?? loser.badge_number,
+    employee_name: winner.employee_name ?? loser.employee_name,
+    row_label: winner.row_label ?? loser.row_label,
+    unit_type: winner.unit_type ?? loser.unit_type,
+    key_lock: winner.key_lock ?? loser.key_lock,
+    location: winner.location !== "Unassigned" ? winner.location : loser.location,
+    remark: winner.remark ?? loser.remark,
+    batch_intake: cfg.preferNewestBatchIntake
+      ? (batchIntakeTs(winner.batch_intake) >= batchIntakeTs(loser.batch_intake) ? winner.batch_intake : loser.batch_intake)
+      : (winner.batch_intake ?? loser.batch_intake),
+    spare_key_status: winner.spare_key_status !== "unknown" ? winner.spare_key_status : loser.spare_key_status,
+  };
+}
+
 
 // Maps our internal field → matching column header from the file
 function detectColumns(headers: string[]): Record<string, string> {
