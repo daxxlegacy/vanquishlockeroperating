@@ -973,6 +973,29 @@ function UploadPage() {
                   </div>
                 </details>
               )}
+
+              {checkResult.nameMatchedBadgeDiffers.length > 0 && (
+                <details className="rounded-md border">
+                  <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                    Name matched but badge differs ({checkResult.nameMatchedBadgeDiffers.length})
+                  </summary>
+                  <div className="max-h-64 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0"><tr><Th>Name</Th><Th>Locker</Th><Th>Badge in file</Th><Th>Badge in DB</Th></tr></thead>
+                      <tbody>
+                        {checkResult.nameMatchedBadgeDiffers.map((p, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-1.5">{p.name}</td>
+                            <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
+                            <td className="px-3 py-1.5 font-mono">{p.fileBadge}</td>
+                            <td className="px-3 py-1.5 font-mono text-muted-foreground">{p.dbBadge}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
             </div>
           )}
         </Card>
