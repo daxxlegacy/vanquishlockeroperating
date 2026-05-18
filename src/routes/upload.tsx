@@ -56,6 +56,14 @@ type LockerRow = {
   batch_intake: string | null;
 };
 
+interface SheetReport {
+  sheet: string;
+  status: "ok" | "skipped";
+  reason?: string;
+  rowsRead: number;
+  lockersFound: number;
+}
+
 interface PreviewResult {
   totalRows: number;
   toCreate: number;
@@ -64,16 +72,34 @@ interface PreviewResult {
   newlyResigned: { locker_number: string; employee_name: string | null; badge_number: string | null }[];
   parsed: LockerRow[];
   detectedColumns: Record<string, string>;
+  sheetReports: SheetReport[];
+  duplicatesMerged: number;
 }
 
-type RosterPerson = { badge: string | null; name: string | null };
+type RosterPerson = { badge: string | null; name: string | null; rowIndex: number };
+type RosterMatchMode = "badge" | "name" | "both";
+
 interface RosterCheckResult {
   filename: string;
   fileCount: number;
   dbCount: number;
-  inFileNotInDb: RosterPerson[];   // employees on the uploaded list with no badge/name match in DB
+  matchMode: RosterMatchMode;
+  inFileNotInDb: RosterPerson[];
   inDbNotInFile: { locker_number: string; employee_name: string | null; badge_number: string | null }[];
   badgeMatchedNameDiffers: { badge: string; fileName: string; dbName: string; locker_number: string }[];
+  nameMatchedBadgeDiffers: { name: string; fileBadge: string; dbBadge: string; locker_number: string }[];
+}
+
+interface MergeConfig {
+  preferRowsWithBadgeAndName: boolean;
+  preferNewestBatchIntake: boolean;
+}
+
+interface NormalizationConfig {
+  uppercaseBadge: boolean;
+  trimBadge: boolean;
+  collapseNameSpaces: boolean;
+  uppercaseName: boolean;
 }
 
 interface SpareSyncResult {
