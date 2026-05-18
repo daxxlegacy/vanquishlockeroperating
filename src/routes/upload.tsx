@@ -274,6 +274,8 @@ function UploadPage() {
         newlyResigned: resigned,
         parsed,
         detectedColumns: mergedDetected,
+        sheetReports,
+        duplicatesMerged,
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
