@@ -889,9 +889,14 @@ function Stat({ icon: Icon, label, value, accent }: { icon: React.ComponentType<
 
 // ---------- helpers ----------
 async function parseFile(f: File): Promise<Record<string, unknown>[]> {
+  const sheets = await parseFileAllSheets(f);
+  return sheets.flatMap((s) => s.rows);
+}
+
+async function parseFileAllSheets(f: File): Promise<{ sheet: string; rows: Record<string, unknown>[] }[]> {
   const ext = f.name.split(".").pop()?.toLowerCase();
   if (ext === "csv") {
-    return new Promise((resolve, reject) => {
+    const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
       Papa.parse(f, {
         header: true,
         skipEmptyLines: true,
@@ -899,12 +904,14 @@ async function parseFile(f: File): Promise<Record<string, unknown>[]> {
         error: (err) => reject(err),
       });
     });
+    return [{ sheet: "csv", rows }];
   }
   const buf = await f.arrayBuffer();
-  // raw:true keeps Excel date serials as numbers so we can parse them as dd/mm/yyyy aware.
   const wb = XLSX.read(buf, { type: "array", cellDates: false });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
+  return wb.SheetNames.map((sn) => ({
+    sheet: sn,
+    rows: XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sn], { defval: "", raw: true }),
+  }));
 }
 
 function downloadBlob(blob: Blob, filename: string) {
