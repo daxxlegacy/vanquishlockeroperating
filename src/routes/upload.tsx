@@ -118,25 +118,62 @@ function UploadPage() {
     setPreview(null);
     setParsing(true);
     try {
-      const rows = await parseFile(f);
-      if (rows.length === 0) {
+      const sheets = await parseFileAllSheets(f);
+      if (sheets.length === 0 || sheets.every((s) => s.rows.length === 0)) {
         toast.error("File is empty.");
         setParsing(false);
         return;
       }
 
-      const detected = detectColumns(Object.keys(rows[0]));
-      if (!detected.locker_number) {
-        toast.error("Couldn't find a locker column. Expected something like 'Combine Locker' or 'Locker Number'.");
+      // Detect columns per sheet, skip sheets without a locker column (e.g. pivots/summary).
+      const mergedDetected: Record<string, string> = {};
+      // Dedupe across sheets — prefer rows that carry a badge (occupied) over empty ones.
+      const byKey = new Map<string, LockerRow>();
+      const usedSheets: string[] = [];
+
+      for (const { sheet, rows } of sheets) {
+        if (rows.length === 0) continue;
+        // Union of all keys across the sheet (some rows may have blank headers).
+        const headerSet = new Set<string>();
+        for (const r of rows.slice(0, 50)) for (const k of Object.keys(r)) headerSet.add(k);
+        const detected = detectColumns([...headerSet]);
+        if (!detected.locker_number) continue; // skip pivot/summary sheets
+        usedSheets.push(sheet);
+        for (const [k, v] of Object.entries(detected)) if (!mergedDetected[k]) mergedDetected[k] = `${sheet}: ${v}`;
+
+        for (const r of rows) {
+          const row = mapRow(r, detected);
+          if (!row) continue;
+          const key = row.locker_number.trim().toUpperCase();
+          const prev = byKey.get(key);
+          if (!prev) { byKey.set(key, row); continue; }
+          // Merge: prefer entry with badge/name; fill missing fields from the other.
+          const winner = prev.badge_number || prev.employee_name ? prev : (row.badge_number || row.employee_name ? row : prev);
+          const other = winner === prev ? row : prev;
+          const merged: LockerRow = {
+            ...winner,
+            badge_number: winner.badge_number ?? other.badge_number,
+            employee_name: winner.employee_name ?? other.employee_name,
+            row_label: winner.row_label ?? other.row_label,
+            unit_type: winner.unit_type ?? other.unit_type,
+            key_lock: winner.key_lock ?? other.key_lock,
+            location: winner.location !== "Unassigned" ? winner.location : other.location,
+            remark: winner.remark ?? other.remark,
+            batch_intake: winner.batch_intake ?? other.batch_intake,
+            spare_key_status: winner.spare_key_status !== "unknown" ? winner.spare_key_status : other.spare_key_status,
+          };
+          byKey.set(key, merged);
+        }
+      }
+
+      if (byKey.size === 0) {
+        toast.error("Couldn't find a locker column in any sheet. Expected something like 'Combine Locker' or 'Locker Number'.");
         setParsing(false);
         return;
       }
 
-      const parsed: LockerRow[] = [];
-      for (const r of rows) {
-        const row = mapRow(r, detected);
-        if (row) parsed.push(row);
-      }
+      const parsed: LockerRow[] = [...byKey.values()];
+      toast.success(`Parsed ${parsed.length.toLocaleString()} lockers from ${usedSheets.length} sheet${usedSheets.length === 1 ? "" : "s"}.`);
 
       // Load existing lockers for diff
       const existing: { id: string; locker_number: string; employee_name: string | null; badge_number: string | null; status: string }[] = [];
@@ -177,7 +214,7 @@ function UploadPage() {
         activeAfter,
         newlyResigned: resigned,
         parsed,
-        detectedColumns: detected,
+        detectedColumns: mergedDetected,
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
@@ -852,9 +889,14 @@ function Stat({ icon: Icon, label, value, accent }: { icon: React.ComponentType<
 
 // ---------- helpers ----------
 async function parseFile(f: File): Promise<Record<string, unknown>[]> {
+  const sheets = await parseFileAllSheets(f);
+  return sheets.flatMap((s) => s.rows);
+}
+
+async function parseFileAllSheets(f: File): Promise<{ sheet: string; rows: Record<string, unknown>[] }[]> {
   const ext = f.name.split(".").pop()?.toLowerCase();
   if (ext === "csv") {
-    return new Promise((resolve, reject) => {
+    const rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
       Papa.parse(f, {
         header: true,
         skipEmptyLines: true,
@@ -862,12 +904,14 @@ async function parseFile(f: File): Promise<Record<string, unknown>[]> {
         error: (err) => reject(err),
       });
     });
+    return [{ sheet: "csv", rows }];
   }
   const buf = await f.arrayBuffer();
-  // raw:true keeps Excel date serials as numbers so we can parse them as dd/mm/yyyy aware.
   const wb = XLSX.read(buf, { type: "array", cellDates: false });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
+  return wb.SheetNames.map((sn) => ({
+    sheet: sn,
+    rows: XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sn], { defval: "", raw: true }),
+  }));
 }
 
 function downloadBlob(blob: Blob, filename: string) {
