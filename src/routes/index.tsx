@@ -261,6 +261,7 @@ function MapPage() {
         open={showValidation}
         onOpenChange={setShowValidation}
         lockers={lockers}
+        layout={LAYOUT}
       />
     </div>
   );
@@ -421,16 +422,18 @@ function ValidationReportDialog({
   open,
   onOpenChange,
   lockers,
+  layout,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   lockers: Locker[] | null;
+  layout: MapLayout;
 }) {
   const report = useMemo(() => {
     if (!lockers) return null;
     // All prefixes present in any sheet
     const mappedPrefixes = new Set<string>();
-    for (const sheet of Object.values(LAYOUT)) {
+    for (const sheet of Object.values(layout)) {
       for (const cell of sheet.cells) mappedPrefixes.add(prefixOf(cell.n));
     }
     const missing: Locker[] = [];
