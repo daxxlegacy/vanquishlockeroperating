@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Shield, AlertCircle, UserCog, UserPlus, Trash2 } from "lucide-react";
+import { Shield, AlertCircle, UserCog, UserPlus, Trash2, Database, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { createUserAccount, deleteUserAccount } from "@/lib/admin-invite.functions";
+import { createBackup, restoreBackup } from "@/lib/backup.functions";
 import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISSIONS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
