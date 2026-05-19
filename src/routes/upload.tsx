@@ -1423,3 +1423,24 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
     batch_intake: cols.batch_intake ? parseBatchIntake(row[cols.batch_intake]) : null,
   };
 }
+
+/**
+ * Return true when a raw status cell indicates the employee has left / been
+ * terminated and the locker assignment should NOT be touched by the upload.
+ */
+function isTerminatedStatus(raw: unknown): boolean {
+  if (raw === null || raw === undefined) return false;
+  const n = String(raw).toLowerCase().replace(/[_\-/]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!n) return false;
+  return (
+    n.includes("terminat") ||
+    n.includes("resign") ||
+    n.includes("inactive") ||
+    n.includes("ex employee") ||
+    n.includes("ex staff") ||
+    n.includes("left") ||
+    n.includes("former") ||
+    n === "exit" ||
+    n.includes("offboard")
+  );
+}
