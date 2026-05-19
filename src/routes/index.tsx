@@ -311,10 +311,12 @@ function MapPage() {
 const SheetGrid = memo(function SheetGrid({
   layout,
   byPrefix,
+  warnings,
   onPick,
 }: {
   layout: SheetLayout;
   byPrefix: Map<string, Locker[]>;
+  warnings: Set<string>;
   onPick: (n: string) => void;
 }) {
   const CELL = 48;
@@ -333,8 +335,12 @@ const SheetGrid = memo(function SheetGrid({
         const left = (cell.c - 1) * (CELL + GAP);
         const top = (cell.r - 1) * (CELL + GAP);
         const occupied = group.filter((l) => l.status === "active").length;
+        const flaggedCount = warnings.size > 0
+          ? group.filter((l) => warnings.has(l.locker_number.trim().toUpperCase())).length
+          : 0;
+        const flagged = flaggedCount > 0;
         const title = group.length > 0
-          ? `Locker ${cell.n} — ${group.length} compartment${group.length === 1 ? "" : "s"}, ${occupied} occupied`
+          ? `Locker ${cell.n} — ${group.length} compartment${group.length === 1 ? "" : "s"}, ${occupied} occupied${flagged ? ` · ${flaggedCount} missing batch intake` : ""}`
           : `Locker ${cell.n} — not in database`;
 
         return (
@@ -347,11 +353,14 @@ const SheetGrid = memo(function SheetGrid({
             style={{ left, top, width: CELL, height: CELL }}
             className={`absolute rounded border-2 ${colorClass} ${
               group.length > 0 ? "cursor-pointer hover:ring-2 hover:ring-ring hover:z-10" : "cursor-not-allowed"
-            } font-bold flex flex-col items-center justify-center leading-none transition-colors`}
+            } ${flagged ? "ring-2 ring-warning ring-offset-1 ring-offset-background" : ""} font-bold flex flex-col items-center justify-center leading-none transition-colors`}
           >
             <span className="text-[11px] tracking-tight">{cell.n}</span>
             {group.length > 0 && (
               <span className="text-[9px] opacity-80 mt-0.5">{occupied}/{group.length}</span>
+            )}
+            {flagged && (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-warning border border-background" aria-hidden />
             )}
           </button>
         );
@@ -359,6 +368,51 @@ const SheetGrid = memo(function SheetGrid({
     </div>
   );
 });
+
+function MapLayoutUploader({
+  hasOverride,
+  onUpload,
+  onReset,
+}: {
+  hasOverride: boolean;
+  onUpload: (file: File) => void;
+  onReset: () => void;
+}) {
+  const inputId = "map-layout-upload-input";
+  return (
+    <Card className="mb-4 p-3 flex flex-wrap items-center gap-3">
+      <div className="flex-1 min-w-[240px]">
+        <div className="text-sm font-medium">Map layout source</div>
+        <div className="text-xs text-muted-foreground">
+          {hasOverride
+            ? "Using a custom layout uploaded for this browser."
+            : "Using the built-in default layout. Upload an Excel/CSV file to auto-generate a new layout from its sheet cells."}
+        </div>
+      </div>
+      <input
+        id={inputId}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onUpload(f);
+          e.currentTarget.value = "";
+        }}
+      />
+      <Button variant="outline" size="sm" asChild>
+        <label htmlFor={inputId} className="cursor-pointer">
+          <UploadIcon className="h-4 w-4 mr-1.5" /> Upload map data
+        </label>
+      </Button>
+      {hasOverride && (
+        <Button variant="ghost" size="sm" onClick={onReset}>
+          <RotateCcw className="h-4 w-4 mr-1.5" /> Restore default
+        </Button>
+      )}
+    </Card>
+  );
+}
 
 function Legend() {
   const items: { c: string; l: string }[] = [
