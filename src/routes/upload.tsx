@@ -711,13 +711,16 @@ function UploadPage() {
       if (!badgeKey && !nameKey) { toast.error("No badge or name column found to match against lockers."); setNidBusy(false); return; }
 
       type FileEntry = { badge: string | null; name: string | null; national_id: string; hire_raw: string | null; hire_ts: number };
+      // For National ID matching, preserve original casing of badge/name (no forced uppercase).
+      // Lookup keys (badgeKeyOf/nameKeyOf) are already case-insensitive internally.
+      const nidCfg: NormalizationConfig = { ...normCfg, uppercaseBadge: false, uppercaseName: false };
       // Build file index by badge and by name -> national_id (allow multiple per key)
       const fileByBadge = new Map<string, FileEntry[]>();
       const fileByName = new Map<string, FileEntry[]>();
       let noNationalId = 0;
       for (const r of allRows) {
-        const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, normCfg);
-        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, normCfg);
+        const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, nidCfg);
+        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, nidCfg);
         const nid = getStr(r, nidKey);
         if (!badge && !name) continue;
         if (!nid) { noNationalId++; continue; }
@@ -725,11 +728,11 @@ function UploadPage() {
         const hireTs = batchIntakeTs(hireRaw);
         const entry: FileEntry = { badge, name, national_id: nid, hire_raw: hireRaw, hire_ts: hireTs };
         if (badge) {
-          const k = badgeKeyOf(badge, normCfg);
+          const k = badgeKeyOf(badge, nidCfg);
           const arr = fileByBadge.get(k); if (arr) arr.push(entry); else fileByBadge.set(k, [entry]);
         }
         if (name) {
-          const k = nameKeyOf(name, normCfg);
+          const k = nameKeyOf(name, nidCfg);
           const arr = fileByName.get(k); if (arr) arr.push(entry); else fileByName.set(k, [entry]);
         }
       }
