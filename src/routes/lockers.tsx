@@ -25,6 +25,8 @@ import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDia
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
+import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
+import { AlertTriangle } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -104,6 +106,7 @@ function LockersPage() {
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const { set: batchWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
