@@ -15,7 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info } from "lucide-react";
 import { toast } from "sonner";
-import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
+import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
 
 export const Route = createFileRoute("/reconcile")({
@@ -335,8 +335,7 @@ function ReconcilePage() {
     if (!results) return [];
     const q = debouncedSearch.trim().toLowerCase();
     const inBucket = results.filter((r) => r.bucket === tab);
-    if (!q) return inBucket;
-    return inBucket.filter((r) => {
+    const matched = !q ? inBucket : inBucket.filter((r) => {
       const hay = [
         r.db.locker_number, r.db.employee_name, r.db.badge_number,
         r.db.location, r.db.row_label, r.hr?.name, r.hr?.badge,
@@ -344,17 +343,23 @@ function ReconcilePage() {
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
+    return [...matched].sort((a, b) => compareLockerNumbers(a.db.locker_number, b.db.locker_number));
   }, [results, tab, debouncedSearch]);
 
   const counts = results ? bucketCounts(results) : { must_terminate: 0, rehire_suspect: 0, missing_from_hr: 0, ok_current: 0 };
 
   const exportAll = (fmt: "xlsx" | "csv") => {
     if (!results) return;
+    const byBucket = (b: Bucket) =>
+      results
+        .filter((r) => r.bucket === b)
+        .sort((a, c) => compareLockerNumbers(a.db.locker_number, c.db.locker_number))
+        .map(toExportRow);
     const sheets: Record<string, Record<string, unknown>[]> = {
-      "Must Terminate": results.filter((r) => r.bucket === "must_terminate").map(toExportRow),
-      "Rehire Suspect": results.filter((r) => r.bucket === "rehire_suspect").map(toExportRow),
-      "Missing from HR": results.filter((r) => r.bucket === "missing_from_hr").map(toExportRow),
-      "OK Current": results.filter((r) => r.bucket === "ok_current").map(toExportRow),
+      "Must Terminate": byBucket("must_terminate"),
+      "Rehire Suspect": byBucket("rehire_suspect"),
+      "Missing from HR": byBucket("missing_from_hr"),
+      "OK Current": byBucket("ok_current"),
     };
     const stamp = new Date().toISOString().slice(0, 10);
     if (fmt === "csv") {
