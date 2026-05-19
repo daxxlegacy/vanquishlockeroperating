@@ -114,11 +114,20 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   useEffect(() => {
     (async () => {
       setRows(null);
-      const all = await fetchAllPaged<Row>(() =>
-        supabase.from("locker_occupancy").select("*").eq("category", category) as unknown as {
-          range: (from: number, to: number) => Promise<{ data: Row[] | null; error: { message: string } | null }>;
-        }
-      );
+      const all: Row[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("locker_occupancy")
+          .select("*")
+          .eq("category", category)
+          .range(from, from + 999);
+        if (error) { toast.error(error.message); break; }
+        if (!data) break;
+        all.push(...(data as Row[]));
+        if (data.length < 1000) break;
+        from += 1000;
+      }
       setRows(all);
 
       // Latest termination reason per locker (for Reason column)
