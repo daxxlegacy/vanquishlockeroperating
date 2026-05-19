@@ -81,7 +81,7 @@ async function restoreTables(payload: Record<string, unknown[]>, tables: readonl
     let inserted = 0;
     for (let i = 0; i < rows.length; i += BATCH) {
       const slice = rows.slice(i, i + BATCH);
-      const { error } = await supabaseAdmin.from(t).upsert(slice as never, { onConflict: "id" });
+      const { error } = await (supabaseAdmin as any).from(t).upsert(slice, { onConflict: "id" });
       if (error) throw new Error(`${t}: ${error.message}`);
       inserted += slice.length;
     }
