@@ -182,6 +182,7 @@ export type Database = {
           locker_number: string
           locker_row: string | null
           locker_unit: string | null
+          national_id: string | null
           remarks: string | null
           source_filename: string | null
           status: string | null
@@ -203,6 +204,7 @@ export type Database = {
           locker_number: string
           locker_row?: string | null
           locker_unit?: string | null
+          national_id?: string | null
           remarks?: string | null
           source_filename?: string | null
           status?: string | null
@@ -224,6 +226,7 @@ export type Database = {
           locker_number?: string
           locker_row?: string | null
           locker_unit?: string | null
+          national_id?: string | null
           remarks?: string | null
           source_filename?: string | null
           status?: string | null
