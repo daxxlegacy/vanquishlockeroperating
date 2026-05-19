@@ -779,9 +779,10 @@ function UploadPage() {
       // Anyone in the file with a NID but no locker match
       const unmatched: { badge: string | null; name: string | null; national_id: string }[] = [];
       const seenNid = new Set<string>();
-      const allEntries: FileEntry[] = [];
-      for (const arr of fileByBadge.values()) allEntries.push(...arr);
-      for (const arr of fileByName.values()) allEntries.push(...arr);
+      const allEntries: FileEntry[] = [
+        ...fileByBadge.values(),
+        ...fileByName.values(),
+      ];
       for (const entry of allEntries) {
         const sig = (entry.badge ?? "") + "|" + (entry.name ?? "") + "|" + entry.national_id;
         if (seenNid.has(sig)) continue;
