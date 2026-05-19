@@ -778,6 +778,43 @@ function UploadPage() {
               </div>
             </details>
 
+            {preview.batchIntakeWarnings.length > 0 && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>
+                  {preview.batchIntakeWarnings.length.toLocaleString()} row{preview.batchIntakeWarnings.length === 1 ? "" : "s"} have an unparseable Batch Intake value
+                </AlertTitle>
+                <AlertDescription>
+                  <p className="mb-2 text-xs">
+                    These rows will be saved with <strong>no batch intake date</strong>. Accepted formats: <code>dd/mm/yyyy</code>, <code>yyyy-mm-dd</code>, or an Excel date cell.
+                  </p>
+                  <div className="border rounded-md max-h-48 overflow-y-auto bg-background">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr><Th>Sheet</Th><Th>Row</Th><Th>Locker</Th><Th>Raw value</Th></tr>
+                      </thead>
+                      <tbody>
+                        {preview.batchIntakeWarnings.slice(0, 25).map((w, i) => (
+                          <tr key={`${w.sheet}-${w.rowIndex}-${i}`} className="border-t">
+                            <td className="px-3 py-1.5">{w.sheet}</td>
+                            <td className="px-3 py-1.5 text-muted-foreground">{w.rowIndex}</td>
+                            <td className="px-3 py-1.5 font-medium">{w.locker_number}</td>
+                            <td className="px-3 py-1.5 font-mono text-muted-foreground">{w.rawValue}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {preview.batchIntakeWarnings.length > 25 && (
+                      <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                        … and {preview.batchIntakeWarnings.length - 25} more
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+
             <div className="mb-4 rounded-md border p-3 bg-muted/30">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Detected column mapping</div>
               <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
