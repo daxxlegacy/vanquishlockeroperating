@@ -206,13 +206,16 @@ function ReconcilePage() {
     setRestored(null);
     setFilename(f.name);
     try {
-      const hr = await parseHr(f);
+      const hr = await parseHr(f, f.name);
       const dbRows = await fetchActiveDb();
       setHrCount({
         current: hr.filter((p) => p.status === "current").length,
         terminated: hr.filter((p) => p.status === "terminated").length,
       });
       setDbCount(dbRows.length);
+      // Sort HR matches: badge match wins, then name, then termination date recency.
+      // (Used implicitly via Map.get(); but when multiple terminated rows exist for
+      // the same person, we pick the most recent termination date below.)
 
       // Build HR indexes
       const hrByBadge = new Map<string, HrPerson[]>();
@@ -255,7 +258,14 @@ function ReconcilePage() {
         }
 
         const current = matches.find((m) => m.status === "current") ?? null;
-        const terminated = matches.find((m) => m.status === "terminated") ?? null;
+        // Among multiple terminated rows for the same person, pick the most
+        // recent termination date (string ISO compare works).
+        const terminatedAll = matches.filter((m) => m.status === "terminated");
+        const terminated = terminatedAll.length
+          ? terminatedAll.reduce((a, b) =>
+              (b.terminateDate ?? "") > (a.terminateDate ?? "") ? b : a,
+            )
+          : null;
 
         if (current && !terminated) {
           out.push({
@@ -640,7 +650,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
   return out;
 }
 
-async function parseHr(f: File): Promise<HrPerson[]> {
+async function parseHr(f: File, filename?: string): Promise<HrPerson[]> {
   const ext = f.name.split(".").pop()?.toLowerCase();
   let rows: Record<string, unknown>[];
   if (ext === "csv") {
@@ -662,8 +672,8 @@ async function parseHr(f: File): Promise<HrPerson[]> {
       const s = wb.Sheets[name];
       const ref = s["!ref"]; if (!ref) continue;
       const range = XLSX.utils.decode_range(ref);
-      const n = range.e.r - range.s.r;
-      if (n > bestRows) { bestRows = n; bestSheet = name; }
+      const nrows = range.e.r - range.s.r;
+      if (nrows > bestRows) { bestRows = nrows; bestSheet = name; }
     }
     rows = XLSX.utils.sheet_to_json(wb.Sheets[bestSheet], { defval: "", raw: true });
   }
@@ -673,6 +683,12 @@ async function parseHr(f: File): Promise<HrPerson[]> {
   const cols = detectHrCols(headers);
   if (!cols.badge && !cols.name) throw new Error("Couldn't find Employee Code or Employee Name in the file.");
 
+  // Filename hint: "termination list", "terminated list", etc → assume every
+  // row in the file is a terminated employee, even if no Status column exists
+  // and no Terminate Date column was detected.
+  const fnameLower = (filename ?? f.name).toLowerCase();
+  const filenameSaysTerminated = /terminat|resign|leaver|exit\s*list/.test(fnameLower);
+
   const out: HrPerson[] = [];
   for (const r of rows) {
     const badge = cols.badge ? cellStr(r[cols.badge]) : null;
@@ -681,7 +697,9 @@ async function parseHr(f: File): Promise<HrPerson[]> {
     const statusRaw = cols.status ? cellStr(r[cols.status])?.toLowerCase() ?? "" : "";
     const terminateDate = cols.terminate ? parseBatchIntake(r[cols.terminate]) : null;
     const status: HrPerson["status"] =
-      statusRaw.includes("terminat") || statusRaw === "resigned" || (!!terminateDate && !statusRaw.includes("current"))
+      statusRaw.includes("terminat") || statusRaw === "resigned"
+        || (!!terminateDate && !statusRaw.includes("current"))
+        || (filenameSaysTerminated && !statusRaw.includes("current"))
         ? "terminated"
         : "current";
     out.push({
