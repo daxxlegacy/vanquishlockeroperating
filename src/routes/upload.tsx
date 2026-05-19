@@ -351,6 +351,7 @@ function UploadPage() {
     setApplying(false);
     setApplyProgress(null);
     resume(); // single refresh of cache
+    invalidateLockersCache(); // ensure locker map preview reflects new occupancy
   };
 
   const exportLockers = async (fmt: "xlsx" | "csv") => {
