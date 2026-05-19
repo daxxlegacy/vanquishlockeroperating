@@ -83,6 +83,8 @@ interface PreviewResult {
   sheetReports: SheetReport[];
   duplicatesMerged: number;
   batchIntakeWarnings: BatchIntakeWarning[];
+  terminatedSkipped: number;
+  terminatedKeys: string[];
 }
 
 type RosterPerson = { badge: string | null; name: string | null; rowIndex: number };
@@ -179,6 +181,8 @@ function UploadPage() {
       const byKey = new Map<string, LockerRow>();
       const sheetReports: SheetReport[] = [];
       const batchIntakeWarnings: BatchIntakeWarning[] = [];
+      const terminatedKeys = new Set<string>();
+      let terminatedSkipped = 0;
       let duplicatesMerged = 0;
 
       for (const { sheet, rows } of sheets) {
@@ -213,6 +217,14 @@ function UploadPage() {
         let rowIdx = 0;
         for (const r of rows) {
           rowIdx++;
+          // Skip terminated / resigned / inactive rows — only "active user" rows update the database.
+          const rawStatus = detected.status ? r[detected.status] : null;
+          if (isTerminatedStatus(rawStatus)) {
+            const lockerNum = detected.locker_number ? String(r[detected.locker_number] ?? "").trim() : "";
+            if (lockerNum) terminatedKeys.add(lockerNum.toUpperCase());
+            terminatedSkipped++;
+            continue;
+          }
           const row = mapRow(r, detected);
           if (!row) continue;
           row.badge_number = normalizeBadge(row.badge_number, normCfg);
