@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge } from "lucide-react";
 import { toast } from "sonner";
-import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
+import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
 import { Progress } from "@/components/ui/progress";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
@@ -802,6 +802,7 @@ function UploadPage() {
         fileCount++;
       }
 
+      matched.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
       setNidResult({ filename: f.name, fileCount, matched, unmatched, noNationalId });
       toast.success(`National ID matched ${matched.length} locker(s).`);
     } catch (e) {
