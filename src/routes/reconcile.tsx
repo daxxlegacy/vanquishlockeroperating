@@ -258,7 +258,14 @@ function ReconcilePage() {
         }
 
         const current = matches.find((m) => m.status === "current") ?? null;
-        const terminated = matches.find((m) => m.status === "terminated") ?? null;
+        // Among multiple terminated rows for the same person, pick the most
+        // recent termination date (string ISO compare works).
+        const terminatedAll = matches.filter((m) => m.status === "terminated");
+        const terminated = terminatedAll.length
+          ? terminatedAll.reduce((a, b) =>
+              (b.terminateDate ?? "") > (a.terminateDate ?? "") ? b : a,
+            )
+          : null;
 
         if (current && !terminated) {
           out.push({
