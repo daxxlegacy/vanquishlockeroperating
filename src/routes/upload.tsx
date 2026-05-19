@@ -55,6 +55,7 @@ type LockerRow = {
   spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
   remark: string | null;
   batch_intake: string | null;
+  national_id: string | null;
 };
 
 interface SheetReport {
@@ -1616,6 +1617,7 @@ function mergeLockerRows(a: LockerRow, b: LockerRow, cfg: MergeConfig): LockerRo
       ? (batchIntakeTs(winner.batch_intake) >= batchIntakeTs(loser.batch_intake) ? winner.batch_intake : loser.batch_intake)
       : (winner.batch_intake ?? loser.batch_intake),
     spare_key_status: winner.spare_key_status !== "unknown" ? winner.spare_key_status : loser.spare_key_status,
+    national_id: winner.national_id ?? loser.national_id,
   };
 }
 
@@ -1716,6 +1718,7 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
     spare_key_status: mapKeyStatus(getStr(row, cols.spare_key_status)),
     remark: getStr(row, cols.remark),
     batch_intake: cols.batch_intake ? parseBatchIntake(row[cols.batch_intake]) : null,
+    national_id: cols.national_id ? getStr(row, cols.national_id) : null,
   };
 }
 
