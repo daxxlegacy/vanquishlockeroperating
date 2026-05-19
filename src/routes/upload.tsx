@@ -256,6 +256,7 @@ function UploadPage() {
           totalRows: 0, toCreate: 0, toUpdate: 0, activeAfter: 0,
           newlyResigned: [], parsed: [], detectedColumns: mergedDetected,
           sheetReports, duplicatesMerged: 0, batchIntakeWarnings,
+          terminatedSkipped, terminatedKeys: [...terminatedKeys],
         });
         setParsing(false);
         return;
@@ -289,10 +290,12 @@ function UploadPage() {
         if (p.status === "active") activeAfter++;
       }
 
-      // Resigned = currently active in DB but not present in upload
+      // Resigned = currently active in DB but not present in upload AND not explicitly terminated in this file.
+      // Terminated rows must not be touched at all.
       const resigned: PreviewResult["newlyResigned"] = [];
       for (const l of existing) {
-        if (l.status === "active" && !incomingKeys.has(l.locker_number.trim().toUpperCase())) {
+        const k = l.locker_number.trim().toUpperCase();
+        if (l.status === "active" && !incomingKeys.has(k) && !terminatedKeys.has(k)) {
           resigned.push({ locker_number: l.locker_number, employee_name: l.employee_name, badge_number: l.badge_number });
         }
       }
@@ -308,6 +311,8 @@ function UploadPage() {
         sheetReports,
         duplicatesMerged,
         batchIntakeWarnings,
+        terminatedSkipped,
+        terminatedKeys: [...terminatedKeys],
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
