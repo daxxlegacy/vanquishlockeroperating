@@ -1,0 +1,1 @@
+ALTER TABLE public.lockers ADD COLUMN IF NOT EXISTS national_id text;

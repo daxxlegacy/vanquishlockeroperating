@@ -245,6 +245,7 @@ export type Database = {
           key_lock: string | null
           location: string
           locker_number: string
+          national_id: string | null
           physical_key_status: Database["public"]["Enums"]["key_status"] | null
           remark: string | null
           row_label: string | null
@@ -266,6 +267,7 @@ export type Database = {
           key_lock?: string | null
           location: string
           locker_number: string
+          national_id?: string | null
           physical_key_status?: Database["public"]["Enums"]["key_status"] | null
           remark?: string | null
           row_label?: string | null
@@ -287,6 +289,7 @@ export type Database = {
           key_lock?: string | null
           location?: string
           locker_number?: string
+          national_id?: string | null
           physical_key_status?: Database["public"]["Enums"]["key_status"] | null
           remark?: string | null
           row_label?: string | null
