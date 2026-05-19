@@ -350,11 +350,16 @@ function ReconcilePage() {
 
   const exportAll = (fmt: "xlsx" | "csv") => {
     if (!results) return;
+    const byBucket = (b: Bucket) =>
+      results
+        .filter((r) => r.bucket === b)
+        .sort((a, c) => compareLockerNumbers(a.db.locker_number, c.db.locker_number))
+        .map(toExportRow);
     const sheets: Record<string, Record<string, unknown>[]> = {
-      "Must Terminate": results.filter((r) => r.bucket === "must_terminate").map(toExportRow),
-      "Rehire Suspect": results.filter((r) => r.bucket === "rehire_suspect").map(toExportRow),
-      "Missing from HR": results.filter((r) => r.bucket === "missing_from_hr").map(toExportRow),
-      "OK Current": results.filter((r) => r.bucket === "ok_current").map(toExportRow),
+      "Must Terminate": byBucket("must_terminate"),
+      "Rehire Suspect": byBucket("rehire_suspect"),
+      "Missing from HR": byBucket("missing_from_hr"),
+      "OK Current": byBucket("ok_current"),
     };
     const stamp = new Date().toISOString().slice(0, 10);
     if (fmt === "csv") {
