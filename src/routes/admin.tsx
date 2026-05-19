@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Shield, AlertCircle, UserCog, UserPlus, Trash2 } from "lucide-react";
+import { Shield, AlertCircle, UserCog, UserPlus, Trash2, Database, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { createUserAccount, deleteUserAccount } from "@/lib/admin-invite.functions";
+import { createBackup, restoreBackup } from "@/lib/backup.functions";
 import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISSIONS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
@@ -84,6 +85,51 @@ function AdminPage() {
       setBusy(false);
     }
   };
+
+  const runBackup = useServerFn(createBackup);
+  const runRestore = useServerFn(restoreBackup);
+  const [backupBusy, setBackupBusy] = useState<"data" | "system" | "full" | null>(null);
+  const [restoreBusy, setRestoreBusy] = useState<"data" | "system" | "full" | null>(null);
+
+  const downloadBackup = async (kind: "data" | "system" | "full") => {
+    setBackupBusy(kind);
+    try {
+      const result = await runBackup({ data: { kind } });
+      const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      a.href = url;
+      a.download = `lockerops-backup-${kind}-${stamp}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 200);
+      const tableCount = Object.keys(result.tables).length;
+      const rowCount = Object.values(result.tables).reduce((s, r) => s + (r as unknown[]).length, 0);
+      toast.success(`Backup ready — ${tableCount} tables, ${rowCount} rows`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Backup failed");
+    } finally {
+      setBackupBusy(null);
+    }
+  };
+
+  const uploadRestore = async (kind: "data" | "system" | "full", file: File) => {
+    if (!confirm(`Restore ${kind.toUpperCase()} from "${file.name}"? Existing rows with the same id will be overwritten.`)) return;
+    setRestoreBusy(kind);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as { kind?: string; tables?: Record<string, unknown[]> };
+      if (!parsed.tables || typeof parsed.tables !== "object") throw new Error("Invalid backup file: missing tables");
+      const res = await runRestore({ data: { kind, tables: parsed.tables as Record<string, any[]> } });
+      const total = Object.values(res.report).reduce((s, n) => s + n, 0);
+      toast.success(`Restored ${total} rows across ${Object.keys(res.report).length} tables`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Restore failed");
+    } finally {
+      setRestoreBusy(null);
+    }
+  };
+
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
   const refresh = async () => {
@@ -205,6 +251,54 @@ function AdminPage() {
             </div>
           </form>
         </Card>
+
+        <Card className="p-4 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Database className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg font-semibold">Backup & Restore</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            <strong>Data</strong> = lockers, occupancy, terminations, automation, audits, uploads.{" "}
+            <strong>System</strong> = users, roles, permissions. <strong>Full</strong> = both.
+            Restore upserts rows by id — existing rows with the same id are overwritten.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(["data", "system", "full"] as const).map((kind) => (
+              <div key={kind} className="border rounded-md p-3 space-y-2">
+                <div className="font-semibold capitalize text-sm">{kind} backup</div>
+                <Button
+                  size="sm" className="w-full gap-2"
+                  disabled={backupBusy !== null}
+                  onClick={() => downloadBackup(kind)}
+                >
+                  <Download className="h-4 w-4" />
+                  {backupBusy === kind ? "Exporting…" : `Backup ${kind}`}
+                </Button>
+                <label className="block">
+                  <input
+                    type="file" accept="application/json" className="hidden"
+                    disabled={restoreBusy !== null}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) uploadRestore(kind, f);
+                    }}
+                  />
+                  <span
+                    className={`inline-flex items-center justify-center gap-2 text-sm w-full px-3 py-2 rounded-md border cursor-pointer hover:bg-muted ${
+                      restoreBusy !== null ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {restoreBusy === kind ? "Restoring…" : `Restore ${kind}`}
+                  </span>
+                </label>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+
 
         {pending.length > 0 && (
           <section className="mb-8">
