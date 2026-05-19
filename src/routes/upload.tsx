@@ -696,9 +696,7 @@ function UploadPage() {
     setNidBusy(true);
     setNidResult(null);
     try {
-      const sheets = await parseFileAllSheets(f);
-      const allRows: Record<string, unknown>[] = [];
-      for (const { rows } of sheets) allRows.push(...rows);
+      const allRows = await parseFileWithHeaderDetection(f, ["nric", "nationalid", "personnumber", "legalfullname", "badgenumber", "employeename"]);
       if (allRows.length === 0) { toast.error("File is empty."); setNidBusy(false); return; }
 
       const headerSet = new Set<string>();
