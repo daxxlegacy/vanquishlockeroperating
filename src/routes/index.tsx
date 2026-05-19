@@ -13,19 +13,24 @@ import { memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, ClipboardCheck } from "lucide-react";
+import { Search, ClipboardCheck, Upload as UploadIcon, RotateCcw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import layoutData from "@/data/locker-map-layout.json";
+import {
+  getLayout,
+  saveLayout,
+  clearLayoutOverride,
+  hasLayoutOverride,
+  parseLayoutFromFile,
+  onLayoutChange,
+  type MapLayout,
+  type SheetLayout,
+} from "@/lib/map-layout";
+import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
+import { useAuth as _useAuth } from "@/lib/auth";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
-
-type SheetLayout = {
-  rows: number;
-  cols: number;
-  cells: { r: number; c: number; n: string }[];
-};
-const LAYOUT = layoutData as Record<string, SheetLayout>;
+void _useAuth;
 
 export const Route = createFileRoute("/")({
   head: () => ({
