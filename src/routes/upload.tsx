@@ -798,6 +798,7 @@ function UploadPage() {
       locker_number: m.locker_number,
       badge_number: m.badge_number ?? "",
       employee_name: m.employee_name ?? "",
+      batch_intake: m.batch_intake ?? "",
       national_id: m.national_id,
       matched_by: m.matched_by,
     }));
