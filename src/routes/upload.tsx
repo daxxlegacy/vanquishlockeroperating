@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
 import { Progress } from "@/components/ui/progress";
-import { pauseLockersRealtime } from "@/lib/lockers-cache";
+import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -64,6 +64,13 @@ interface SheetReport {
   lockersFound: number;
 }
 
+interface BatchIntakeWarning {
+  sheet: string;
+  rowIndex: number;
+  locker_number: string;
+  rawValue: string;
+}
+
 interface PreviewResult {
   totalRows: number;
   toCreate: number;
@@ -74,6 +81,7 @@ interface PreviewResult {
   detectedColumns: Record<string, string>;
   sheetReports: SheetReport[];
   duplicatesMerged: number;
+  batchIntakeWarnings: BatchIntakeWarning[];
 }
 
 type RosterPerson = { badge: string | null; name: string | null; rowIndex: number };
@@ -169,6 +177,7 @@ function UploadPage() {
       const mergedDetected: Record<string, string> = {};
       const byKey = new Map<string, LockerRow>();
       const sheetReports: SheetReport[] = [];
+      const batchIntakeWarnings: BatchIntakeWarning[] = [];
       let duplicatesMerged = 0;
 
       for (const { sheet, rows } of sheets) {
@@ -183,7 +192,6 @@ function UploadPage() {
 
         const missing: string[] = [];
         if (!detected.locker_number) missing.push("locker number");
-        // Sheets must have at least one of badge or employee name to be useful for matching.
         const hasIdent = !!detected.badge_number || !!detected.employee_name;
         if (!hasIdent) missing.push("badge or employee name");
 
@@ -201,12 +209,22 @@ function UploadPage() {
         for (const [k, v] of Object.entries(detected)) if (!mergedDetected[k]) mergedDetected[k] = `${sheet}: ${v}`;
 
         let lockersFound = 0;
+        let rowIdx = 0;
         for (const r of rows) {
+          rowIdx++;
           const row = mapRow(r, detected);
           if (!row) continue;
-          // Apply normalization to badge/name early so dedup keys match across sheets.
           row.badge_number = normalizeBadge(row.badge_number, normCfg);
           row.employee_name = normalizeName(row.employee_name, normCfg);
+
+          // Detect unparseable batch intake values (non-empty raw, but parse returned null).
+          if (detected.batch_intake) {
+            const raw = r[detected.batch_intake];
+            const rawStr = raw == null ? "" : String(raw).trim();
+            if (rawStr && row.batch_intake === null) {
+              batchIntakeWarnings.push({ sheet, rowIndex: rowIdx, locker_number: row.locker_number, rawValue: rawStr });
+            }
+          }
 
           lockersFound++;
           const key = row.locker_number.trim().toUpperCase();
@@ -224,7 +242,7 @@ function UploadPage() {
         setPreview({
           totalRows: 0, toCreate: 0, toUpdate: 0, activeAfter: 0,
           newlyResigned: [], parsed: [], detectedColumns: mergedDetected,
-          sheetReports, duplicatesMerged: 0,
+          sheetReports, duplicatesMerged: 0, batchIntakeWarnings,
         });
         setParsing(false);
         return;
@@ -276,6 +294,7 @@ function UploadPage() {
         detectedColumns: mergedDetected,
         sheetReports,
         duplicatesMerged,
+        batchIntakeWarnings,
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
@@ -332,6 +351,7 @@ function UploadPage() {
     setApplying(false);
     setApplyProgress(null);
     resume(); // single refresh of cache
+    invalidateLockersCache(); // ensure locker map preview reflects new occupancy
   };
 
   const exportLockers = async (fmt: "xlsx" | "csv") => {
@@ -757,6 +777,43 @@ function UploadPage() {
                 </table>
               </div>
             </details>
+
+            {preview.batchIntakeWarnings.length > 0 && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>
+                  {preview.batchIntakeWarnings.length.toLocaleString()} row{preview.batchIntakeWarnings.length === 1 ? "" : "s"} have an unparseable Batch Intake value
+                </AlertTitle>
+                <AlertDescription>
+                  <p className="mb-2 text-xs">
+                    These rows will be saved with <strong>no batch intake date</strong>. Accepted formats: <code>dd/mm/yyyy</code>, <code>yyyy-mm-dd</code>, or an Excel date cell.
+                  </p>
+                  <div className="border rounded-md max-h-48 overflow-y-auto bg-background">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr><Th>Sheet</Th><Th>Row</Th><Th>Locker</Th><Th>Raw value</Th></tr>
+                      </thead>
+                      <tbody>
+                        {preview.batchIntakeWarnings.slice(0, 25).map((w, i) => (
+                          <tr key={`${w.sheet}-${w.rowIndex}-${i}`} className="border-t">
+                            <td className="px-3 py-1.5">{w.sheet}</td>
+                            <td className="px-3 py-1.5 text-muted-foreground">{w.rowIndex}</td>
+                            <td className="px-3 py-1.5 font-medium">{w.locker_number}</td>
+                            <td className="px-3 py-1.5 font-mono text-muted-foreground">{w.rawValue}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {preview.batchIntakeWarnings.length > 25 && (
+                      <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                        … and {preview.batchIntakeWarnings.length - 25} more
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
 
             <div className="mb-4 rounded-md border p-3 bg-muted/30">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Detected column mapping</div>
