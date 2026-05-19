@@ -47,15 +47,14 @@ export function clearBatchIntakeWarnings() {
   }
 }
 
+import { useEffect, useMemo, useState } from "react";
+
 export function useBatchIntakeWarningSet(): {
   set: Set<string>;
   store: BatchIntakeWarningStore | null;
 } {
-  // Lazy-load React only on client component callers.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require("react") as typeof import("react");
-  const [store, setStore] = React.useState<BatchIntakeWarningStore | null>(() => readBatchIntakeWarnings());
-  React.useEffect(() => {
+  const [store, setStore] = useState<BatchIntakeWarningStore | null>(() => readBatchIntakeWarnings());
+  useEffect(() => {
     const refresh = () => setStore(readBatchIntakeWarnings());
     window.addEventListener("batch-intake-warnings-changed", refresh);
     window.addEventListener("storage", refresh);
@@ -64,7 +63,7 @@ export function useBatchIntakeWarningSet(): {
       window.removeEventListener("storage", refresh);
     };
   }, []);
-  const set = React.useMemo(
+  const set = useMemo(
     () => new Set((store?.lockerNumbers ?? []).map((n) => n.trim().toUpperCase())),
     [store],
   );
