@@ -335,8 +335,7 @@ function ReconcilePage() {
     if (!results) return [];
     const q = debouncedSearch.trim().toLowerCase();
     const inBucket = results.filter((r) => r.bucket === tab);
-    if (!q) return inBucket;
-    return inBucket.filter((r) => {
+    const matched = !q ? inBucket : inBucket.filter((r) => {
       const hay = [
         r.db.locker_number, r.db.employee_name, r.db.badge_number,
         r.db.location, r.db.row_label, r.hr?.name, r.hr?.badge,
@@ -344,6 +343,7 @@ function ReconcilePage() {
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
+    return [...matched].sort((a, b) => compareLockerNumbers(a.db.locker_number, b.db.locker_number));
   }, [results, tab, debouncedSearch]);
 
   const counts = results ? bucketCounts(results) : { must_terminate: 0, rehire_suspect: 0, missing_from_hr: 0, ok_current: 0 };
