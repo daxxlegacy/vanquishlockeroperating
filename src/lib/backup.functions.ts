@@ -37,7 +37,7 @@ async function dumpTables(tables: readonly string[]) {
     // paginate to avoid 1000-row default cap
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const { data, error } = await supabaseAdmin.from(t).select("*").range(from, from + PAGE - 1);
+      const { data, error } = await (supabaseAdmin as any).from(t).select("*").range(from, from + PAGE - 1);
       if (error) throw new Error(`${t}: ${error.message}`);
       if (!data || data.length === 0) break;
       rows.push(...data);
