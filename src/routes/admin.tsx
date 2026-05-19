@@ -252,6 +252,54 @@ function AdminPage() {
           </form>
         </Card>
 
+        <Card className="p-4 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Database className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg font-semibold">Backup & Restore</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            <strong>Data</strong> = lockers, occupancy, terminations, automation, audits, uploads.{" "}
+            <strong>System</strong> = users, roles, permissions. <strong>Full</strong> = both.
+            Restore upserts rows by id — existing rows with the same id are overwritten.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(["data", "system", "full"] as const).map((kind) => (
+              <div key={kind} className="border rounded-md p-3 space-y-2">
+                <div className="font-semibold capitalize text-sm">{kind} backup</div>
+                <Button
+                  size="sm" className="w-full gap-2"
+                  disabled={backupBusy !== null}
+                  onClick={() => downloadBackup(kind)}
+                >
+                  <Download className="h-4 w-4" />
+                  {backupBusy === kind ? "Exporting…" : `Backup ${kind}`}
+                </Button>
+                <label className="block">
+                  <input
+                    type="file" accept="application/json" className="hidden"
+                    disabled={restoreBusy !== null}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) uploadRestore(kind, f);
+                    }}
+                  />
+                  <span
+                    className={`inline-flex items-center justify-center gap-2 text-sm w-full px-3 py-2 rounded-md border cursor-pointer hover:bg-muted ${
+                      restoreBusy !== null ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {restoreBusy === kind ? "Restoring…" : `Restore ${kind}`}
+                  </span>
+                </label>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+
+
         {pending.length > 0 && (
           <section className="mb-8">
             <h2 className="font-display text-lg font-semibold mb-3 flex items-center gap-2">
