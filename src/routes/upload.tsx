@@ -83,6 +83,8 @@ interface PreviewResult {
   sheetReports: SheetReport[];
   duplicatesMerged: number;
   batchIntakeWarnings: BatchIntakeWarning[];
+  terminatedSkipped: number;
+  terminatedKeys: string[];
 }
 
 type RosterPerson = { badge: string | null; name: string | null; rowIndex: number };
@@ -179,6 +181,8 @@ function UploadPage() {
       const byKey = new Map<string, LockerRow>();
       const sheetReports: SheetReport[] = [];
       const batchIntakeWarnings: BatchIntakeWarning[] = [];
+      const terminatedKeys = new Set<string>();
+      let terminatedSkipped = 0;
       let duplicatesMerged = 0;
 
       for (const { sheet, rows } of sheets) {
@@ -213,6 +217,14 @@ function UploadPage() {
         let rowIdx = 0;
         for (const r of rows) {
           rowIdx++;
+          // Skip terminated / resigned / inactive rows — only "active user" rows update the database.
+          const rawStatus = detected.status ? r[detected.status] : null;
+          if (isTerminatedStatus(rawStatus)) {
+            const lockerNum = detected.locker_number ? String(r[detected.locker_number] ?? "").trim() : "";
+            if (lockerNum) terminatedKeys.add(lockerNum.toUpperCase());
+            terminatedSkipped++;
+            continue;
+          }
           const row = mapRow(r, detected);
           if (!row) continue;
           row.badge_number = normalizeBadge(row.badge_number, normCfg);
@@ -244,6 +256,7 @@ function UploadPage() {
           totalRows: 0, toCreate: 0, toUpdate: 0, activeAfter: 0,
           newlyResigned: [], parsed: [], detectedColumns: mergedDetected,
           sheetReports, duplicatesMerged: 0, batchIntakeWarnings,
+          terminatedSkipped, terminatedKeys: [...terminatedKeys],
         });
         setParsing(false);
         return;
@@ -277,10 +290,12 @@ function UploadPage() {
         if (p.status === "active") activeAfter++;
       }
 
-      // Resigned = currently active in DB but not present in upload
+      // Resigned = currently active in DB but not present in upload AND not explicitly terminated in this file.
+      // Terminated rows must not be touched at all.
       const resigned: PreviewResult["newlyResigned"] = [];
       for (const l of existing) {
-        if (l.status === "active" && !incomingKeys.has(l.locker_number.trim().toUpperCase())) {
+        const k = l.locker_number.trim().toUpperCase();
+        if (l.status === "active" && !incomingKeys.has(k) && !terminatedKeys.has(k)) {
           resigned.push({ locker_number: l.locker_number, employee_name: l.employee_name, badge_number: l.badge_number });
         }
       }
@@ -296,6 +311,8 @@ function UploadPage() {
         sheetReports,
         duplicatesMerged,
         batchIntakeWarnings,
+        terminatedSkipped,
+        terminatedKeys: [...terminatedKeys],
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to parse file");
@@ -756,10 +773,11 @@ function UploadPage() {
               <Stat icon={UserMinus} label="To resign" value={preview.newlyResigned.length} accent="text-destructive" />
             </div>
 
-            <div className="grid md:grid-cols-3 gap-3 mb-4">
+            <div className="grid md:grid-cols-4 gap-3 mb-4">
               <Stat icon={Layers} label="Sheets read" value={preview.sheetReports.filter((s) => s.status === "ok").length} />
               <Stat icon={FileSpreadsheet} label="Sheets skipped" value={preview.sheetReports.filter((s) => s.status === "skipped").length} accent="text-warning" />
               <Stat icon={GitMerge} label="Duplicates merged" value={preview.duplicatesMerged} accent="text-primary" />
+              <Stat icon={UserMinus} label="Terminated rows skipped" value={preview.terminatedSkipped} accent="text-muted-foreground" />
             </div>
 
             <details className="mb-4 rounded-md border" open={preview.sheetReports.some((s) => s.status === "skipped")}>
@@ -1405,4 +1423,25 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
     remark: getStr(row, cols.remark),
     batch_intake: cols.batch_intake ? parseBatchIntake(row[cols.batch_intake]) : null,
   };
+}
+
+/**
+ * Return true when a raw status cell indicates the employee has left / been
+ * terminated and the locker assignment should NOT be touched by the upload.
+ */
+function isTerminatedStatus(raw: unknown): boolean {
+  if (raw === null || raw === undefined) return false;
+  const n = String(raw).toLowerCase().replace(/[_\-/]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!n) return false;
+  return (
+    n.includes("terminat") ||
+    n.includes("resign") ||
+    n.includes("inactive") ||
+    n.includes("ex employee") ||
+    n.includes("ex staff") ||
+    n.includes("left") ||
+    n.includes("former") ||
+    n === "exit" ||
+    n.includes("offboard")
+  );
 }
