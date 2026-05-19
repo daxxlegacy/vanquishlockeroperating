@@ -26,11 +26,9 @@ import {
   type SheetLayout,
 } from "@/lib/map-layout";
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
-import { useAuth as _useAuth } from "@/lib/auth";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
-void _useAuth;
 
 export const Route = createFileRoute("/")({
   head: () => ({
