@@ -802,6 +802,7 @@ function UploadPage() {
         fileCount++;
       }
 
+      matched.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
       setNidResult({ filename: f.name, fileCount, matched, unmatched, noNationalId });
       toast.success(`National ID matched ${matched.length} locker(s).`);
     } catch (e) {
