@@ -142,6 +142,16 @@ function UploadPage() {
   const [checkBusy, setCheckBusy] = useState(false);
   const [checkResult, setCheckResult] = useState<RosterCheckResult | null>(null);
   const [matchMode, setMatchMode] = useState<RosterMatchMode>("both");
+  // National ID fill (separate function inside Roster Check tab)
+  const [nidFile, setNidFile] = useState<File | null>(null);
+  const [nidBusy, setNidBusy] = useState(false);
+  const [nidResult, setNidResult] = useState<{
+    filename: string;
+    fileCount: number;
+    matched: { locker_number: string; badge_number: string | null; employee_name: string | null; national_id: string; matched_by: "badge" | "name" }[];
+    unmatched: { badge: string | null; name: string | null; national_id: string }[];
+    noNationalId: number;
+  } | null>(null);
   // Spare Key sync
   const [spareFile, setSpareFile] = useState<File | null>(null);
   const [spareBusy, setSpareBusy] = useState(false);
@@ -682,6 +692,122 @@ function UploadPage() {
     toast.success("Roster check exported.");
   };
 
+  const runNationalIdFill = async (f: File) => {
+    setNidBusy(true);
+    setNidResult(null);
+    try {
+      const sheets = await parseFileAllSheets(f);
+      const allRows: Record<string, unknown>[] = [];
+      for (const { rows } of sheets) allRows.push(...rows);
+      if (allRows.length === 0) { toast.error("File is empty."); setNidBusy(false); return; }
+
+      const headerSet = new Set<string>();
+      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
+      const detected = detectColumns([...headerSet]);
+      const badgeKey = detected.badge_number;
+      const nameKey = detected.employee_name;
+      const nidKey = detected.national_id;
+
+      if (!nidKey) { toast.error("No National ID column found (looked for NationalID/NRIC/IC/MyKad)."); setNidBusy(false); return; }
+      if (!badgeKey && !nameKey) { toast.error("No badge or name column found to match against lockers."); setNidBusy(false); return; }
+
+      // Build file index by badge and by name -> national_id
+      const fileByBadge = new Map<string, { badge: string | null; name: string | null; national_id: string }>();
+      const fileByName = new Map<string, { badge: string | null; name: string | null; national_id: string }>();
+      let noNationalId = 0;
+      for (const r of allRows) {
+        const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, normCfg);
+        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, normCfg);
+        const nid = getStr(r, nidKey);
+        if (!badge && !name) continue;
+        if (!nid) { noNationalId++; continue; }
+        const entry = { badge, name, national_id: nid };
+        if (badge) fileByBadge.set(badgeKeyOf(badge, normCfg), entry);
+        if (name) fileByName.set(nameKeyOf(name, normCfg), entry);
+      }
+
+      // Pull all active assigned lockers
+      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number, employee_name, badge_number")
+          .is("deleted_at", null)
+          .or("employee_name.not.is.null,badge_number.not.is.null")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        dbPeople.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+
+      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; national_id: string; matched_by: "badge" | "name" }[] = [];
+      const usedKeys = new Set<string>();
+      for (const p of dbPeople) {
+        const bKey = p.badge_number ? badgeKeyOf(p.badge_number, normCfg) : null;
+        const nKey = p.employee_name ? nameKeyOf(p.employee_name, normCfg) : null;
+        const bHit = bKey ? fileByBadge.get(bKey) : undefined;
+        const nHit = !bHit && nKey ? fileByName.get(nKey) : undefined;
+        const hit = bHit ?? nHit;
+        if (!hit) continue;
+        matched.push({
+          locker_number: p.locker_number,
+          badge_number: p.badge_number,
+          employee_name: p.employee_name,
+          national_id: hit.national_id,
+          matched_by: bHit ? "badge" : "name",
+        });
+        if (bKey) usedKeys.add("b:" + bKey);
+        if (nKey) usedKeys.add("n:" + nKey);
+      }
+
+      // Anyone in the file with a NID but no locker match
+      const unmatched: { badge: string | null; name: string | null; national_id: string }[] = [];
+      const seenNid = new Set<string>();
+      for (const entry of [...fileByBadge.values(), ...fileByName.values()]) {
+        const sig = (entry.badge ?? "") + "|" + (entry.name ?? "") + "|" + entry.national_id;
+        if (seenNid.has(sig)) continue;
+        seenNid.add(sig);
+        const bKey = entry.badge ? "b:" + badgeKeyOf(entry.badge, normCfg) : null;
+        const nKey = entry.name ? "n:" + nameKeyOf(entry.name, normCfg) : null;
+        if ((bKey && usedKeys.has(bKey)) || (nKey && usedKeys.has(nKey))) continue;
+        unmatched.push(entry);
+      }
+
+      let fileCount = 0;
+      const counted = new Set<string>();
+      for (const entry of [...fileByBadge.values(), ...fileByName.values()]) {
+        const sig = (entry.badge ?? "") + "|" + (entry.name ?? "");
+        if (counted.has(sig)) continue;
+        counted.add(sig);
+        fileCount++;
+      }
+
+      setNidResult({ filename: f.name, fileCount, matched, unmatched, noNationalId });
+      toast.success(`National ID matched ${matched.length} locker(s).`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "National ID fill failed");
+    }
+    setNidBusy(false);
+  };
+
+  const exportNationalIdCsv = () => {
+    if (!nidResult) return;
+    const rows = nidResult.matched.map((m) => ({
+      locker_number: m.locker_number,
+      badge_number: m.badge_number ?? "",
+      employee_name: m.employee_name ?? "",
+      national_id: m.national_id,
+      matched_by: m.matched_by,
+    }));
+    const csv = Papa.unparse(rows);
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `locker-national-id-${stamp}.csv`);
+    toast.success("National ID CSV exported.");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -1095,6 +1221,97 @@ function UploadPage() {
             </div>
           )}
         </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <UserCheck className="h-5 w-5 text-primary" />
+            <h2 className="font-display text-xl font-bold">National ID fill (export)</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Upload a file that contains <strong>NationalID</strong> alongside <strong>badge number</strong> and/or <strong>employee name</strong>.
+            We match each row to its locker (by badge or name) and produce a CSV of <code className="bg-muted px-1 rounded">locker_number, badge, name, national_id</code>.
+            Nothing in the database is changed — this is a separate export to help you fill National ID values.
+          </p>
+
+          <div className="flex gap-3 items-center flex-wrap">
+            <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { setNidFile(f); runNationalIdFill(f); } }} />
+            {nidBusy && <Badge variant="secondary">Matching…</Badge>}
+            {nidFile && !nidBusy && <span className="text-xs text-muted-foreground">{nidFile.name}</span>}
+            {nidFile && !nidBusy && (
+              <Button variant="outline" size="sm" onClick={() => runNationalIdFill(nidFile)}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Re-run
+              </Button>
+            )}
+          </div>
+
+          {nidResult && (
+            <div className="mt-5 space-y-4">
+              <div className="grid md:grid-cols-3 gap-3">
+                <Stat icon={UserCheck} label="People in file (with NID)" value={nidResult.fileCount - nidResult.noNationalId} />
+                <Stat icon={CheckCircle2} label="Matched to lockers" value={nidResult.matched.length} accent="text-success" />
+                <Stat icon={AlertCircle} label="No locker match" value={nidResult.unmatched.length} accent="text-warning" />
+              </div>
+
+              <div className="flex justify-end">
+                <Button size="sm" onClick={exportNationalIdCsv} disabled={nidResult.matched.length === 0}>
+                  <Download className="h-4 w-4 mr-1" /> Export CSV ({nidResult.matched.length})
+                </Button>
+              </div>
+
+              <details open className="rounded-md border">
+                <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                  Matched lockers ({nidResult.matched.length})
+                </summary>
+                <div className="max-h-72 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>National ID</Th><Th>By</Th></tr>
+                    </thead>
+                    <tbody>
+                      {nidResult.matched.slice(0, 300).map((m) => (
+                        <tr key={m.locker_number} className="border-t">
+                          <td className="px-3 py-1.5 font-medium">{m.locker_number}</td>
+                          <td className="px-3 py-1.5">{m.badge_number ?? "—"}</td>
+                          <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs">{m.national_id}</td>
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {nidResult.matched.length > 300 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                      … and {nidResult.matched.length - 300} more (full list in CSV)
+                    </div>
+                  )}
+                </div>
+              </details>
+
+              {nidResult.unmatched.length > 0 && (
+                <details className="rounded-md border">
+                  <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                    In file but no locker match ({nidResult.unmatched.length})
+                  </summary>
+                  <div className="max-h-48 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th><Th>National ID</Th></tr></thead>
+                      <tbody>
+                        {nidResult.unmatched.slice(0, 200).map((u, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-1.5">{u.badge ?? "—"}</td>
+                            <td className="px-3 py-1.5">{u.name ?? "—"}</td>
+                            <td className="px-3 py-1.5 font-mono text-xs">{u.national_id}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </Card>
         </TabsContent>
 
         <TabsContent value="spare" className="space-y-6">
@@ -1365,6 +1582,7 @@ function detectColumns(headers: string[]): Record<string, string> {
     remark: ["remarks", "remark", "notes", "note"],
     batch_intake: ["batchintake", "batch", "intake", "intakedate", "hiredate", "datehired", "joindate", "joiningdate", "dateofjoining"],
     termination_date: ["terminationdate", "termdate", "dateofresignation", "resignationdate", "exitdate", "lastworkingday"],
+    national_id: ["nationalid", "nationalidno", "nationalidnumber", "nric", "ic", "icno", "icnumber", "mykad", "nid"],
   };
 
   // Fields that should match by substring (flexible) vs exact normalized header.
