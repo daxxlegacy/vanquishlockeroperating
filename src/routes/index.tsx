@@ -273,6 +273,7 @@ function MapPage() {
                   <SheetGrid
                     layout={LAYOUT[name]}
                     byPrefix={byPrefix}
+                    warnings={batchIntakeWarnings}
                     onPick={(n) => setCompartmentNumber(n)}
                   />
                 </Card>
