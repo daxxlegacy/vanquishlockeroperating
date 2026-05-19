@@ -696,9 +696,7 @@ function UploadPage() {
     setNidBusy(true);
     setNidResult(null);
     try {
-      const sheets = await parseFileAllSheets(f);
-      const allRows: Record<string, unknown>[] = [];
-      for (const { rows } of sheets) allRows.push(...rows);
+      const allRows = await parseFileWithHeaderDetection(f, ["nric", "nationalid", "personnumber", "legalfullname", "badgenumber", "employeename"]);
       if (allRows.length === 0) { toast.error("File is empty."); setNidBusy(false); return; }
 
       const headerSet = new Set<string>();
@@ -1461,6 +1459,50 @@ async function parseFileAllSheets(f: File): Promise<{ sheet: string; rows: Recor
     rows: XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sn], { defval: "", raw: true }),
   }));
 }
+
+// Parses a file but auto-detects the header row by scanning the first ~20 rows
+// for known marker tokens (e.g., "NRIC", "PersonNumber"). Useful for sheets
+// that start with a title banner above the real headers.
+async function parseFileWithHeaderDetection(f: File, markerTokens: string[]): Promise<Record<string, unknown>[]> {
+  const ext = f.name.split(".").pop()?.toLowerCase();
+  const normTok = (s: unknown) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const markers = new Set(markerTokens.map((t) => t.toLowerCase().replace(/[^a-z0-9]/g, "")));
+  if (ext === "csv") {
+    // Papa with header:true is fine for CSVs; fallback to plain parse.
+    return await parseFile(f);
+  }
+  const buf = await f.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array", cellDates: false });
+  const out: Record<string, unknown>[] = [];
+  for (const sn of wb.SheetNames) {
+    const ws = wb.Sheets[sn];
+    const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "", raw: true, blankrows: false });
+    if (!aoa.length) continue;
+    let headerIdx = 0;
+    for (let i = 0; i < Math.min(aoa.length, 20); i++) {
+      const row = aoa[i] ?? [];
+      const tokens = row.map(normTok).filter(Boolean);
+      const hits = tokens.filter((t) => markers.has(t)).length;
+      if (hits >= 2) { headerIdx = i; break; }
+    }
+    const headers = (aoa[headerIdx] ?? []).map((h) => String(h ?? "").trim());
+    for (let i = headerIdx + 1; i < aoa.length; i++) {
+      const row = aoa[i] ?? [];
+      const rec: Record<string, unknown> = {};
+      let any = false;
+      for (let c = 0; c < headers.length; c++) {
+        const k = headers[c];
+        if (!k) continue;
+        const v = row[c];
+        rec[k] = v ?? "";
+        if (v !== null && v !== undefined && String(v) !== "") any = true;
+      }
+      if (any) out.push(rec);
+    }
+  }
+  return out;
+}
+
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
