@@ -64,6 +64,13 @@ interface SheetReport {
   lockersFound: number;
 }
 
+interface BatchIntakeWarning {
+  sheet: string;
+  rowIndex: number;
+  locker_number: string;
+  rawValue: string;
+}
+
 interface PreviewResult {
   totalRows: number;
   toCreate: number;
@@ -74,6 +81,7 @@ interface PreviewResult {
   detectedColumns: Record<string, string>;
   sheetReports: SheetReport[];
   duplicatesMerged: number;
+  batchIntakeWarnings: BatchIntakeWarning[];
 }
 
 type RosterPerson = { badge: string | null; name: string | null; rowIndex: number };
