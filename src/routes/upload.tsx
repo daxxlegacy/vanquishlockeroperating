@@ -1221,6 +1221,97 @@ function UploadPage() {
             </div>
           )}
         </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <UserCheck className="h-5 w-5 text-primary" />
+            <h2 className="font-display text-xl font-bold">National ID fill (export)</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Upload a file that contains <strong>NationalID</strong> alongside <strong>badge number</strong> and/or <strong>employee name</strong>.
+            We match each row to its locker (by badge or name) and produce a CSV of <code className="bg-muted px-1 rounded">locker_number, badge, name, national_id</code>.
+            Nothing in the database is changed — this is a separate export to help you fill National ID values.
+          </p>
+
+          <div className="flex gap-3 items-center flex-wrap">
+            <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { setNidFile(f); runNationalIdFill(f); } }} />
+            {nidBusy && <Badge variant="secondary">Matching…</Badge>}
+            {nidFile && !nidBusy && <span className="text-xs text-muted-foreground">{nidFile.name}</span>}
+            {nidFile && !nidBusy && (
+              <Button variant="outline" size="sm" onClick={() => runNationalIdFill(nidFile)}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Re-run
+              </Button>
+            )}
+          </div>
+
+          {nidResult && (
+            <div className="mt-5 space-y-4">
+              <div className="grid md:grid-cols-3 gap-3">
+                <Stat icon={UserCheck} label="People in file (with NID)" value={nidResult.fileCount - nidResult.noNationalId} />
+                <Stat icon={CheckCircle2} label="Matched to lockers" value={nidResult.matched.length} accent="text-success" />
+                <Stat icon={AlertCircle} label="No locker match" value={nidResult.unmatched.length} accent="text-warning" />
+              </div>
+
+              <div className="flex justify-end">
+                <Button size="sm" onClick={exportNationalIdCsv} disabled={nidResult.matched.length === 0}>
+                  <Download className="h-4 w-4 mr-1" /> Export CSV ({nidResult.matched.length})
+                </Button>
+              </div>
+
+              <details open className="rounded-md border">
+                <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                  Matched lockers ({nidResult.matched.length})
+                </summary>
+                <div className="max-h-72 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>National ID</Th><Th>By</Th></tr>
+                    </thead>
+                    <tbody>
+                      {nidResult.matched.slice(0, 300).map((m) => (
+                        <tr key={m.locker_number} className="border-t">
+                          <td className="px-3 py-1.5 font-medium">{m.locker_number}</td>
+                          <td className="px-3 py-1.5">{m.badge_number ?? "—"}</td>
+                          <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs">{m.national_id}</td>
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {nidResult.matched.length > 300 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                      … and {nidResult.matched.length - 300} more (full list in CSV)
+                    </div>
+                  )}
+                </div>
+              </details>
+
+              {nidResult.unmatched.length > 0 && (
+                <details className="rounded-md border">
+                  <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                    In file but no locker match ({nidResult.unmatched.length})
+                  </summary>
+                  <div className="max-h-48 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th><Th>National ID</Th></tr></thead>
+                      <tbody>
+                        {nidResult.unmatched.slice(0, 200).map((u, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-1.5">{u.badge ?? "—"}</td>
+                            <td className="px-3 py-1.5">{u.name ?? "—"}</td>
+                            <td className="px-3 py-1.5 font-mono text-xs">{u.national_id}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </Card>
         </TabsContent>
 
         <TabsContent value="spare" className="space-y-6">
