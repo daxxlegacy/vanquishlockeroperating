@@ -844,6 +844,8 @@ function UploadPage() {
       badge_number: m.badge_number ?? "",
       employee_name: m.employee_name ?? "",
       batch_intake: m.batch_intake ?? "",
+      file_hire_date: m.file_hire_date ?? "",
+      date_diff_days: m.date_diff_days ?? "",
       national_id: m.national_id,
       matched_by: m.matched_by,
     }));
