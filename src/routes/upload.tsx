@@ -822,7 +822,7 @@ function UploadPage() {
 
       let fileCount = 0;
       const counted = new Set<string>();
-      for (const entry of [...fileByBadge.values(), ...fileByName.values()]) {
+      for (const entry of allEntries) {
         const sig = (entry.badge ?? "") + "|" + (entry.name ?? "");
         if (counted.has(sig)) continue;
         counted.add(sig);
