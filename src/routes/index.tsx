@@ -77,7 +77,7 @@ function aggregateStatus(group: Locker[]): string {
 }
 
 function MapPage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const navigate = useNavigate();
   const [lockers, setLockers] = useState<Locker[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -85,6 +85,17 @@ function MapPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeSheet, setActiveSheet] = useState<string | undefined>(undefined);
   const [showValidation, setShowValidation] = useState(false);
+  const [LAYOUT, setLAYOUT] = useState<MapLayout>(() => getLayout());
+  const [hasOverride, setHasOverride] = useState<boolean>(() => hasLayoutOverride());
+  const { set: batchIntakeWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
+
+  useEffect(() => {
+    const off = onLayoutChange(() => {
+      setLAYOUT(getLayout());
+      setHasOverride(hasLayoutOverride());
+    });
+    return off;
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
