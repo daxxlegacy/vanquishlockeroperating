@@ -186,6 +186,10 @@ function UploadPage() {
       let duplicatesMerged = 0;
 
       for (const { sheet, rows } of sheets) {
+        if (!ROSTER_SYNC_SHEETS.has(sheet.trim().toLowerCase())) {
+          sheetReports.push({ sheet, status: "skipped", reason: "Not a roster sync sheet (only Full/Staff/Shoe Locker Listing & HR Locker are read)", rowsRead: rows.length, lockersFound: 0 });
+          continue;
+        }
         if (rows.length === 0) {
           sheetReports.push({ sheet, status: "skipped", reason: "Empty sheet", rowsRead: 0, lockersFound: 0 });
           continue;
