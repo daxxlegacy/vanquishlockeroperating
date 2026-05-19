@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS, fetchAllPaged } from "@/lib/locker-utils";
+import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 
 type Category = "main" | "staff" | "shoe";
 
