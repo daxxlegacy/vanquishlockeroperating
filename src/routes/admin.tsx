@@ -85,6 +85,51 @@ function AdminPage() {
       setBusy(false);
     }
   };
+
+  const runBackup = useServerFn(createBackup);
+  const runRestore = useServerFn(restoreBackup);
+  const [backupBusy, setBackupBusy] = useState<"data" | "system" | "full" | null>(null);
+  const [restoreBusy, setRestoreBusy] = useState<"data" | "system" | "full" | null>(null);
+
+  const downloadBackup = async (kind: "data" | "system" | "full") => {
+    setBackupBusy(kind);
+    try {
+      const result = await runBackup({ data: { kind } });
+      const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      a.href = url;
+      a.download = `lockerops-backup-${kind}-${stamp}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 200);
+      const tableCount = Object.keys(result.tables).length;
+      const rowCount = Object.values(result.tables).reduce((s, r) => s + (r as unknown[]).length, 0);
+      toast.success(`Backup ready — ${tableCount} tables, ${rowCount} rows`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Backup failed");
+    } finally {
+      setBackupBusy(null);
+    }
+  };
+
+  const uploadRestore = async (kind: "data" | "system" | "full", file: File) => {
+    if (!confirm(`Restore ${kind.toUpperCase()} from "${file.name}"? Existing rows with the same id will be overwritten.`)) return;
+    setRestoreBusy(kind);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as { kind?: string; tables?: Record<string, unknown[]> };
+      if (!parsed.tables || typeof parsed.tables !== "object") throw new Error("Invalid backup file: missing tables");
+      const res = await runRestore({ data: { kind, tables: parsed.tables as Record<string, any[]> } });
+      const total = Object.values(res.report).reduce((s, n) => s + n, 0);
+      toast.success(`Restored ${total} rows across ${Object.keys(res.report).length} tables`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Restore failed");
+    } finally {
+      setRestoreBusy(null);
+    }
+  };
+
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
   const refresh = async () => {
