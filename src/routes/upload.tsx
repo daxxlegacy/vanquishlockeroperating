@@ -177,6 +177,7 @@ function UploadPage() {
       const mergedDetected: Record<string, string> = {};
       const byKey = new Map<string, LockerRow>();
       const sheetReports: SheetReport[] = [];
+      const batchIntakeWarnings: BatchIntakeWarning[] = [];
       let duplicatesMerged = 0;
 
       for (const { sheet, rows } of sheets) {
@@ -191,7 +192,6 @@ function UploadPage() {
 
         const missing: string[] = [];
         if (!detected.locker_number) missing.push("locker number");
-        // Sheets must have at least one of badge or employee name to be useful for matching.
         const hasIdent = !!detected.badge_number || !!detected.employee_name;
         if (!hasIdent) missing.push("badge or employee name");
 
@@ -209,12 +209,22 @@ function UploadPage() {
         for (const [k, v] of Object.entries(detected)) if (!mergedDetected[k]) mergedDetected[k] = `${sheet}: ${v}`;
 
         let lockersFound = 0;
+        let rowIdx = 0;
         for (const r of rows) {
+          rowIdx++;
           const row = mapRow(r, detected);
           if (!row) continue;
-          // Apply normalization to badge/name early so dedup keys match across sheets.
           row.badge_number = normalizeBadge(row.badge_number, normCfg);
           row.employee_name = normalizeName(row.employee_name, normCfg);
+
+          // Detect unparseable batch intake values (non-empty raw, but parse returned null).
+          if (detected.batch_intake) {
+            const raw = r[detected.batch_intake];
+            const rawStr = raw == null ? "" : String(raw).trim();
+            if (rawStr && row.batch_intake === null) {
+              batchIntakeWarnings.push({ sheet, rowIndex: rowIdx, locker_number: row.locker_number, rawValue: rawStr });
+            }
+          }
 
           lockersFound++;
           const key = row.locker_number.trim().toUpperCase();
