@@ -242,7 +242,7 @@ function UploadPage() {
         setPreview({
           totalRows: 0, toCreate: 0, toUpdate: 0, activeAfter: 0,
           newlyResigned: [], parsed: [], detectedColumns: mergedDetected,
-          sheetReports, duplicatesMerged: 0,
+          sheetReports, duplicatesMerged: 0, batchIntakeWarnings,
         });
         setParsing(false);
         return;
