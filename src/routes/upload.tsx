@@ -87,6 +87,13 @@ interface PreviewResult {
   terminatedKeys: string[];
 }
 
+const ROSTER_SYNC_SHEETS = new Set<string>([
+  "full locker listing",
+  "staff locker listing",
+  "shoe locker listing",
+  "hr locker",
+]);
+
 type RosterPerson = { badge: string | null; name: string | null; rowIndex: number };
 type RosterMatchMode = "badge" | "name" | "both";
 
