@@ -1680,7 +1680,7 @@ function detectColumns(headers: string[]): Record<string, string> {
   };
 
   // Fields that should match by substring (flexible) vs exact normalized header.
-  const substringFields = new Set(["badge_number", "employee_name"]);
+  const substringFields = new Set(["badge_number", "employee_name", "national_id"]);
 
   for (const [field, opts] of Object.entries(aliases)) {
     for (const h of headers) {
