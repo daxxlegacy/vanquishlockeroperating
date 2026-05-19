@@ -725,12 +725,12 @@ function UploadPage() {
       }
 
       // Pull all active assigned lockers
-      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null }[] = [];
+      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null; batch_intake: string | null }[] = [];
       let from = 0;
       while (true) {
         const { data, error } = await supabase
           .from("lockers")
-          .select("locker_number, employee_name, badge_number")
+          .select("locker_number, employee_name, badge_number, batch_intake")
           .is("deleted_at", null)
           .or("employee_name.not.is.null,badge_number.not.is.null")
           .range(from, from + 999);
@@ -741,7 +741,7 @@ function UploadPage() {
         from += 1000;
       }
 
-      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; national_id: string; matched_by: "badge" | "name" }[] = [];
+      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; national_id: string; matched_by: "badge" | "name" }[] = [];
       const usedKeys = new Set<string>();
       for (const p of dbPeople) {
         const bKey = p.badge_number ? badgeKeyOf(p.badge_number, normCfg) : null;
@@ -754,6 +754,7 @@ function UploadPage() {
           locker_number: p.locker_number,
           badge_number: p.badge_number,
           employee_name: p.employee_name,
+          batch_intake: p.batch_intake,
           national_id: hit.national_id,
           matched_by: bHit ? "badge" : "name",
         });
