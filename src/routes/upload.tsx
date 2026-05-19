@@ -142,6 +142,16 @@ function UploadPage() {
   const [checkBusy, setCheckBusy] = useState(false);
   const [checkResult, setCheckResult] = useState<RosterCheckResult | null>(null);
   const [matchMode, setMatchMode] = useState<RosterMatchMode>("both");
+  // National ID fill (separate function inside Roster Check tab)
+  const [nidFile, setNidFile] = useState<File | null>(null);
+  const [nidBusy, setNidBusy] = useState(false);
+  const [nidResult, setNidResult] = useState<{
+    filename: string;
+    fileCount: number;
+    matched: { locker_number: string; badge_number: string | null; employee_name: string | null; national_id: string; matched_by: "badge" | "name" }[];
+    unmatched: { badge: string | null; name: string | null; national_id: string }[];
+    noNationalId: number;
+  } | null>(null);
   // Spare Key sync
   const [spareFile, setSpareFile] = useState<File | null>(null);
   const [spareBusy, setSpareBusy] = useState(false);
