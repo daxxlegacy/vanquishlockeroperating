@@ -722,7 +722,7 @@ function cellStr(v: unknown): string | null {
   return s === "" ? null : s;
 }
 
-function n(s: string): string { return s.toLowerCase().replace(/[\s_\-/+()]/g, ""); }
+function n(s: string): string { return s.toLowerCase().replace(/[\s_\-/+().]/g, ""); }
 
 function detectHrCols(headers: string[]): {
   badge?: string; name?: string; status?: string;
@@ -734,7 +734,7 @@ function detectHrCols(headers: string[]): {
     badge: ["employeecode", "empcode", "employeeid", "empid", "badgenumber", "badge", "personnumber"],
     name: ["employeename", "name", "fullname", "legalname"],
     status: ["status", "employeestatus", "employmentstatus", "75", "57"],
-    terminate: ["t1terminatedate", "terminatedate", "terminationdate", "resigndate", "resignationdate", "lastworkingday"],
+    terminate: ["t1terminatedate", "terminatedate", "terminationdate", "terminated", "termdate", "resigndate", "resignationdate", "lastworkingday", "lwd", "exitdate", "leavingdate", "dateofleaving", "dateoftermination"],
     join: ["joincompanydate", "joindate", "hiredate", "joiningdate", "dateofjoining"],
     workLocation: ["worklocation", "location", "site"],
     gradeset: ["gradeset", "grade"],
