@@ -650,7 +650,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
   return out;
 }
 
-async function parseHr(f: File): Promise<HrPerson[]> {
+async function parseHr(f: File, filename?: string): Promise<HrPerson[]> {
   const ext = f.name.split(".").pop()?.toLowerCase();
   let rows: Record<string, unknown>[];
   if (ext === "csv") {
@@ -672,8 +672,8 @@ async function parseHr(f: File): Promise<HrPerson[]> {
       const s = wb.Sheets[name];
       const ref = s["!ref"]; if (!ref) continue;
       const range = XLSX.utils.decode_range(ref);
-      const n = range.e.r - range.s.r;
-      if (n > bestRows) { bestRows = n; bestSheet = name; }
+      const nrows = range.e.r - range.s.r;
+      if (nrows > bestRows) { bestRows = nrows; bestSheet = name; }
     }
     rows = XLSX.utils.sheet_to_json(wb.Sheets[bestSheet], { defval: "", raw: true });
   }
@@ -683,6 +683,12 @@ async function parseHr(f: File): Promise<HrPerson[]> {
   const cols = detectHrCols(headers);
   if (!cols.badge && !cols.name) throw new Error("Couldn't find Employee Code or Employee Name in the file.");
 
+  // Filename hint: "termination list", "terminated list", etc → assume every
+  // row in the file is a terminated employee, even if no Status column exists
+  // and no Terminate Date column was detected.
+  const fnameLower = (filename ?? f.name).toLowerCase();
+  const filenameSaysTerminated = /terminat|resign|leaver|exit\s*list/.test(fnameLower);
+
   const out: HrPerson[] = [];
   for (const r of rows) {
     const badge = cols.badge ? cellStr(r[cols.badge]) : null;
@@ -691,7 +697,9 @@ async function parseHr(f: File): Promise<HrPerson[]> {
     const statusRaw = cols.status ? cellStr(r[cols.status])?.toLowerCase() ?? "" : "";
     const terminateDate = cols.terminate ? parseBatchIntake(r[cols.terminate]) : null;
     const status: HrPerson["status"] =
-      statusRaw.includes("terminat") || statusRaw === "resigned" || (!!terminateDate && !statusRaw.includes("current"))
+      statusRaw.includes("terminat") || statusRaw === "resigned"
+        || (!!terminateDate && !statusRaw.includes("current"))
+        || (filenameSaysTerminated && !statusRaw.includes("current"))
         ? "terminated"
         : "current";
     out.push({
