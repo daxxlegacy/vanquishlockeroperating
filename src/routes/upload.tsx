@@ -705,13 +705,15 @@ function UploadPage() {
       const badgeKey = detected.badge_number;
       const nameKey = detected.employee_name;
       const nidKey = detected.national_id;
+      const hireKey = detected.batch_intake; // HireDate / BatchIntake
 
       if (!nidKey) { toast.error("No National ID column found (looked for NationalID/NRIC/IC/MyKad)."); setNidBusy(false); return; }
       if (!badgeKey && !nameKey) { toast.error("No badge or name column found to match against lockers."); setNidBusy(false); return; }
 
-      // Build file index by badge and by name -> national_id
-      const fileByBadge = new Map<string, { badge: string | null; name: string | null; national_id: string }>();
-      const fileByName = new Map<string, { badge: string | null; name: string | null; national_id: string }>();
+      type FileEntry = { badge: string | null; name: string | null; national_id: string; hire_raw: string | null; hire_ts: number };
+      // Build file index by badge and by name -> national_id (allow multiple per key)
+      const fileByBadge = new Map<string, FileEntry[]>();
+      const fileByName = new Map<string, FileEntry[]>();
       let noNationalId = 0;
       for (const r of allRows) {
         const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, normCfg);
@@ -719,9 +721,17 @@ function UploadPage() {
         const nid = getStr(r, nidKey);
         if (!badge && !name) continue;
         if (!nid) { noNationalId++; continue; }
-        const entry = { badge, name, national_id: nid };
-        if (badge) fileByBadge.set(badgeKeyOf(badge, normCfg), entry);
-        if (name) fileByName.set(nameKeyOf(name, normCfg), entry);
+        const hireRaw = hireKey ? getStr(r, hireKey) : null;
+        const hireTs = batchIntakeTs(hireRaw);
+        const entry: FileEntry = { badge, name, national_id: nid, hire_raw: hireRaw, hire_ts: hireTs };
+        if (badge) {
+          const k = badgeKeyOf(badge, normCfg);
+          const arr = fileByBadge.get(k); if (arr) arr.push(entry); else fileByBadge.set(k, [entry]);
+        }
+        if (name) {
+          const k = nameKeyOf(name, normCfg);
+          const arr = fileByName.get(k); if (arr) arr.push(entry); else fileByName.set(k, [entry]);
+        }
       }
 
       // Pull all active assigned lockers
@@ -741,22 +751,54 @@ function UploadPage() {
         from += 1000;
       }
 
-      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; national_id: string; matched_by: "badge" | "name" }[] = [];
+      // Date proximity tolerance (days). Tight enough to dodge same-name collisions,
+      // loose enough for natural batch-vs-hire-date drift.
+      const MAX_DIFF_DAYS = 45;
+      const DAY = 86_400_000;
+
+      const pickByDate = (cands: FileEntry[], dbTs: number): { entry: FileEntry; diffDays: number | null } | null => {
+        if (cands.length === 0) return null;
+        // If DB date missing, fall back to single best entry (the one with a hire date if any)
+        if (!Number.isFinite(dbTs)) {
+          const withDate = cands.find((c) => Number.isFinite(c.hire_ts));
+          const chosen = withDate ?? cands[0];
+          return { entry: chosen, diffDays: null };
+        }
+        let best: FileEntry | null = null;
+        let bestDiff = Infinity;
+        for (const c of cands) {
+          if (!Number.isFinite(c.hire_ts)) continue;
+          const d = Math.abs(c.hire_ts - dbTs) / DAY;
+          if (d < bestDiff) { bestDiff = d; best = c; }
+        }
+        if (best && bestDiff <= MAX_DIFF_DAYS) return { entry: best, diffDays: Math.round(bestDiff) };
+        // No dated candidate within tolerance — if only one candidate and it lacks a date, accept it.
+        if (cands.length === 1 && !Number.isFinite(cands[0].hire_ts)) return { entry: cands[0], diffDays: null };
+        // Otherwise reject (ambiguous — likely wrong person).
+        return null;
+      };
+
+      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; file_hire_date: string | null; date_diff_days: number | null; national_id: string; matched_by: "badge" | "name" }[] = [];
       const usedKeys = new Set<string>();
       for (const p of dbPeople) {
         const bKey = p.badge_number ? badgeKeyOf(p.badge_number, normCfg) : null;
         const nKey = p.employee_name ? nameKeyOf(p.employee_name, normCfg) : null;
-        const bHit = bKey ? fileByBadge.get(bKey) : undefined;
-        const nHit = !bHit && nKey ? fileByName.get(nKey) : undefined;
-        const hit = bHit ?? nHit;
-        if (!hit) continue;
+        const dbTs = batchIntakeTs(p.batch_intake);
+        const bCands = bKey ? fileByBadge.get(bKey) ?? [] : [];
+        const nCands = nKey ? fileByName.get(nKey) ?? [] : [];
+        let pick = pickByDate(bCands, dbTs);
+        let by: "badge" | "name" = "badge";
+        if (!pick) { pick = pickByDate(nCands, dbTs); by = "name"; }
+        if (!pick) continue;
         matched.push({
           locker_number: p.locker_number,
           badge_number: p.badge_number,
           employee_name: p.employee_name,
           batch_intake: p.batch_intake,
-          national_id: hit.national_id,
-          matched_by: bHit ? "badge" : "name",
+          file_hire_date: pick.entry.hire_raw,
+          date_diff_days: pick.diffDays,
+          national_id: pick.entry.national_id,
+          matched_by: by,
         });
         if (bKey) usedKeys.add("b:" + bKey);
         if (nKey) usedKeys.add("n:" + nKey);
@@ -765,14 +807,17 @@ function UploadPage() {
       // Anyone in the file with a NID but no locker match
       const unmatched: { badge: string | null; name: string | null; national_id: string }[] = [];
       const seenNid = new Set<string>();
-      for (const entry of [...fileByBadge.values(), ...fileByName.values()]) {
+      const allEntries: FileEntry[] = [];
+      for (const arr of fileByBadge.values()) allEntries.push(...arr);
+      for (const arr of fileByName.values()) allEntries.push(...arr);
+      for (const entry of allEntries) {
         const sig = (entry.badge ?? "") + "|" + (entry.name ?? "") + "|" + entry.national_id;
         if (seenNid.has(sig)) continue;
         seenNid.add(sig);
         const bKey = entry.badge ? "b:" + badgeKeyOf(entry.badge, normCfg) : null;
         const nKey = entry.name ? "n:" + nameKeyOf(entry.name, normCfg) : null;
         if ((bKey && usedKeys.has(bKey)) || (nKey && usedKeys.has(nKey))) continue;
-        unmatched.push(entry);
+        unmatched.push({ badge: entry.badge, name: entry.name, national_id: entry.national_id });
       }
 
       let fileCount = 0;
