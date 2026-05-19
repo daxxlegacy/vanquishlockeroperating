@@ -277,6 +277,20 @@ function LockersPage() {
           </DropdownMenu>
         </Card>
 
+        {batchWarnings.size > 0 && (
+          <div className="mt-4 rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm flex items-start gap-3">
+            <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <div className="font-medium">
+                {batchWarnings.size.toLocaleString()} locker{batchWarnings.size === 1 ? "" : "s"} are missing a batch intake date
+              </div>
+              <div className="text-xs text-muted-foreground">
+                From the most recent upload{batchWarningStore?.filename ? ` (${batchWarningStore.filename})` : ""} — affected rows are highlighted in amber.
+              </div>
+            </div>
+          </div>
+        )}
+
         <Card className="mt-4 overflow-hidden">
           {!lockers ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
@@ -294,7 +308,7 @@ function LockersPage() {
                     rowComponent={LockerRow}
                     rowCount={filtered.length}
                     rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: filtered, onPick: setSelected }}
+                    rowProps={{ rows: filtered, onPick: setSelected, warnings: batchWarnings }}
                     style={{ height: Math.min(VIEWPORT_HEIGHT, filtered.length * ROW_HEIGHT + 4) }}
                   />
                 )}
@@ -326,16 +340,21 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-type LockerRowProps = { rows: Locker[]; onPick: (id: string) => void };
-function LockerRow({ index, style, rows, onPick }: RowComponentProps<LockerRowProps>) {
+type LockerRowProps = { rows: Locker[]; onPick: (id: string) => void; warnings: Set<string> };
+function LockerRow({ index, style, rows, onPick, warnings }: RowComponentProps<LockerRowProps>) {
   const l = rows[index];
+  const flagged = warnings.has(l.locker_number.trim().toUpperCase());
   return (
     <div
       style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
       onClick={() => onPick(l.id)}
-      className="grid items-center border-t hover:bg-muted/40 cursor-pointer text-sm"
+      className={`grid items-center border-t hover:bg-muted/40 cursor-pointer text-sm ${flagged ? "bg-warning/10 hover:bg-warning/15" : ""}`}
+      title={flagged ? "Batch intake date could not be parsed in the most recent upload" : undefined}
     >
-      <div className="px-3 truncate font-medium">{l.locker_number}</div>
+      <div className="px-3 truncate font-medium flex items-center gap-1.5">
+        {flagged && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" aria-hidden />}
+        <span className="truncate">{l.locker_number}</span>
+      </div>
       <div className="px-3 truncate">{l.location}</div>
       <div className="px-3 truncate text-muted-foreground">{l.row_label}</div>
       <div className="px-3 truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</div>
@@ -344,7 +363,9 @@ function LockerRow({ index, style, rows, onPick }: RowComponentProps<LockerRowPr
       <div className="px-3 truncate text-muted-foreground">{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} /></div>
       <div className="px-3 truncate text-xs capitalize text-muted-foreground">{l.spare_key_status?.replace(/_/g, " ")}</div>
-      <div className="px-3 truncate text-xs text-muted-foreground">{formatBatchIntake(l.batch_intake)}</div>
+      <div className={`px-3 truncate text-xs ${flagged ? "text-warning font-medium" : "text-muted-foreground"}`}>
+        {formatBatchIntake(l.batch_intake) || (flagged ? "missing" : "")}
+      </div>
     </div>
   );
 }
