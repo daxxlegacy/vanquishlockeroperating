@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge } from "lucide-react";
 import { toast } from "sonner";
-import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
+import { parseBatchIntake, formatBatchIntake, compareLockerNumbers, NATIONAL_ID_KEYS } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
 import { Progress } from "@/components/ui/progress";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
@@ -1648,7 +1648,7 @@ function detectColumns(headers: string[]): Record<string, string> {
     remark: ["remarks", "remark", "notes", "note"],
     batch_intake: ["batchintake", "batch", "intake", "intakedate", "hiredate", "datehired", "joindate", "joiningdate", "dateofjoining"],
     termination_date: ["terminationdate", "termdate", "dateofresignation", "resignationdate", "exitdate", "lastworkingday"],
-    national_id: ["nationalid", "nric", "icno", "icnumber", "icpassport", "mykad", "identitycard", "identitynumber", "identityno", "passport", "passportno", "nid"],
+    national_id: NATIONAL_ID_KEYS,
   };
 
   // Fields that should match by substring (flexible) vs exact normalized header.

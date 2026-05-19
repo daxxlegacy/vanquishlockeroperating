@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { compareLockerNumbers, parseBatchIntake } from "@/lib/locker-utils";
+import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 
 type Category = "main" | "staff" | "shoe";
 
@@ -295,7 +295,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           key_lock_type: norm(pick(r, "Types of Key Lock")),
           badge_number: norm(pick(r, "Employee Number", "Badge Number")),
           employee_name: norm(pick(r, "Employee Name")),
-          national_id: norm(pick(r, "National ID", "NationalID", "NRIC", "IC", "IC No", "IC Number", "MyKad", "Identity Card", "Identity Number", "Passport", "Passport No", "NID")),
+          national_id: norm(pick(r, ...NATIONAL_ID_HEADERS)),
           contact: norm(pick(r, "Contact")),
           status: norm(pick(r, "Terminate", "Status")),
           batch_intake_date: dateOnly(pick(r, "Batch Intake Date")),
