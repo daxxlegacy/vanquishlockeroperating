@@ -39,10 +39,10 @@ const COLS = [
   { key: "row", w: 110 },
   { key: "key_lock", w: 160 },
   { key: "badge", w: 110 },
+  { key: "nid", w: 140 },
   { key: "emp", w: 200 },
   { key: "work", w: 160 },
   { key: "status", w: 130 },
-  { key: "spare", w: 130 },
   { key: "batch", w: 130 },
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
