@@ -21,6 +21,7 @@ import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
 import { Progress } from "@/components/ui/progress";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
+import { saveBatchIntakeWarnings, clearBatchIntakeWarnings } from "@/lib/batch-intake-warnings";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -341,6 +342,15 @@ function UploadPage() {
         active_count: preview.activeAfter,
       });
       toast.success(`Sync complete — ${preview.toCreate} created, ${preview.toUpdate} updated, ${preview.newlyResigned.length} freed.`);
+      // Persist (or clear) batch-intake parsing warnings so the map/table can highlight affected lockers.
+      if (preview.batchIntakeWarnings.length > 0) {
+        saveBatchIntakeWarnings(
+          preview.batchIntakeWarnings.map((w) => w.locker_number),
+          file.name,
+        );
+      } else {
+        clearBatchIntakeWarnings();
+      }
       setPreview(null);
       setFile(null);
       const { data } = await supabase.from("upload_history").select("*").order("created_at", { ascending: false }).limit(10);

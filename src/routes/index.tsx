@@ -13,19 +13,22 @@ import { memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, ClipboardCheck } from "lucide-react";
+import { Search, ClipboardCheck, Upload as UploadIcon, RotateCcw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import layoutData from "@/data/locker-map-layout.json";
+import {
+  getLayout,
+  saveLayout,
+  clearLayoutOverride,
+  hasLayoutOverride,
+  parseLayoutFromFile,
+  onLayoutChange,
+  type MapLayout,
+  type SheetLayout,
+} from "@/lib/map-layout";
+import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
-
-type SheetLayout = {
-  rows: number;
-  cols: number;
-  cells: { r: number; c: number; n: string }[];
-};
-const LAYOUT = layoutData as Record<string, SheetLayout>;
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -74,7 +77,7 @@ function aggregateStatus(group: Locker[]): string {
 }
 
 function MapPage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const navigate = useNavigate();
   const [lockers, setLockers] = useState<Locker[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -82,6 +85,17 @@ function MapPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeSheet, setActiveSheet] = useState<string | undefined>(undefined);
   const [showValidation, setShowValidation] = useState(false);
+  const [LAYOUT, setLAYOUT] = useState<MapLayout>(() => getLayout());
+  const [hasOverride, setHasOverride] = useState<boolean>(() => hasLayoutOverride());
+  const { set: batchIntakeWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
+
+  useEffect(() => {
+    const off = onLayoutChange(() => {
+      setLAYOUT(getLayout());
+      setHasOverride(hasLayoutOverride());
+    });
+    return off;
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -164,6 +178,23 @@ function MapPage() {
   const sheetNames = Object.keys(LAYOUT);
   const compartments = compartmentNumber ? byPrefix.get(prefixOf(compartmentNumber)) ?? [] : [];
 
+  const handleUploadLayout = async (file: File) => {
+    try {
+      const layout = await parseLayoutFromFile(file);
+      saveLayout(layout);
+      toast.success(`Map layout updated — ${Object.keys(layout).length} sheet(s) imported.`);
+      setActiveSheet(Object.keys(layout)[0]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to read layout file");
+    }
+  };
+
+  const handleResetLayout = () => {
+    clearLayoutOverride();
+    toast.success("Restored default map layout.");
+    setActiveSheet(undefined);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -177,6 +208,28 @@ function MapPage() {
           </div>
           <Legend />
         </div>
+
+        {role === "admin" && (
+          <MapLayoutUploader
+            hasOverride={hasOverride}
+            onUpload={handleUploadLayout}
+            onReset={handleResetLayout}
+          />
+        )}
+
+        {batchIntakeWarnings.size > 0 && (
+          <div className="mb-4 rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm flex items-start gap-3">
+            <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <div className="font-medium">
+                {batchIntakeWarnings.size.toLocaleString()} locker{batchIntakeWarnings.size === 1 ? "" : "s"} are missing a batch intake date
+              </div>
+              <div className="text-xs text-muted-foreground">
+                From the most recent upload{batchWarningStore?.filename ? ` (${batchWarningStore.filename})` : ""} — these cells are outlined in amber on the map.
+              </div>
+            </div>
+          </div>
+        )}
 
         <LockerSearchBar
           lockers={lockers}
@@ -192,6 +245,7 @@ function MapPage() {
           }}
           onValidate={() => setShowValidation(true)}
         />
+
 
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3 mb-6">
@@ -219,6 +273,7 @@ function MapPage() {
                   <SheetGrid
                     layout={LAYOUT[name]}
                     byPrefix={byPrefix}
+                    warnings={batchIntakeWarnings}
                     onPick={(n) => setCompartmentNumber(n)}
                   />
                 </Card>
@@ -247,6 +302,7 @@ function MapPage() {
         open={showValidation}
         onOpenChange={setShowValidation}
         lockers={lockers}
+        layout={LAYOUT}
       />
     </div>
   );
@@ -255,10 +311,12 @@ function MapPage() {
 const SheetGrid = memo(function SheetGrid({
   layout,
   byPrefix,
+  warnings,
   onPick,
 }: {
   layout: SheetLayout;
   byPrefix: Map<string, Locker[]>;
+  warnings: Set<string>;
   onPick: (n: string) => void;
 }) {
   const CELL = 48;
@@ -277,8 +335,12 @@ const SheetGrid = memo(function SheetGrid({
         const left = (cell.c - 1) * (CELL + GAP);
         const top = (cell.r - 1) * (CELL + GAP);
         const occupied = group.filter((l) => l.status === "active").length;
+        const flaggedCount = warnings.size > 0
+          ? group.filter((l) => warnings.has(l.locker_number.trim().toUpperCase())).length
+          : 0;
+        const flagged = flaggedCount > 0;
         const title = group.length > 0
-          ? `Locker ${cell.n} — ${group.length} compartment${group.length === 1 ? "" : "s"}, ${occupied} occupied`
+          ? `Locker ${cell.n} — ${group.length} compartment${group.length === 1 ? "" : "s"}, ${occupied} occupied${flagged ? ` · ${flaggedCount} missing batch intake` : ""}`
           : `Locker ${cell.n} — not in database`;
 
         return (
@@ -291,11 +353,14 @@ const SheetGrid = memo(function SheetGrid({
             style={{ left, top, width: CELL, height: CELL }}
             className={`absolute rounded border-2 ${colorClass} ${
               group.length > 0 ? "cursor-pointer hover:ring-2 hover:ring-ring hover:z-10" : "cursor-not-allowed"
-            } font-bold flex flex-col items-center justify-center leading-none transition-colors`}
+            } ${flagged ? "ring-2 ring-warning ring-offset-1 ring-offset-background" : ""} font-bold flex flex-col items-center justify-center leading-none transition-colors`}
           >
             <span className="text-[11px] tracking-tight">{cell.n}</span>
             {group.length > 0 && (
               <span className="text-[9px] opacity-80 mt-0.5">{occupied}/{group.length}</span>
+            )}
+            {flagged && (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-warning border border-background" aria-hidden />
             )}
           </button>
         );
@@ -303,6 +368,51 @@ const SheetGrid = memo(function SheetGrid({
     </div>
   );
 });
+
+function MapLayoutUploader({
+  hasOverride,
+  onUpload,
+  onReset,
+}: {
+  hasOverride: boolean;
+  onUpload: (file: File) => void;
+  onReset: () => void;
+}) {
+  const inputId = "map-layout-upload-input";
+  return (
+    <Card className="mb-4 p-3 flex flex-wrap items-center gap-3">
+      <div className="flex-1 min-w-[240px]">
+        <div className="text-sm font-medium">Map layout source</div>
+        <div className="text-xs text-muted-foreground">
+          {hasOverride
+            ? "Using a custom layout uploaded for this browser."
+            : "Using the built-in default layout. Upload an Excel/CSV file to auto-generate a new layout from its sheet cells."}
+        </div>
+      </div>
+      <input
+        id={inputId}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onUpload(f);
+          e.currentTarget.value = "";
+        }}
+      />
+      <Button variant="outline" size="sm" asChild>
+        <label htmlFor={inputId} className="cursor-pointer">
+          <UploadIcon className="h-4 w-4 mr-1.5" /> Upload map data
+        </label>
+      </Button>
+      {hasOverride && (
+        <Button variant="ghost" size="sm" onClick={onReset}>
+          <RotateCcw className="h-4 w-4 mr-1.5" /> Restore default
+        </Button>
+      )}
+    </Card>
+  );
+}
 
 function Legend() {
   const items: { c: string; l: string }[] = [
@@ -407,16 +517,18 @@ function ValidationReportDialog({
   open,
   onOpenChange,
   lockers,
+  layout,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   lockers: Locker[] | null;
+  layout: MapLayout;
 }) {
   const report = useMemo(() => {
     if (!lockers) return null;
     // All prefixes present in any sheet
     const mappedPrefixes = new Set<string>();
-    for (const sheet of Object.values(LAYOUT)) {
+    for (const sheet of Object.values(layout)) {
       for (const cell of sheet.cells) mappedPrefixes.add(prefixOf(cell.n));
     }
     const missing: Locker[] = [];
