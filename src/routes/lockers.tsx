@@ -39,10 +39,10 @@ const COLS = [
   { key: "row", w: 110 },
   { key: "key_lock", w: 160 },
   { key: "badge", w: 110 },
+  { key: "nid", w: 140 },
   { key: "emp", w: 200 },
   { key: "work", w: 160 },
   { key: "status", w: 130 },
-  { key: "spare", w: 130 },
   { key: "batch", w: 130 },
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
@@ -168,10 +168,10 @@ function LockersPage() {
     "Unit Type": l.unit_type ?? "",
     "Key Lock": l.key_lock ?? "",
     "Badge Number": l.badge_number ?? "",
+    "National ID": l.national_id ?? "",
     "Employee Name": l.employee_name ?? "",
     "Work Location": l.work_location ?? "",
     "Status": STATUS_LABEL[l.status as LockerStatus] ?? l.status,
-    "Spare Key": l.spare_key_status ?? "",
     "Batch Intake": formatBatchIntake(l.batch_intake),
     "Remark": l.remark ?? "",
   }));
@@ -298,8 +298,8 @@ function LockersPage() {
             <div className="overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                  <Th>Locker #</Th><Th>Location</Th><Th>Row</Th><Th>Key Lock</Th><Th>Badge</Th><Th>Employee</Th>
-                  <Th>Work Location</Th><Th>Status</Th><Th>Spare Key</Th><Th>Batch</Th>
+                  <Th>Locker #</Th><Th>Location</Th><Th>Row</Th><Th>Key Lock</Th><Th>Badge</Th><Th>National ID</Th><Th>Employee</Th>
+                  <Th>Work Location</Th><Th>Status</Th><Th>Batch</Th>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
@@ -359,10 +359,10 @@ function LockerRow({ index, style, rows, onPick, warnings }: RowComponentProps<L
       <div className="px-3 truncate text-muted-foreground">{l.row_label}</div>
       <div className="px-3 truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</div>
       <div className="px-3 truncate text-muted-foreground">{l.badge_number ?? "—"}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground">{l.national_id ?? "—"}</div>
       <div className="px-3 truncate">{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
       <div className="px-3 truncate text-muted-foreground">{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} /></div>
-      <div className="px-3 truncate text-xs capitalize text-muted-foreground">{l.spare_key_status?.replace(/_/g, " ")}</div>
       <div className={`px-3 truncate text-xs ${flagged ? "text-warning font-medium" : "text-muted-foreground"}`}>
         {formatBatchIntake(l.batch_intake) || (flagged ? "missing" : "")}
       </div>
