@@ -213,6 +213,9 @@ function ReconcilePage() {
         terminated: hr.filter((p) => p.status === "terminated").length,
       });
       setDbCount(dbRows.length);
+      // Sort HR matches: badge match wins, then name, then termination date recency.
+      // (Used implicitly via Map.get(); but when multiple terminated rows exist for
+      // the same person, we pick the most recent termination date below.)
 
       // Build HR indexes
       const hrByBadge = new Map<string, HrPerson[]>();
