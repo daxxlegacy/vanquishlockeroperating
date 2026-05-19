@@ -722,7 +722,7 @@ function cellStr(v: unknown): string | null {
   return s === "" ? null : s;
 }
 
-function n(s: string): string { return s.toLowerCase().replace(/[\s_\-/+()]/g, ""); }
+function n(s: string): string { return s.toLowerCase().replace(/[\s_\-/+().]/g, ""); }
 
 function detectHrCols(headers: string[]): {
   badge?: string; name?: string; status?: string;
