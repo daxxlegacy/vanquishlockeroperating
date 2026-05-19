@@ -148,7 +148,7 @@ function UploadPage() {
   const [nidResult, setNidResult] = useState<{
     filename: string;
     fileCount: number;
-    matched: { locker_number: string; badge_number: string | null; employee_name: string | null; national_id: string; matched_by: "badge" | "name" }[];
+    matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; national_id: string; matched_by: "badge" | "name" }[];
     unmatched: { badge: string | null; name: string | null; national_id: string }[];
     noNationalId: number;
   } | null>(null);
@@ -725,12 +725,12 @@ function UploadPage() {
       }
 
       // Pull all active assigned lockers
-      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null }[] = [];
+      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null; batch_intake: string | null }[] = [];
       let from = 0;
       while (true) {
         const { data, error } = await supabase
           .from("lockers")
-          .select("locker_number, employee_name, badge_number")
+          .select("locker_number, employee_name, badge_number, batch_intake")
           .is("deleted_at", null)
           .or("employee_name.not.is.null,badge_number.not.is.null")
           .range(from, from + 999);
@@ -741,7 +741,7 @@ function UploadPage() {
         from += 1000;
       }
 
-      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; national_id: string; matched_by: "badge" | "name" }[] = [];
+      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; national_id: string; matched_by: "badge" | "name" }[] = [];
       const usedKeys = new Set<string>();
       for (const p of dbPeople) {
         const bKey = p.badge_number ? badgeKeyOf(p.badge_number, normCfg) : null;
@@ -754,6 +754,7 @@ function UploadPage() {
           locker_number: p.locker_number,
           badge_number: p.badge_number,
           employee_name: p.employee_name,
+          batch_intake: p.batch_intake,
           national_id: hit.national_id,
           matched_by: bHit ? "badge" : "name",
         });
@@ -797,6 +798,7 @@ function UploadPage() {
       locker_number: m.locker_number,
       badge_number: m.badge_number ?? "",
       employee_name: m.employee_name ?? "",
+      batch_intake: m.batch_intake ?? "",
       national_id: m.national_id,
       matched_by: m.matched_by,
     }));
@@ -1264,7 +1266,7 @@ function UploadPage() {
                 <div className="max-h-72 overflow-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 sticky top-0">
-                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>National ID</Th><Th>By</Th></tr>
+                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>Batch Intake</Th><Th>National ID</Th><Th>By</Th></tr>
                     </thead>
                     <tbody>
                       {nidResult.matched.slice(0, 300).map((m) => (
@@ -1272,6 +1274,7 @@ function UploadPage() {
                           <td className="px-3 py-1.5 font-medium">{m.locker_number}</td>
                           <td className="px-3 py-1.5">{m.badge_number ?? "—"}</td>
                           <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-xs">{m.batch_intake ?? "—"}</td>
                           <td className="px-3 py-1.5 font-mono text-xs">{m.national_id}</td>
                           <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
                         </tr>
