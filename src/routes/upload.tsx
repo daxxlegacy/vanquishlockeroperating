@@ -148,7 +148,7 @@ function UploadPage() {
   const [nidResult, setNidResult] = useState<{
     filename: string;
     fileCount: number;
-    matched: { locker_number: string; badge_number: string | null; employee_name: string | null; national_id: string; matched_by: "badge" | "name" }[];
+    matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; national_id: string; matched_by: "badge" | "name" }[];
     unmatched: { badge: string | null; name: string | null; national_id: string }[];
     noNationalId: number;
   } | null>(null);
