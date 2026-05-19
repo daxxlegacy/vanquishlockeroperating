@@ -773,10 +773,11 @@ function UploadPage() {
               <Stat icon={UserMinus} label="To resign" value={preview.newlyResigned.length} accent="text-destructive" />
             </div>
 
-            <div className="grid md:grid-cols-3 gap-3 mb-4">
+            <div className="grid md:grid-cols-4 gap-3 mb-4">
               <Stat icon={Layers} label="Sheets read" value={preview.sheetReports.filter((s) => s.status === "ok").length} />
               <Stat icon={FileSpreadsheet} label="Sheets skipped" value={preview.sheetReports.filter((s) => s.status === "skipped").length} accent="text-warning" />
               <Stat icon={GitMerge} label="Duplicates merged" value={preview.duplicatesMerged} accent="text-primary" />
+              <Stat icon={UserMinus} label="Terminated rows skipped" value={preview.terminatedSkipped} accent="text-muted-foreground" />
             </div>
 
             <details className="mb-4 rounded-md border" open={preview.sheetReports.some((s) => s.status === "skipped")}>
