@@ -692,6 +692,122 @@ function UploadPage() {
     toast.success("Roster check exported.");
   };
 
+  const runNationalIdFill = async (f: File) => {
+    setNidBusy(true);
+    setNidResult(null);
+    try {
+      const sheets = await parseFileAllSheets(f);
+      const allRows: Record<string, unknown>[] = [];
+      for (const { rows } of sheets) allRows.push(...rows);
+      if (allRows.length === 0) { toast.error("File is empty."); setNidBusy(false); return; }
+
+      const headerSet = new Set<string>();
+      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
+      const detected = detectColumns([...headerSet]);
+      const badgeKey = detected.badge_number;
+      const nameKey = detected.employee_name;
+      const nidKey = detected.national_id;
+
+      if (!nidKey) { toast.error("No National ID column found (looked for NationalID/NRIC/IC/MyKad)."); setNidBusy(false); return; }
+      if (!badgeKey && !nameKey) { toast.error("No badge or name column found to match against lockers."); setNidBusy(false); return; }
+
+      // Build file index by badge and by name -> national_id
+      const fileByBadge = new Map<string, { badge: string | null; name: string | null; national_id: string }>();
+      const fileByName = new Map<string, { badge: string | null; name: string | null; national_id: string }>();
+      let noNationalId = 0;
+      for (const r of allRows) {
+        const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, normCfg);
+        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, normCfg);
+        const nid = getStr(r, nidKey);
+        if (!badge && !name) continue;
+        if (!nid) { noNationalId++; continue; }
+        const entry = { badge, name, national_id: nid };
+        if (badge) fileByBadge.set(badgeKeyOf(badge, normCfg), entry);
+        if (name) fileByName.set(nameKeyOf(name, normCfg), entry);
+      }
+
+      // Pull all active assigned lockers
+      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number, employee_name, badge_number")
+          .is("deleted_at", null)
+          .or("employee_name.not.is.null,badge_number.not.is.null")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        dbPeople.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+
+      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; national_id: string; matched_by: "badge" | "name" }[] = [];
+      const usedKeys = new Set<string>();
+      for (const p of dbPeople) {
+        const bKey = p.badge_number ? badgeKeyOf(p.badge_number, normCfg) : null;
+        const nKey = p.employee_name ? nameKeyOf(p.employee_name, normCfg) : null;
+        const bHit = bKey ? fileByBadge.get(bKey) : undefined;
+        const nHit = !bHit && nKey ? fileByName.get(nKey) : undefined;
+        const hit = bHit ?? nHit;
+        if (!hit) continue;
+        matched.push({
+          locker_number: p.locker_number,
+          badge_number: p.badge_number,
+          employee_name: p.employee_name,
+          national_id: hit.national_id,
+          matched_by: bHit ? "badge" : "name",
+        });
+        if (bKey) usedKeys.add("b:" + bKey);
+        if (nKey) usedKeys.add("n:" + nKey);
+      }
+
+      // Anyone in the file with a NID but no locker match
+      const unmatched: { badge: string | null; name: string | null; national_id: string }[] = [];
+      const seenNid = new Set<string>();
+      for (const entry of [...fileByBadge.values(), ...fileByName.values()]) {
+        const sig = (entry.badge ?? "") + "|" + (entry.name ?? "") + "|" + entry.national_id;
+        if (seenNid.has(sig)) continue;
+        seenNid.add(sig);
+        const bKey = entry.badge ? "b:" + badgeKeyOf(entry.badge, normCfg) : null;
+        const nKey = entry.name ? "n:" + nameKeyOf(entry.name, normCfg) : null;
+        if ((bKey && usedKeys.has(bKey)) || (nKey && usedKeys.has(nKey))) continue;
+        unmatched.push(entry);
+      }
+
+      let fileCount = 0;
+      const counted = new Set<string>();
+      for (const entry of [...fileByBadge.values(), ...fileByName.values()]) {
+        const sig = (entry.badge ?? "") + "|" + (entry.name ?? "");
+        if (counted.has(sig)) continue;
+        counted.add(sig);
+        fileCount++;
+      }
+
+      setNidResult({ filename: f.name, fileCount, matched, unmatched, noNationalId });
+      toast.success(`National ID matched ${matched.length} locker(s).`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "National ID fill failed");
+    }
+    setNidBusy(false);
+  };
+
+  const exportNationalIdCsv = () => {
+    if (!nidResult) return;
+    const rows = nidResult.matched.map((m) => ({
+      locker_number: m.locker_number,
+      badge_number: m.badge_number ?? "",
+      employee_name: m.employee_name ?? "",
+      national_id: m.national_id,
+      matched_by: m.matched_by,
+    }));
+    const csv = Papa.unparse(rows);
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `locker-national-id-${stamp}.csv`);
+    toast.success("National ID CSV exported.");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
