@@ -1284,7 +1284,7 @@ function UploadPage() {
                 <div className="max-h-72 overflow-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 sticky top-0">
-                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>Batch Intake</Th><Th>Hire Date</Th><Th>Δ days</Th><Th>National ID</Th><Th>By</Th></tr>
+                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>Batch Intake</Th><Th>National ID</Th><Th>By</Th></tr>
                     </thead>
                     <tbody>
                       {nidResult.matched.slice(0, 300).map((m) => (
@@ -1293,8 +1293,6 @@ function UploadPage() {
                           <td className="px-3 py-1.5">{m.badge_number ?? "—"}</td>
                           <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
                           <td className="px-3 py-1.5 text-xs">{m.batch_intake ?? "—"}</td>
-                          <td className="px-3 py-1.5 text-xs">{m.file_hire_date ?? "—"}</td>
-                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.date_diff_days ?? "—"}</td>
                           <td className="px-3 py-1.5 font-mono text-xs">{m.national_id}</td>
                           <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
                         </tr>
