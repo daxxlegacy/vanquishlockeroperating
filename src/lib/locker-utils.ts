@@ -104,3 +104,60 @@ export function formatBatchIntake(iso: string | null | undefined): string {
   if (!m) return iso;
   return `${m[3]}/${m[2]}/${m[1]}`;
 }
+
+/**
+ * Single source of truth for "national ID" column detection across every
+ * upload surface (roster upload, occupancy import, national-ID fill, etc.).
+ * Update this list and every page picks up the new alias automatically.
+ *
+ * `NATIONAL_ID_HEADERS` — raw header strings (case-insensitive, space-tolerant)
+ *   used by header-name pick helpers (e.g. occupancy import's `pick(row, ...)`).
+ *
+ * `NATIONAL_ID_KEYS` — normalized lookup tokens used by alias-table based
+ *   detection (e.g. upload.tsx `detectColumns` substring match).
+ */
+export const NATIONAL_ID_HEADERS: string[] = [
+  "National ID", "NationalID", "National Id",
+  "NRIC", "NRIC No", "NRIC Number",
+  "IC", "IC No", "IC Number", "IC/Passport",
+  "MyKad", "My Kad",
+  "Identity Card", "Identity Number", "Identity No",
+  "Passport", "Passport No", "Passport Number",
+  "NID",
+];
+
+export const NATIONAL_ID_KEYS: string[] = [
+  "nationalid", "nric", "icno", "icnumber", "icpassport",
+  "mykad", "identitycard", "identitynumber", "identityno",
+  "passport", "passportno", "nid",
+];
+
+/**
+ * Page through every row of a Supabase query in 1000-row chunks (Supabase's
+ * default hard cap). Pass a builder that returns a fresh PostgrestFilterBuilder
+ * each call — typically `() => supabase.from("…").select("…").eq(…)`.
+ *
+ * Stops on error and returns whatever has been fetched so far (callers can
+ * still inspect `length` to detect partial loads). Throws if `throwOnError`.
+ */
+export async function fetchAllPaged<T>(
+  build: () => { range: (from: number, to: number) => Promise<{ data: T[] | null; error: { message: string } | null }> },
+  opts: { pageSize?: number; throwOnError?: boolean } = {},
+): Promise<T[]> {
+  const PAGE = opts.pageSize ?? 1000;
+  const out: T[] = [];
+  let from = 0;
+  // Safety cap so a runaway query can't loop forever.
+  for (let i = 0; i < 1000; i++) {
+    const { data, error } = await build().range(from, from + PAGE - 1);
+    if (error) {
+      if (opts.throwOnError) throw new Error(error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    out.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return out;
+}
