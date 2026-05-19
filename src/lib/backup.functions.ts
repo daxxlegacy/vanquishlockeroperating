@@ -28,7 +28,7 @@ async function assertAdmin(userId: string) {
   if (!isAdmin) throw new Response("Forbidden", { status: 403 });
 }
 
-async function dumpTables(tables: readonly string[]) {
+async function dumpTables(tables: readonly string[]): Promise<Record<string, any[]>> {
   const out: Record<string, unknown[]> = {};
   for (const t of tables) {
     const rows: unknown[] = [];
