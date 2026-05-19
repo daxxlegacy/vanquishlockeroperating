@@ -55,6 +55,7 @@ type LockerRow = {
   spare_key_status: "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
   remark: string | null;
   batch_intake: string | null;
+  national_id: string | null;
 };
 
 interface SheetReport {
