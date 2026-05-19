@@ -206,7 +206,7 @@ function ReconcilePage() {
     setRestored(null);
     setFilename(f.name);
     try {
-      const hr = await parseHr(f);
+      const hr = await parseHr(f, f.name);
       const dbRows = await fetchActiveDb();
       setHrCount({
         current: hr.filter((p) => p.status === "current").length,
