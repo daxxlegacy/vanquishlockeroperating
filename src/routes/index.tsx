@@ -178,6 +178,23 @@ function MapPage() {
   const sheetNames = Object.keys(LAYOUT);
   const compartments = compartmentNumber ? byPrefix.get(prefixOf(compartmentNumber)) ?? [] : [];
 
+  const handleUploadLayout = async (file: File) => {
+    try {
+      const layout = await parseLayoutFromFile(file);
+      saveLayout(layout);
+      toast.success(`Map layout updated — ${Object.keys(layout).length} sheet(s) imported.`);
+      setActiveSheet(Object.keys(layout)[0]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to read layout file");
+    }
+  };
+
+  const handleResetLayout = () => {
+    clearLayoutOverride();
+    toast.success("Restored default map layout.");
+    setActiveSheet(undefined);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -191,6 +208,28 @@ function MapPage() {
           </div>
           <Legend />
         </div>
+
+        {role === "admin" && (
+          <MapLayoutUploader
+            hasOverride={hasOverride}
+            onUpload={handleUploadLayout}
+            onReset={handleResetLayout}
+          />
+        )}
+
+        {batchIntakeWarnings.size > 0 && (
+          <div className="mb-4 rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm flex items-start gap-3">
+            <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <div className="font-medium">
+                {batchIntakeWarnings.size.toLocaleString()} locker{batchIntakeWarnings.size === 1 ? "" : "s"} are missing a batch intake date
+              </div>
+              <div className="text-xs text-muted-foreground">
+                From the most recent upload{batchWarningStore?.filename ? ` (${batchWarningStore.filename})` : ""} — these cells are outlined in amber on the map.
+              </div>
+            </div>
+          </div>
+        )}
 
         <LockerSearchBar
           lockers={lockers}
@@ -206,6 +245,7 @@ function MapPage() {
           }}
           onValidate={() => setShowValidation(true)}
         />
+
 
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3 mb-6">
