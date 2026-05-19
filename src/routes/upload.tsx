@@ -1359,11 +1359,12 @@ function detectColumns(headers: string[]): Record<string, string> {
       "employeename", "name", "fullname",
       "legalfullname", "legalname",
     ],
-    status: ["status"],
+    status: ["status", "activestatus", "employmentstatus"],
     physical_key_status: ["physicalkeystatus", "physicalkey", "statusavailablenotavailable", "statusavailable"],
     spare_key_status: ["sparekeystatus", "sparekey"],
     remark: ["remarks", "remark", "notes", "note"],
-    batch_intake: ["batchintake", "batch", "intake", "intakedate"],
+    batch_intake: ["batchintake", "batch", "intake", "intakedate", "hiredate", "datehired", "joindate", "joiningdate", "dateofjoining"],
+    termination_date: ["terminationdate", "termdate", "dateofresignation", "resignationdate", "exitdate", "lastworkingday"],
   };
 
   // Fields that should match by substring (flexible) vs exact normalized header.
