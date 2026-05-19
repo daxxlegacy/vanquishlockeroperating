@@ -148,7 +148,7 @@ function UploadPage() {
   const [nidResult, setNidResult] = useState<{
     filename: string;
     fileCount: number;
-    matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; file_hire_date: string | null; date_diff_days: number | null; national_id: string; matched_by: "badge" | "name" }[];
+    matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; national_id: string; matched_by: "badge" | "name" }[];
     unmatched: { badge: string | null; name: string | null; national_id: string }[];
     noNationalId: number;
   } | null>(null);
@@ -710,13 +710,13 @@ function UploadPage() {
       if (!nidKey) { toast.error("No National ID column found (looked for NationalID/NRIC/IC/MyKad)."); setNidBusy(false); return; }
       if (!badgeKey && !nameKey) { toast.error("No badge or name column found to match against lockers."); setNidBusy(false); return; }
 
-      type FileEntry = { badge: string | null; name: string | null; national_id: string; hire_raw: string | null; hire_ts: number };
+      type FileEntry = { badge: string | null; name: string | null; national_id: string };
       // For National ID matching, preserve original casing of badge/name (no forced uppercase).
       // Lookup keys (badgeKeyOf/nameKeyOf) are already case-insensitive internally.
       const nidCfg: NormalizationConfig = { ...normCfg, uppercaseBadge: false, uppercaseName: false };
-      // Build file index by badge and by name -> national_id (allow multiple per key)
-      const fileByBadge = new Map<string, FileEntry[]>();
-      const fileByName = new Map<string, FileEntry[]>();
+      // Build file index by badge and by name -> national_id (first occurrence wins)
+      const fileByBadge = new Map<string, FileEntry>();
+      const fileByName = new Map<string, FileEntry>();
       let noNationalId = 0;
       for (const r of allRows) {
         const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, nidCfg);
@@ -724,18 +724,18 @@ function UploadPage() {
         const nid = getStr(r, nidKey);
         if (!badge && !name) continue;
         if (!nid) { noNationalId++; continue; }
-        const hireRaw = hireKey ? getStr(r, hireKey) : null;
-        const hireTs = batchIntakeTs(hireRaw);
-        const entry: FileEntry = { badge, name, national_id: nid, hire_raw: hireRaw, hire_ts: hireTs };
+        const entry: FileEntry = { badge, name, national_id: nid };
         if (badge) {
           const k = badgeKeyOf(badge, nidCfg);
-          const arr = fileByBadge.get(k); if (arr) arr.push(entry); else fileByBadge.set(k, [entry]);
+          if (!fileByBadge.has(k)) fileByBadge.set(k, entry);
         }
         if (name) {
           const k = nameKeyOf(name, nidCfg);
-          const arr = fileByName.get(k); if (arr) arr.push(entry); else fileByName.set(k, [entry]);
+          if (!fileByName.has(k)) fileByName.set(k, entry);
         }
       }
+      // Suppress unused hireKey warning (kept for potential future use)
+      void hireKey;
 
       // Pull all active assigned lockers
       const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null; batch_intake: string | null }[] = [];
@@ -754,53 +754,22 @@ function UploadPage() {
         from += 1000;
       }
 
-      // Date proximity tolerance (days). Tight enough to dodge same-name collisions,
-      // loose enough for natural batch-vs-hire-date drift.
-      const MAX_DIFF_DAYS = 45;
-      const DAY = 86_400_000;
-
-      const pickByDate = (cands: FileEntry[], dbTs: number): { entry: FileEntry; diffDays: number | null } | null => {
-        if (cands.length === 0) return null;
-        // If DB date missing, fall back to single best entry (the one with a hire date if any)
-        if (!Number.isFinite(dbTs)) {
-          const withDate = cands.find((c) => Number.isFinite(c.hire_ts));
-          const chosen = withDate ?? cands[0];
-          return { entry: chosen, diffDays: null };
-        }
-        let best: FileEntry | null = null;
-        let bestDiff = Infinity;
-        for (const c of cands) {
-          if (!Number.isFinite(c.hire_ts)) continue;
-          const d = Math.abs(c.hire_ts - dbTs) / DAY;
-          if (d < bestDiff) { bestDiff = d; best = c; }
-        }
-        if (best && bestDiff <= MAX_DIFF_DAYS) return { entry: best, diffDays: Math.round(bestDiff) };
-        // No dated candidate within tolerance — if only one candidate and it lacks a date, accept it.
-        if (cands.length === 1 && !Number.isFinite(cands[0].hire_ts)) return { entry: cands[0], diffDays: null };
-        // Otherwise reject (ambiguous — likely wrong person).
-        return null;
-      };
-
-      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; file_hire_date: string | null; date_diff_days: number | null; national_id: string; matched_by: "badge" | "name" }[] = [];
+      const matched: { locker_number: string; badge_number: string | null; employee_name: string | null; batch_intake: string | null; national_id: string; matched_by: "badge" | "name" }[] = [];
       const usedKeys = new Set<string>();
       for (const p of dbPeople) {
         const bKey = p.badge_number ? badgeKeyOf(p.badge_number, normCfg) : null;
         const nKey = p.employee_name ? nameKeyOf(p.employee_name, normCfg) : null;
-        const dbTs = batchIntakeTs(p.batch_intake);
-        const bCands = bKey ? fileByBadge.get(bKey) ?? [] : [];
-        const nCands = nKey ? fileByName.get(nKey) ?? [] : [];
-        let pick = pickByDate(bCands, dbTs);
+        // Priority: badge first, then name.
+        let pick: FileEntry | null = bKey ? fileByBadge.get(bKey) ?? null : null;
         let by: "badge" | "name" = "badge";
-        if (!pick) { pick = pickByDate(nCands, dbTs); by = "name"; }
+        if (!pick && nKey) { pick = fileByName.get(nKey) ?? null; by = "name"; }
         if (!pick) continue;
         matched.push({
           locker_number: p.locker_number,
           badge_number: p.badge_number,
           employee_name: p.employee_name,
           batch_intake: p.batch_intake,
-          file_hire_date: pick.entry.hire_raw,
-          date_diff_days: pick.diffDays,
-          national_id: pick.entry.national_id,
+          national_id: pick.national_id,
           matched_by: by,
         });
         if (bKey) usedKeys.add("b:" + bKey);
@@ -810,9 +779,10 @@ function UploadPage() {
       // Anyone in the file with a NID but no locker match
       const unmatched: { badge: string | null; name: string | null; national_id: string }[] = [];
       const seenNid = new Set<string>();
-      const allEntries: FileEntry[] = [];
-      for (const arr of fileByBadge.values()) allEntries.push(...arr);
-      for (const arr of fileByName.values()) allEntries.push(...arr);
+      const allEntries: FileEntry[] = [
+        ...fileByBadge.values(),
+        ...fileByName.values(),
+      ];
       for (const entry of allEntries) {
         const sig = (entry.badge ?? "") + "|" + (entry.name ?? "") + "|" + entry.national_id;
         if (seenNid.has(sig)) continue;
@@ -847,8 +817,6 @@ function UploadPage() {
       badge_number: m.badge_number ?? "",
       employee_name: m.employee_name ?? "",
       batch_intake: m.batch_intake ?? "",
-      file_hire_date: m.file_hire_date ?? "",
-      date_diff_days: m.date_diff_days ?? "",
       national_id: m.national_id,
       matched_by: m.matched_by,
     }));
@@ -1316,7 +1284,7 @@ function UploadPage() {
                 <div className="max-h-72 overflow-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 sticky top-0">
-                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>Batch Intake</Th><Th>Hire Date</Th><Th>Δ days</Th><Th>National ID</Th><Th>By</Th></tr>
+                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>Batch Intake</Th><Th>National ID</Th><Th>By</Th></tr>
                     </thead>
                     <tbody>
                       {nidResult.matched.slice(0, 300).map((m) => (
@@ -1325,8 +1293,6 @@ function UploadPage() {
                           <td className="px-3 py-1.5">{m.badge_number ?? "—"}</td>
                           <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
                           <td className="px-3 py-1.5 text-xs">{m.batch_intake ?? "—"}</td>
-                          <td className="px-3 py-1.5 text-xs">{m.file_hire_date ?? "—"}</td>
-                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.date_diff_days ?? "—"}</td>
                           <td className="px-3 py-1.5 font-mono text-xs">{m.national_id}</td>
                           <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
                         </tr>
