@@ -56,7 +56,7 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
 
       const { error: e2 } = await supabase
         .from("lockers")
-        .update({ employee_name: null, badge_number: null, status: newStatus })
+        .update({ employee_name: null, badge_number: null, national_id: null, batch_intake: null, status: newStatus })
         .eq("id", locker.id);
       if (e2) throw e2;
 
