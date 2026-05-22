@@ -119,10 +119,10 @@ function TerminatePage() {
       });
       if (e1) throw e1;
 
-      const updatePayload: { employee_name: null; badge_number: null; batch_intake: null; status: typeof newStatus; spare_key_status?: "missing" } =
+      const updatePayload: { employee_name: null; badge_number: null; national_id: null; batch_intake: null; status: typeof newStatus; spare_key_status?: "missing" } =
         newStatus === "find_spare_key"
-          ? { employee_name: null, badge_number: null, batch_intake: null, status: "find_spare_key", spare_key_status: "missing" }
-          : { employee_name: null, badge_number: null, batch_intake: null, status: newStatus };
+          ? { employee_name: null, badge_number: null, national_id: null, batch_intake: null, status: "find_spare_key", spare_key_status: "missing" }
+          : { employee_name: null, badge_number: null, national_id: null, batch_intake: null, status: newStatus };
       const { error: e2 } = await supabase
         .from("lockers")
         .update(updatePayload)
