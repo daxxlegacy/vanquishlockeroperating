@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info } from "lucide-react";
+import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2 } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
@@ -46,6 +46,7 @@ type DbRow = {
   row_label: string | null;
   employee_name: string | null;
   badge_number: string | null;
+  national_id: string | null;
   batch_intake: string | null; // ISO
   work_location: string | null;
 };
@@ -391,103 +392,116 @@ function ReconcilePage() {
               Reconcile with HR Listing
             </h1>
             <p className="text-muted-foreground text-sm mt-1 max-w-2xl">
-              Upload the HR employee listing (Excel/CSV). The system compares every active locker occupant against the file and groups them so you can act safely — especially before terminating.
+              Upload the HR employee listing (Excel/CSV), or a Mednefits weekly file to detect deletions. The system compares every active locker occupant against the file so you can act safely before terminating.
             </p>
           </div>
         </div>
 
-        {restored && results && (
-          <Alert className="mt-6 border-primary/40 bg-primary/5">
-            <Info className="h-4 w-4 text-primary" />
-            <AlertTitle>Restored from previous upload</AlertTitle>
-            <AlertDescription className="text-xs flex items-center gap-2 flex-wrap">
-              File: <span className="font-mono font-semibold">{restored.filename ?? "(unknown)"}</span>
-              <span className="text-muted-foreground">
-                · saved {new Date(restored.savedAt).toLocaleString()} · auto-clears in {formatRemaining(restored.savedAt + EXPIRY_MS - Date.now())}
-              </span>
-            </AlertDescription>
-          </Alert>
-        )}
+        <Tabs defaultValue="hr" className="mt-6">
+          <TabsList className="grid grid-cols-2 w-full max-w-md">
+            <TabsTrigger value="hr" className="gap-2"><ShieldAlert className="h-4 w-4" /> HR Listing</TabsTrigger>
+            <TabsTrigger value="mednefits" className="gap-2"><FileX2 className="h-4 w-4" /> Termination from Mednefits</TabsTrigger>
+          </TabsList>
 
-        <Card className="mt-6 p-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              type="file"
-              accept=".xlsx,.xls,.xlsm,.csv"
-              disabled={busy}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-              className="max-w-md"
-            />
-            {filename && <Badge variant="outline" className="font-mono">{filename}</Badge>}
-            {busy && <span className="text-sm text-muted-foreground">Comparing…</span>}
-            {results && (
-              <Button variant="outline" size="sm" className="ml-auto" onClick={() => clearSaved()}>
-                <RotateCcw className="h-4 w-4 mr-1.5" /> Clear saved data
-              </Button>
+          <TabsContent value="hr" className="mt-4">
+            {restored && results && (
+              <Alert className="mb-4 border-primary/40 bg-primary/5">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertTitle>Restored from previous upload</AlertTitle>
+                <AlertDescription className="text-xs flex items-center gap-2 flex-wrap">
+                  File: <span className="font-mono font-semibold">{restored.filename ?? "(unknown)"}</span>
+                  <span className="text-muted-foreground">
+                    · saved {new Date(restored.savedAt).toLocaleString()} · auto-clears in {formatRemaining(restored.savedAt + EXPIRY_MS - Date.now())}
+                  </span>
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
-          {results && (
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-              <Stat label="HR Current" value={hrCount.current} />
-              <Stat label="HR Terminated" value={hrCount.terminated} />
-              <Stat label="Active in DB" value={dbCount} />
-              <Stat label="Matched OK" value={counts.ok_current} accent="text-success" />
-            </div>
-          )}
-        </Card>
 
-        {results && (
-          <>
-            <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
-              <div className="relative max-w-sm flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Search locker / badge / name…"
-                  value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Card className="p-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  type="file"
+                  accept=".xlsx,.xls,.xlsm,.csv"
+                  disabled={busy}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                  className="max-w-md"
+                />
+                {filename && <Badge variant="outline" className="font-mono">{filename}</Badge>}
+                {busy && <span className="text-sm text-muted-foreground">Comparing…</span>}
+                {results && (
+                  <Button variant="outline" size="sm" className="ml-auto" onClick={() => clearSaved()}>
+                    <RotateCcw className="h-4 w-4 mr-1.5" /> Clear saved data
+                  </Button>
+                )}
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => exportAll("xlsx")}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => exportAll("csv")}>
-                  <Download className="h-4 w-4 mr-1.5" /> Export CSV
-                </Button>
-              </div>
-            </div>
+              {results && (
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <Stat label="HR Current" value={hrCount.current} />
+                  <Stat label="HR Terminated" value={hrCount.terminated} />
+                  <Stat label="Active in DB" value={dbCount} />
+                  <Stat label="Matched OK" value={counts.ok_current} accent="text-success" />
+                </div>
+              )}
+            </Card>
 
-            <Alert className="mt-4 border-warning/50 bg-warning/5">
-              <AlertTriangle className="h-4 w-4 text-warning" />
-              <AlertTitle>Verify before terminating</AlertTitle>
-              <AlertDescription className="text-xs">
-                Always check the <strong>Rehire Suspect</strong> tab first — these users appear as terminated in HR but their locker batch intake is more recent or they also have a Current record (likely rehired).
-              </AlertDescription>
-            </Alert>
+            {results && (
+              <>
+                <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
+                  <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input className="pl-9" placeholder="Search locker / badge / name…"
+                      value={search} onChange={(e) => setSearch(e.target.value)} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => exportAll("xlsx")}>
+                      <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => exportAll("csv")}>
+                      <Download className="h-4 w-4 mr-1.5" /> Export CSV
+                    </Button>
+                  </div>
+                </div>
 
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Bucket)} className="mt-4">
-              <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
-                <TabsTrigger value="must_terminate" className="gap-2">
-                  <UserMinus className="h-4 w-4" /> Must Terminate
-                  <Badge variant="destructive" className="ml-1">{counts.must_terminate}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="rehire_suspect" className="gap-2">
-                  <AlertTriangle className="h-4 w-4" /> Rehire Suspect
-                  <Badge className="ml-1 bg-warning text-warning-foreground hover:bg-warning/90">{counts.rehire_suspect}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="missing_from_hr" className="gap-2">
-                  <HelpCircle className="h-4 w-4" /> Missing from HR
-                  <Badge variant="secondary" className="ml-1">{counts.missing_from_hr}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="ok_current" className="gap-2">
-                  <UserCheck className="h-4 w-4" /> OK Current
-                  <Badge variant="outline" className="ml-1">{counts.ok_current}</Badge>
-                </TabsTrigger>
-              </TabsList>
+                <Alert className="mt-4 border-warning/50 bg-warning/5">
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                  <AlertTitle>Verify before terminating</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    Always check the <strong>Rehire Suspect</strong> tab first — these users appear as terminated in HR but their locker batch intake is more recent or they also have a Current record (likely rehired).
+                  </AlertDescription>
+                </Alert>
 
-              <TabsContent value={tab} className="mt-4">
-                <ResultsTable rows={filtered} bucket={tab} navigate={navigate} />
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
+                <Tabs value={tab} onValueChange={(v) => setTab(v as Bucket)} className="mt-4">
+                  <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+                    <TabsTrigger value="must_terminate" className="gap-2">
+                      <UserMinus className="h-4 w-4" /> Must Terminate
+                      <Badge variant="destructive" className="ml-1">{counts.must_terminate}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="rehire_suspect" className="gap-2">
+                      <AlertTriangle className="h-4 w-4" /> Rehire Suspect
+                      <Badge className="ml-1 bg-warning text-warning-foreground hover:bg-warning/90">{counts.rehire_suspect}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="missing_from_hr" className="gap-2">
+                      <HelpCircle className="h-4 w-4" /> Missing from HR
+                      <Badge variant="secondary" className="ml-1">{counts.missing_from_hr}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="ok_current" className="gap-2">
+                      <UserCheck className="h-4 w-4" /> OK Current
+                      <Badge variant="outline" className="ml-1">{counts.ok_current}</Badge>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value={tab} className="mt-4">
+                    <ResultsTable rows={filtered} bucket={tab} navigate={navigate} />
+                  </TabsContent>
+                </Tabs>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="mednefits" className="mt-4">
+            <MednefitsSection navigate={navigate} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
@@ -642,7 +656,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
   while (true) {
     const { data, error } = await supabase
       .from("lockers")
-      .select("id, locker_number, location, row_label, employee_name, badge_number, batch_intake, work_location")
+      .select("id, locker_number, location, row_label, employee_name, badge_number, national_id, batch_intake, work_location")
       .is("deleted_at", null)
       .or("employee_name.not.is.null,badge_number.not.is.null")
       .range(from, from + 999);
@@ -766,4 +780,314 @@ function downloadBlob(blob: Blob, filename: string) {
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ---------- Mednefits Termination ----------
+
+type MedRow = {
+  personNumber: string | null;
+  name: string | null;
+  nationalId: string | null;
+  remarks: string | null;
+};
+
+type MedResult =
+  | { kind: "match"; med: MedRow; db: DbRow; matchedBy: "national_id" | "name" }
+  | { kind: "unmatched"; med: MedRow };
+
+function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const [busy, setBusy] = useState(false);
+  const [filename, setFilename] = useState<string | null>(null);
+  const [results, setResults] = useState<MedResult[] | null>(null);
+  const [deletionsCount, setDeletionsCount] = useState(0);
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"matched" | "unmatched">("matched");
+
+  const handleFile = async (f: File) => {
+    setBusy(true);
+    setResults(null);
+    setFilename(f.name);
+    try {
+      const deletions = await parseMednefits(f);
+      setDeletionsCount(deletions.length);
+      if (deletions.length === 0) {
+        toast.info("No 'Deletion' rows found in the Mednefits file.");
+        setResults([]);
+        return;
+      }
+      const dbRows = await fetchActiveDb();
+      const byNid = new Map<string, DbRow>();
+      const byName = new Map<string, DbRow>();
+      for (const d of dbRows) {
+        if (d.national_id) byNid.set(normBadge(d.national_id), d);
+        if (d.employee_name) byName.set(normName(d.employee_name), d);
+      }
+      const out: MedResult[] = [];
+      for (const m of deletions) {
+        let hit: DbRow | undefined;
+        let by: "national_id" | "name" | null = null;
+        if (m.nationalId) { hit = byNid.get(normBadge(m.nationalId)); if (hit) by = "national_id"; }
+        if (!hit && m.name) { hit = byName.get(normName(m.name)); if (hit) by = "name"; }
+        if (hit && by) out.push({ kind: "match", med: m, db: hit, matchedBy: by });
+        else out.push({ kind: "unmatched", med: m });
+      }
+      out.sort((a, b) => {
+        if (a.kind === "match" && b.kind === "match")
+          return compareLockerNumbers(a.db.locker_number, b.db.locker_number);
+        return a.kind === "match" ? -1 : b.kind === "match" ? 1 : 0;
+      });
+      setResults(out);
+      const matchedCount = out.filter((r) => r.kind === "match").length;
+      toast.success(`Mednefits parsed — ${matchedCount} deletion(s) matched to active lockers, ${out.length - matchedCount} unmatched.`);
+      setTab(matchedCount > 0 ? "matched" : "unmatched");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Mednefits parse failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const matched = useMemo(() => results?.filter((r): r is Extract<MedResult, { kind: "match" }> => r.kind === "match") ?? [], [results]);
+  const unmatched = useMemo(() => results?.filter((r): r is Extract<MedResult, { kind: "unmatched" }> => r.kind === "unmatched") ?? [], [results]);
+
+  const q = search.trim().toLowerCase();
+  const matchedFiltered = !q ? matched : matched.filter((r) => {
+    const hay = [r.db.locker_number, r.db.employee_name, r.db.badge_number, r.db.national_id, r.med.name, r.med.nationalId, r.med.personNumber].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(q);
+  });
+  const unmatchedFiltered = !q ? unmatched : unmatched.filter((r) => {
+    const hay = [r.med.name, r.med.nationalId, r.med.personNumber].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(q);
+  });
+
+  const exportXlsx = () => {
+    if (!results) return;
+    const wb = XLSX.utils.book_new();
+    const matchedRows = matched.map((r) => ({
+      locker_number: r.db.locker_number,
+      location: r.db.location,
+      row: r.db.row_label ?? "",
+      db_name: r.db.employee_name ?? "",
+      db_badge: r.db.badge_number ?? "",
+      db_national_id: r.db.national_id ?? "",
+      med_name: r.med.name ?? "",
+      med_national_id: r.med.nationalId ?? "",
+      med_person_number: r.med.personNumber ?? "",
+      matched_by: r.matchedBy,
+    }));
+    const unmatchedRows = unmatched.map((r) => ({
+      med_name: r.med.name ?? "",
+      med_national_id: r.med.nationalId ?? "",
+      med_person_number: r.med.personNumber ?? "",
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(matchedRows.length ? matchedRows : [{ note: "(empty)" }]), "Must Terminate");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(unmatchedRows.length ? unmatchedRows : [{ note: "(empty)" }]), "Unmatched");
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `mednefits-termination-${stamp}.xlsx`);
+  };
+
+  return (
+    <>
+      <Card className="p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <Input
+            type="file"
+            accept=".xlsx,.xls,.xlsm,.csv"
+            disabled={busy}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            className="max-w-md"
+          />
+          {filename && <Badge variant="outline" className="font-mono">{filename}</Badge>}
+          {busy && <span className="text-sm text-muted-foreground">Parsing…</span>}
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">
+          Upload the Mednefits weekly file (e.g. <span className="font-mono">WW44_26.xlsx</span>). The system scans the <strong>Remarks</strong> column and treats every <span className="font-mono">Deletion</span> row as a termination, matching by <strong>National ID</strong> first, then by <strong>name</strong>.
+        </p>
+        {results && (
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <Stat label="Deletions in file" value={deletionsCount} />
+            <Stat label="Matched to lockers" value={matched.length} accent="text-destructive" />
+            <Stat label="Unmatched" value={unmatched.length} accent="text-warning" />
+          </div>
+        )}
+      </Card>
+
+      {results && results.length > 0 && (
+        <>
+          <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
+            <div className="relative max-w-sm flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input className="pl-9" placeholder="Search name / national ID / locker…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <Button variant="outline" size="sm" onClick={exportXlsx}>
+              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
+            </Button>
+          </div>
+
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "matched" | "unmatched")} className="mt-4">
+            <TabsList className="grid grid-cols-2 w-full max-w-md">
+              <TabsTrigger value="matched" className="gap-2">
+                <UserMinus className="h-4 w-4" /> Must Terminate
+                <Badge variant="destructive" className="ml-1">{matched.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="unmatched" className="gap-2">
+                <HelpCircle className="h-4 w-4" /> Unmatched
+                <Badge variant="secondary" className="ml-1">{unmatched.length}</Badge>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="matched" className="mt-4">
+              {matchedFiltered.length === 0 ? (
+                <Card className="p-10 text-center text-sm text-muted-foreground">No matched deletions.</Card>
+              ) : (
+                <Card className="overflow-hidden">
+                  <div className="max-h-[60vh] overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0 z-10">
+                        <tr className="text-left">
+                          <Th>Locker</Th>
+                          <Th>Location / Row</Th>
+                          <Th>DB Name</Th>
+                          <Th>DB National ID</Th>
+                          <Th>Mednefits Name</Th>
+                          <Th>Mednefits National ID</Th>
+                          <Th>Matched By</Th>
+                          <Th>Action</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {matchedFiltered.map((r, i) => (
+                          <tr key={r.db.id} className={i % 2 ? "bg-muted/20" : ""}>
+                            <Td mono>{r.db.locker_number}</Td>
+                            <Td>
+                              <div>{r.db.location}</div>
+                              <div className="text-xs text-muted-foreground">{r.db.row_label ?? "—"}</div>
+                            </Td>
+                            <Td>{r.db.employee_name ?? "—"}</Td>
+                            <Td mono>{r.db.national_id ?? "—"}</Td>
+                            <Td>{r.med.name ?? "—"}</Td>
+                            <Td mono>{r.med.nationalId ?? "—"}</Td>
+                            <Td>
+                              <Badge variant="outline" className="text-[10px]">
+                                {r.matchedBy === "national_id" ? "national id" : "name"}
+                              </Badge>
+                            </Td>
+                            <Td>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => window.open(`/terminate/${r.db.id}`, "_blank")}
+                              >
+                                <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate
+                              </Button>
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="unmatched" className="mt-4">
+              {unmatchedFiltered.length === 0 ? (
+                <Card className="p-10 text-center text-sm text-muted-foreground">All deletions matched.</Card>
+              ) : (
+                <Card className="overflow-hidden">
+                  <div className="max-h-[60vh] overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0 z-10">
+                        <tr className="text-left">
+                          <Th>Mednefits Name</Th>
+                          <Th>National ID</Th>
+                          <Th>Person Number</Th>
+                          <Th>Action</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unmatchedFiltered.map((r, i) => (
+                          <tr key={`${r.med.personNumber ?? r.med.nationalId ?? r.med.name}-${i}`} className={i % 2 ? "bg-muted/20" : ""}>
+                            <Td>{r.med.name ?? "—"}</Td>
+                            <Td mono>{r.med.nationalId ?? "—"}</Td>
+                            <Td mono>{r.med.personNumber ?? "—"}</Td>
+                            <Td>
+                              <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/lockers", search: { q: r.med.name ?? r.med.nationalId ?? "" } as never })}>
+                                Search lockers
+                              </Button>
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
+    </>
+  );
+}
+
+async function parseMednefits(f: File): Promise<MedRow[]> {
+  const ext = f.name.split(".").pop()?.toLowerCase();
+  let raw: unknown[][];
+  if (ext === "csv") {
+    const text = await f.text();
+    const parsed = Papa.parse<string[]>(text, { skipEmptyLines: true });
+    raw = parsed.data as unknown[][];
+  } else {
+    const buf = await f.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array", cellDates: false });
+    // Prefer the "List" sheet if present; else the sheet with the most rows.
+    let bestSheet = wb.SheetNames[0];
+    let bestRows = -1;
+    for (const name of wb.SheetNames) {
+      if (/list/i.test(name)) { bestSheet = name; break; }
+      const s = wb.Sheets[name];
+      const ref = s["!ref"]; if (!ref) continue;
+      const range = XLSX.utils.decode_range(ref);
+      const nrows = range.e.r - range.s.r;
+      if (nrows > bestRows) { bestRows = nrows; bestSheet = name; }
+    }
+    raw = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[bestSheet], { header: 1, defval: "", raw: true });
+  }
+
+  // Find the header row — the first row containing any of our target headers.
+  let headerIdx = -1;
+  let headerMap: { person?: number; name?: number; nid?: number; remarks?: number } = {};
+  for (let i = 0; i < Math.min(raw.length, 20); i++) {
+    const row = raw[i] ?? [];
+    const map: typeof headerMap = {};
+    row.forEach((cell, idx) => {
+      const k = n(String(cell ?? ""));
+      if (!k) return;
+      if (k === "personnumber" || k === "empid" || k === "employeeid") map.person = idx;
+      else if (k === "legalfullname" || k === "fullname" || k === "name" || k === "employeename") map.name = idx;
+      else if (k === "nationalid" || k === "icno" || k === "ic" || k === "passport" || k === "passportno" || k === "nationalidno") map.nid = idx;
+      else if (k === "remarks" || k === "remark") map.remarks = idx;
+    });
+    if (map.remarks !== undefined && (map.name !== undefined || map.nid !== undefined)) {
+      headerIdx = i;
+      headerMap = map;
+      break;
+    }
+  }
+  if (headerIdx < 0) throw new Error("Couldn't find header row with 'Remarks' + 'Legal Full Name'/'National ID' in the Mednefits file.");
+
+  const out: MedRow[] = [];
+  for (let i = headerIdx + 1; i < raw.length; i++) {
+    const row = raw[i] ?? [];
+    const remarks = headerMap.remarks !== undefined ? String(row[headerMap.remarks] ?? "").trim() : "";
+    if (!/deletion/i.test(remarks)) continue;
+    const name = headerMap.name !== undefined ? cellStr(row[headerMap.name]) : null;
+    const nid = headerMap.nid !== undefined ? cellStr(row[headerMap.nid]) : null;
+    const person = headerMap.person !== undefined ? cellStr(row[headerMap.person]) : null;
+    if (!name && !nid && !person) continue;
+    out.push({ personNumber: person, name, nationalId: nid, remarks });
+  }
+  return out;
 }
