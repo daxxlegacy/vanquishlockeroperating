@@ -46,6 +46,7 @@ type DbRow = {
   row_label: string | null;
   employee_name: string | null;
   badge_number: string | null;
+  national_id: string | null;
   batch_intake: string | null; // ISO
   work_location: string | null;
 };
