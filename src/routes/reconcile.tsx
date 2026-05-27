@@ -392,103 +392,116 @@ function ReconcilePage() {
               Reconcile with HR Listing
             </h1>
             <p className="text-muted-foreground text-sm mt-1 max-w-2xl">
-              Upload the HR employee listing (Excel/CSV). The system compares every active locker occupant against the file and groups them so you can act safely — especially before terminating.
+              Upload the HR employee listing (Excel/CSV), or a Mednefits weekly file to detect deletions. The system compares every active locker occupant against the file so you can act safely before terminating.
             </p>
           </div>
         </div>
 
-        {restored && results && (
-          <Alert className="mt-6 border-primary/40 bg-primary/5">
-            <Info className="h-4 w-4 text-primary" />
-            <AlertTitle>Restored from previous upload</AlertTitle>
-            <AlertDescription className="text-xs flex items-center gap-2 flex-wrap">
-              File: <span className="font-mono font-semibold">{restored.filename ?? "(unknown)"}</span>
-              <span className="text-muted-foreground">
-                · saved {new Date(restored.savedAt).toLocaleString()} · auto-clears in {formatRemaining(restored.savedAt + EXPIRY_MS - Date.now())}
-              </span>
-            </AlertDescription>
-          </Alert>
-        )}
+        <Tabs defaultValue="hr" className="mt-6">
+          <TabsList className="grid grid-cols-2 w-full max-w-md">
+            <TabsTrigger value="hr" className="gap-2"><ShieldAlert className="h-4 w-4" /> HR Listing</TabsTrigger>
+            <TabsTrigger value="mednefits" className="gap-2"><FileX2 className="h-4 w-4" /> Termination from Mednefits</TabsTrigger>
+          </TabsList>
 
-        <Card className="mt-6 p-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              type="file"
-              accept=".xlsx,.xls,.xlsm,.csv"
-              disabled={busy}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-              className="max-w-md"
-            />
-            {filename && <Badge variant="outline" className="font-mono">{filename}</Badge>}
-            {busy && <span className="text-sm text-muted-foreground">Comparing…</span>}
-            {results && (
-              <Button variant="outline" size="sm" className="ml-auto" onClick={() => clearSaved()}>
-                <RotateCcw className="h-4 w-4 mr-1.5" /> Clear saved data
-              </Button>
+          <TabsContent value="hr" className="mt-4">
+            {restored && results && (
+              <Alert className="mb-4 border-primary/40 bg-primary/5">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertTitle>Restored from previous upload</AlertTitle>
+                <AlertDescription className="text-xs flex items-center gap-2 flex-wrap">
+                  File: <span className="font-mono font-semibold">{restored.filename ?? "(unknown)"}</span>
+                  <span className="text-muted-foreground">
+                    · saved {new Date(restored.savedAt).toLocaleString()} · auto-clears in {formatRemaining(restored.savedAt + EXPIRY_MS - Date.now())}
+                  </span>
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
-          {results && (
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-              <Stat label="HR Current" value={hrCount.current} />
-              <Stat label="HR Terminated" value={hrCount.terminated} />
-              <Stat label="Active in DB" value={dbCount} />
-              <Stat label="Matched OK" value={counts.ok_current} accent="text-success" />
-            </div>
-          )}
-        </Card>
 
-        {results && (
-          <>
-            <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
-              <div className="relative max-w-sm flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Search locker / badge / name…"
-                  value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Card className="p-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  type="file"
+                  accept=".xlsx,.xls,.xlsm,.csv"
+                  disabled={busy}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                  className="max-w-md"
+                />
+                {filename && <Badge variant="outline" className="font-mono">{filename}</Badge>}
+                {busy && <span className="text-sm text-muted-foreground">Comparing…</span>}
+                {results && (
+                  <Button variant="outline" size="sm" className="ml-auto" onClick={() => clearSaved()}>
+                    <RotateCcw className="h-4 w-4 mr-1.5" /> Clear saved data
+                  </Button>
+                )}
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => exportAll("xlsx")}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => exportAll("csv")}>
-                  <Download className="h-4 w-4 mr-1.5" /> Export CSV
-                </Button>
-              </div>
-            </div>
+              {results && (
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <Stat label="HR Current" value={hrCount.current} />
+                  <Stat label="HR Terminated" value={hrCount.terminated} />
+                  <Stat label="Active in DB" value={dbCount} />
+                  <Stat label="Matched OK" value={counts.ok_current} accent="text-success" />
+                </div>
+              )}
+            </Card>
 
-            <Alert className="mt-4 border-warning/50 bg-warning/5">
-              <AlertTriangle className="h-4 w-4 text-warning" />
-              <AlertTitle>Verify before terminating</AlertTitle>
-              <AlertDescription className="text-xs">
-                Always check the <strong>Rehire Suspect</strong> tab first — these users appear as terminated in HR but their locker batch intake is more recent or they also have a Current record (likely rehired).
-              </AlertDescription>
-            </Alert>
+            {results && (
+              <>
+                <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
+                  <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input className="pl-9" placeholder="Search locker / badge / name…"
+                      value={search} onChange={(e) => setSearch(e.target.value)} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => exportAll("xlsx")}>
+                      <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => exportAll("csv")}>
+                      <Download className="h-4 w-4 mr-1.5" /> Export CSV
+                    </Button>
+                  </div>
+                </div>
 
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Bucket)} className="mt-4">
-              <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
-                <TabsTrigger value="must_terminate" className="gap-2">
-                  <UserMinus className="h-4 w-4" /> Must Terminate
-                  <Badge variant="destructive" className="ml-1">{counts.must_terminate}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="rehire_suspect" className="gap-2">
-                  <AlertTriangle className="h-4 w-4" /> Rehire Suspect
-                  <Badge className="ml-1 bg-warning text-warning-foreground hover:bg-warning/90">{counts.rehire_suspect}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="missing_from_hr" className="gap-2">
-                  <HelpCircle className="h-4 w-4" /> Missing from HR
-                  <Badge variant="secondary" className="ml-1">{counts.missing_from_hr}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="ok_current" className="gap-2">
-                  <UserCheck className="h-4 w-4" /> OK Current
-                  <Badge variant="outline" className="ml-1">{counts.ok_current}</Badge>
-                </TabsTrigger>
-              </TabsList>
+                <Alert className="mt-4 border-warning/50 bg-warning/5">
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                  <AlertTitle>Verify before terminating</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    Always check the <strong>Rehire Suspect</strong> tab first — these users appear as terminated in HR but their locker batch intake is more recent or they also have a Current record (likely rehired).
+                  </AlertDescription>
+                </Alert>
 
-              <TabsContent value={tab} className="mt-4">
-                <ResultsTable rows={filtered} bucket={tab} navigate={navigate} />
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
+                <Tabs value={tab} onValueChange={(v) => setTab(v as Bucket)} className="mt-4">
+                  <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+                    <TabsTrigger value="must_terminate" className="gap-2">
+                      <UserMinus className="h-4 w-4" /> Must Terminate
+                      <Badge variant="destructive" className="ml-1">{counts.must_terminate}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="rehire_suspect" className="gap-2">
+                      <AlertTriangle className="h-4 w-4" /> Rehire Suspect
+                      <Badge className="ml-1 bg-warning text-warning-foreground hover:bg-warning/90">{counts.rehire_suspect}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="missing_from_hr" className="gap-2">
+                      <HelpCircle className="h-4 w-4" /> Missing from HR
+                      <Badge variant="secondary" className="ml-1">{counts.missing_from_hr}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="ok_current" className="gap-2">
+                      <UserCheck className="h-4 w-4" /> OK Current
+                      <Badge variant="outline" className="ml-1">{counts.ok_current}</Badge>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value={tab} className="mt-4">
+                    <ResultsTable rows={filtered} bucket={tab} navigate={navigate} />
+                  </TabsContent>
+                </Tabs>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="mednefits" className="mt-4">
+            <MednefitsSection navigate={navigate} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
