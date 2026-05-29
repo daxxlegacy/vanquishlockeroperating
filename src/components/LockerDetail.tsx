@@ -36,6 +36,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [termOpen, setTermOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [swapOpen, setSwapOpen] = useState(false);
   const isAdmin = role === "admin";
 
   useEffect(() => {
