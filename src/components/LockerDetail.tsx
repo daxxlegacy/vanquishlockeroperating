@@ -141,6 +141,14 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
                     <Button
                       size="sm"
                       disabled={saving}
+                      onClick={() => setSwapOpen(true)}
+                      variant="secondary"
+                    >
+                      <Repeat className="h-4 w-4 mr-1" /> Swap user
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={saving}
                       onClick={() => setTermOpen(true)}
                       className="bg-warning text-warning-foreground hover:bg-warning/90"
                     >
