@@ -1721,6 +1721,7 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
     remark: getStr(row, cols.remark),
     batch_intake: cols.batch_intake ? parseBatchIntake(row[cols.batch_intake]) : null,
     national_id: cols.national_id ? getStr(row, cols.national_id) : null,
+    work_location: cols.work_location ? getStr(row, cols.work_location) : null,
   };
 }
 
