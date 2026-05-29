@@ -1650,6 +1650,7 @@ function detectColumns(headers: string[]): Record<string, string> {
     batch_intake: ["batchintake", "batch", "intake", "intakedate", "hiredate", "datehired", "joindate", "joiningdate", "dateofjoining"],
     termination_date: ["terminationdate", "termdate", "dateofresignation", "resignationdate", "exitdate", "lastworkingday"],
     national_id: NATIONAL_ID_KEYS,
+    work_location: ["worklocation", "worksite", "site", "worksiteloc", "worklocationsite", "deptlocation"],
   };
 
   // Fields that should match by substring (flexible) vs exact normalized header.
