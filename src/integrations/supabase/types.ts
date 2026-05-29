@@ -462,6 +462,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_lockers: { Args: { _user_id: string }; Returns: boolean }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["app_permission"]
