@@ -56,6 +56,7 @@ type LockerRow = {
   remark: string | null;
   batch_intake: string | null;
   national_id: string | null;
+  work_location: string | null;
 };
 
 interface SheetReport {
