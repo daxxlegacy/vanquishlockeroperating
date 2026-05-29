@@ -195,6 +195,12 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
         locker={locker}
         onTransferred={() => { onUpdated?.(); onClose(); }}
       />
+      <SwapLockerDialog
+        open={swapOpen}
+        onOpenChange={setSwapOpen}
+        locker={locker}
+        onSwapped={() => { onUpdated?.(); onClose(); }}
+      />
     </>
   );
 }
