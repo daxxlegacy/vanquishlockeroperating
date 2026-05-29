@@ -56,6 +56,7 @@ type LockerRow = {
   remark: string | null;
   batch_intake: string | null;
   national_id: string | null;
+  work_location: string | null;
 };
 
 interface SheetReport {
@@ -852,7 +853,7 @@ function UploadPage() {
             <div className="flex-1 min-w-[260px]">
               <Label htmlFor="file" className="text-base font-display">Choose file</Label>
               <p className="text-xs text-muted-foreground mt-1 mb-3">
-                Recognized columns: <code className="bg-muted px-1 py-0.5 rounded text-xs">Combine Locker</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Locker Location by Row</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Types of Key Lock</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">badge_number</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Vlookup O+C Name</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status Available / Not Available</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Physical Key Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Remarks</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Batch Intake</code>.
+                Recognized columns: <code className="bg-muted px-1 py-0.5 rounded text-xs">Combine Locker</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Locker Location by Row</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Types of Key Lock</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">badge_number</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Vlookup O+C Name</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Status Available / Not Available</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Physical Key Status</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Remarks</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Batch Intake</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">National ID</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">Work Location</code>.
               </p>
               <div className="flex gap-3 items-center">
                 <Input id="file" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} className="cursor-pointer" />
@@ -1618,6 +1619,7 @@ function mergeLockerRows(a: LockerRow, b: LockerRow, cfg: MergeConfig): LockerRo
       : (winner.batch_intake ?? loser.batch_intake),
     spare_key_status: winner.spare_key_status !== "unknown" ? winner.spare_key_status : loser.spare_key_status,
     national_id: winner.national_id ?? loser.national_id,
+    work_location: winner.work_location ?? loser.work_location,
   };
 }
 
@@ -1649,6 +1651,7 @@ function detectColumns(headers: string[]): Record<string, string> {
     batch_intake: ["batchintake", "batch", "intake", "intakedate", "hiredate", "datehired", "joindate", "joiningdate", "dateofjoining"],
     termination_date: ["terminationdate", "termdate", "dateofresignation", "resignationdate", "exitdate", "lastworkingday"],
     national_id: NATIONAL_ID_KEYS,
+    work_location: ["worklocation", "worksite", "site", "worksiteloc", "worklocationsite", "deptlocation"],
   };
 
   // Fields that should match by substring (flexible) vs exact normalized header.
@@ -1719,6 +1722,7 @@ function mapRow(row: Record<string, unknown>, cols: Record<string, string>): Loc
     remark: getStr(row, cols.remark),
     batch_intake: cols.batch_intake ? parseBatchIntake(row[cols.batch_intake]) : null,
     national_id: cols.national_id ? getStr(row, cols.national_id) : null,
+    work_location: cols.work_location ? getStr(row, cols.work_location) : null,
   };
 }
 
