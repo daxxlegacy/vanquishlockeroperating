@@ -1619,6 +1619,7 @@ function mergeLockerRows(a: LockerRow, b: LockerRow, cfg: MergeConfig): LockerRo
       : (winner.batch_intake ?? loser.batch_intake),
     spare_key_status: winner.spare_key_status !== "unknown" ? winner.spare_key_status : loser.spare_key_status,
     national_id: winner.national_id ?? loser.national_id,
+    work_location: winner.work_location ?? loser.work_location,
   };
 }
 
