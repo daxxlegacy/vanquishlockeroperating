@@ -477,6 +477,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      swap_lockers: { Args: { _a_id: string; _b_id: string }; Returns: Json }
       transfer_locker: {
         Args: { _from_id: string; _old_action: string; _to_id: string }
         Returns: Json
