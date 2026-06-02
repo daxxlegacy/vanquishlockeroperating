@@ -197,7 +197,8 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         r.locker_number.toLowerCase().includes(q) ||
         (r.employee_name ?? "").toLowerCase().includes(q) ||
         (r.badge_number ?? "").toLowerCase().includes(q) ||
-        (r.department ?? "").toLowerCase().includes(q) ||
+        (r.national_id ?? "").toLowerCase().includes(q) ||
+        (r.work_location ?? "").toLowerCase().includes(q) ||
         (r.locker_row ?? "").toLowerCase().includes(q) ||
         (r.locker_location_by_row ?? "").toLowerCase().includes(q)
       );
