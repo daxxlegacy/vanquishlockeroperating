@@ -1,0 +1,1 @@
+ALTER TABLE public.locker_occupancy ADD COLUMN IF NOT EXISTS work_location text;

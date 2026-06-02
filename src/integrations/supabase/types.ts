@@ -188,6 +188,7 @@ export type Database = {
           status: string | null
           termination_date: string | null
           updated_at: string
+          work_location: string | null
         }
         Insert: {
           badge_number?: string | null
@@ -210,6 +211,7 @@ export type Database = {
           status?: string | null
           termination_date?: string | null
           updated_at?: string
+          work_location?: string | null
         }
         Update: {
           badge_number?: string | null
@@ -232,6 +234,7 @@ export type Database = {
           status?: string | null
           termination_date?: string | null
           updated_at?: string
+          work_location?: string | null
         }
         Relationships: []
       }
