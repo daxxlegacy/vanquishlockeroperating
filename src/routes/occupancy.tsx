@@ -29,6 +29,8 @@ type Row = {
   key_lock_type: string | null;
   badge_number: string | null;
   employee_name: string | null;
+  national_id: string | null;
+  work_location: string | null;
   contact: string | null;
   status: string | null;
   batch_intake_date: string | null;
