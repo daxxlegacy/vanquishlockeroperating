@@ -299,6 +299,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           badge_number: norm(pick(r, "Employee Number", "Badge Number")),
           employee_name: norm(pick(r, "Employee Name")),
           national_id: norm(pick(r, ...NATIONAL_ID_HEADERS)),
+          work_location: norm(pick(r, "Work Location", "Worksite", "Site", "Worksite Location", "Work Location Site", "Dept Location")),
           contact: norm(pick(r, "Contact")),
           status: norm(pick(r, "Terminate", "Status")),
           batch_intake_date: dateOnly(pick(r, "Batch Intake Date")),
