@@ -13,10 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2 } from "lucide-react";
+import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
+import { terminateLocker } from "@/lib/termination-actions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/reconcile")({
   head: () => ({
@@ -491,7 +494,14 @@ function ReconcilePage() {
                   </TabsList>
 
                   <TabsContent value={tab} className="mt-4">
-                    <ResultsTable rows={filtered} bucket={tab} navigate={navigate} />
+                    <ResultsTable
+                      rows={filtered}
+                      bucket={tab}
+                      navigate={navigate}
+                      onRowsTerminated={(ids) => {
+                        setResults((prev) => (prev ? prev.filter((r) => !ids.includes(r.db.id)) : prev));
+                      }}
+                    />
                   </TabsContent>
                 </Tabs>
               </>
@@ -522,86 +532,214 @@ function formatRemaining(ms: number) {
 }
 
 function ResultsTable({
-  rows, bucket, navigate,
+  rows, bucket, navigate, onRowsTerminated,
 }: {
   rows: RowResult[];
   bucket: Bucket;
   navigate: ReturnType<typeof useNavigate>;
+  onRowsTerminated: (ids: string[]) => void;
 }) {
+  const canBulkTerminate = bucket === "must_terminate" || bucket === "rehire_suspect";
+  const MAX = 500;
+  const visible = useMemo(() => rows.slice(0, MAX), [rows]);
+
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirm, setConfirm] = useState<null | { ids: string[]; label: string }>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  // Clear selection when the bucket or visible rows change
+  useEffect(() => { setSelected(new Set()); }, [bucket, rows]);
+
+  const visibleIds = useMemo(() => visible.map((r) => r.db.id), [visible]);
+  const allChecked = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+  const someChecked = visibleIds.some((id) => selected.has(id));
+
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAll = (checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of visibleIds) { if (checked) next.add(id); else next.delete(id); }
+      return next;
+    });
+  };
+
+  const runBulkTerminate = async (ids: string[]) => {
+    const targets = visible.filter((r) => ids.includes(r.db.id));
+    if (targets.length === 0) return;
+    setBulkBusy(true);
+    setProgress({ done: 0, total: targets.length });
+    const okIds: string[] = [];
+    let failed = 0;
+    const today = new Date().toISOString().slice(0, 10);
+    for (let i = 0; i < targets.length; i++) {
+      const r = targets[i];
+      try {
+        const date = r.hr?.terminateDate || today;
+        await terminateLocker(r.db, date, r.reason || null, "empty");
+        okIds.push(r.db.id);
+      } catch (e) {
+        failed++;
+        console.error("Terminate failed for", r.db.locker_number, e);
+      }
+      setProgress({ done: i + 1, total: targets.length });
+    }
+    setBulkBusy(false);
+    setProgress(null);
+    setConfirm(null);
+    setSelected(new Set());
+    if (okIds.length > 0) onRowsTerminated(okIds);
+    if (failed === 0) toast.success(`Terminated ${okIds.length} locker${okIds.length === 1 ? "" : "s"}.`);
+    else toast.warning(`Terminated ${okIds.length}, failed ${failed}. See console for details.`);
+  };
+
   if (rows.length === 0) {
     return <Card className="p-10 text-center text-sm text-muted-foreground">No rows in this bucket.</Card>;
   }
-  const MAX = 500;
-  const visible = rows.slice(0, MAX);
+
   return (
-    <Card className="overflow-hidden">
-      {rows.length > MAX && (
-        <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-b">
-          Showing first {MAX.toLocaleString()} of {rows.length.toLocaleString()} rows — refine search to narrow down.
+    <>
+      {canBulkTerminate && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="text-xs text-muted-foreground mr-auto">
+            {selected.size > 0 ? `${selected.size} selected` : `Select rows to terminate in bulk`}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={selected.size === 0 || bulkBusy}
+            onClick={() => setConfirm({ ids: [...selected], label: `${selected.size} selected locker${selected.size === 1 ? "" : "s"}` })}
+          >
+            <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate Selected ({selected.size})
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={visible.length === 0 || bulkBusy}
+            onClick={() => setConfirm({ ids: visibleIds, label: `ALL ${visible.length} visible locker${visible.length === 1 ? "" : "s"} in this tab` })}
+          >
+            <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate All ({visible.length})
+          </Button>
         </div>
       )}
-      <div className="max-h-[60vh] overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 sticky top-0 z-10">
-            <tr className="text-left">
-              <Th>Locker</Th>
-              <Th>Location / Row</Th>
-              <Th>Badge</Th>
-              <Th>DB Name</Th>
-              <Th>HR Name</Th>
-              <Th>Batch Intake</Th>
-              <Th>HR Termination</Th>
-              <Th>Reason</Th>
-              <Th>Action</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((r, i) => (
-              <tr key={r.db.id} className={i % 2 ? "bg-muted/20" : ""}>
-                <Td mono>{r.db.locker_number}</Td>
-                <Td>
-                  <div>{r.db.location}</div>
-                  <div className="text-xs text-muted-foreground">{r.db.row_label ?? "—"}</div>
-                </Td>
-                <Td mono>{r.db.badge_number ?? "—"}</Td>
-                <Td>{r.db.employee_name ?? "—"}</Td>
-                <Td>
-                  {r.hr?.name ?? <span className="text-muted-foreground">—</span>}
-                  {r.hr?.workLocation && <div className="text-xs text-muted-foreground">{r.hr.workLocation}</div>}
-                </Td>
-                <Td mono>{formatBatchIntake(r.db.batch_intake) || "—"}</Td>
-                <Td mono>{r.hr?.terminateDate ? formatBatchIntake(r.hr.terminateDate) : "—"}</Td>
-                <Td>
-                  <span className="text-xs">{r.reason}</span>
-                  {r.matchedBy === "name" && (
-                    <Badge variant="outline" className="ml-1 text-[10px]">name match</Badge>
-                  )}
-                </Td>
-                <Td>
-                  {bucket === "must_terminate" || bucket === "rehire_suspect" ? (
-                    <Button
-                      size="sm"
-                      variant={bucket === "rehire_suspect" ? "outline" : "destructive"}
-                      onClick={() => {
-                        const td = r.hr?.terminateDate;
-                        const url = td ? `/terminate/${r.db.id}?date=${td}` : `/terminate/${r.db.id}`;
-                        window.open(url, "_blank");
-                      }}
-                    >
-                      <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/lockers", search: { q: r.db.locker_number } as never })}>
-                      View
-                    </Button>
-                  )}
-                </Td>
+
+      <Card className="overflow-hidden">
+        {rows.length > MAX && (
+          <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-b">
+            Showing first {MAX.toLocaleString()} of {rows.length.toLocaleString()} rows — refine search to narrow down.
+          </div>
+        )}
+        <div className="max-h-[60vh] overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 sticky top-0 z-10">
+              <tr className="text-left">
+                {canBulkTerminate && (
+                  <Th>
+                    <Checkbox
+                      checked={allChecked ? true : someChecked ? "indeterminate" : false}
+                      onCheckedChange={(v) => toggleAll(v === true)}
+                      aria-label="Select all visible"
+                    />
+                  </Th>
+                )}
+                <Th>Locker</Th>
+                <Th>Location / Row</Th>
+                <Th>Badge</Th>
+                <Th>DB Name</Th>
+                <Th>HR Name</Th>
+                <Th>Batch Intake</Th>
+                <Th>HR Termination</Th>
+                <Th>Reason</Th>
+                <Th>Action</Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+            </thead>
+            <tbody>
+              {visible.map((r, i) => (
+                <tr key={r.db.id} className={i % 2 ? "bg-muted/20" : ""}>
+                  {canBulkTerminate && (
+                    <Td>
+                      <Checkbox
+                        checked={selected.has(r.db.id)}
+                        onCheckedChange={(v) => toggleOne(r.db.id, v === true)}
+                        aria-label={`Select ${r.db.locker_number}`}
+                      />
+                    </Td>
+                  )}
+                  <Td mono>{r.db.locker_number}</Td>
+                  <Td>
+                    <div>{r.db.location}</div>
+                    <div className="text-xs text-muted-foreground">{r.db.row_label ?? "—"}</div>
+                  </Td>
+                  <Td mono>{r.db.badge_number ?? "—"}</Td>
+                  <Td>{r.db.employee_name ?? "—"}</Td>
+                  <Td>
+                    {r.hr?.name ?? <span className="text-muted-foreground">—</span>}
+                    {r.hr?.workLocation && <div className="text-xs text-muted-foreground">{r.hr.workLocation}</div>}
+                  </Td>
+                  <Td mono>{formatBatchIntake(r.db.batch_intake) || "—"}</Td>
+                  <Td mono>{r.hr?.terminateDate ? formatBatchIntake(r.hr.terminateDate) : "—"}</Td>
+                  <Td>
+                    <span className="text-xs">{r.reason}</span>
+                    {r.matchedBy === "name" && (
+                      <Badge variant="outline" className="ml-1 text-[10px]">name match</Badge>
+                    )}
+                  </Td>
+                  <Td>
+                    {canBulkTerminate ? (
+                      <Button
+                        size="sm"
+                        variant={bucket === "rehire_suspect" ? "outline" : "destructive"}
+                        onClick={() => {
+                          const td = r.hr?.terminateDate;
+                          const url = td ? `/terminate/${r.db.id}?date=${td}` : `/terminate/${r.db.id}`;
+                          window.open(url, "_blank");
+                        }}
+                      >
+                        <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/lockers", search: { q: r.db.locker_number } as never })}>
+                        View
+                      </Button>
+                    )}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <AlertDialog open={!!confirm} onOpenChange={(v) => { if (!v && !bulkBusy) setConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm bulk termination</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to terminate <strong>{confirm?.label}</strong>. Each locker will be released using its HR termination date (or today if missing) and the reason shown in the table. This cannot be undone in bulk.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {progress && (
+            <div className="text-xs text-muted-foreground">Processing {progress.done} / {progress.total}…</div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkBusy}
+              onClick={(e) => { e.preventDefault(); if (confirm) void runBulkTerminate(confirm.ids); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkBusy ? (<><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Terminating…</>) : (<><UserMinus className="h-4 w-4 mr-1" /> Confirm Terminate</>)}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

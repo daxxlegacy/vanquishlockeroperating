@@ -29,6 +29,8 @@ type Row = {
   key_lock_type: string | null;
   badge_number: string | null;
   employee_name: string | null;
+  national_id: string | null;
+  work_location: string | null;
   contact: string | null;
   status: string | null;
   batch_intake_date: string | null;
@@ -195,7 +197,8 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         r.locker_number.toLowerCase().includes(q) ||
         (r.employee_name ?? "").toLowerCase().includes(q) ||
         (r.badge_number ?? "").toLowerCase().includes(q) ||
-        (r.department ?? "").toLowerCase().includes(q) ||
+        (r.national_id ?? "").toLowerCase().includes(q) ||
+        (r.work_location ?? "").toLowerCase().includes(q) ||
         (r.locker_row ?? "").toLowerCase().includes(q) ||
         (r.locker_location_by_row ?? "").toLowerCase().includes(q)
       );
@@ -296,6 +299,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           badge_number: norm(pick(r, "Employee Number", "Badge Number")),
           employee_name: norm(pick(r, "Employee Name")),
           national_id: norm(pick(r, ...NATIONAL_ID_HEADERS)),
+          work_location: norm(pick(r, "Work Location", "Worksite", "Site", "Worksite Location", "Work Location Site", "Dept Location")),
           contact: norm(pick(r, "Contact")),
           status: norm(pick(r, "Terminate", "Status")),
           batch_intake_date: dateOnly(pick(r, "Batch Intake Date")),
@@ -417,11 +421,11 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
                     <Th>Status</Th>
                     <Th>Badge</Th>
                     <Th>Employee</Th>
-                    <Th>Dept</Th>
+                    <Th>National ID</Th>
                     <Th>Intake</Th>
                     <Th>Terminated</Th>
                     <Th>Reason</Th>
-                    <Th>Key / Row</Th>
+                    <Th>Work Location</Th>
                     <Th>History</Th>
                   </tr>
                 </thead>
@@ -474,14 +478,14 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
             </td>
             <td className="px-3 py-2 font-mono text-xs">{r.badge_number ?? "—"}</td>
             <td className="px-3 py-2">{r.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</td>
-            <td className="px-3 py-2 text-muted-foreground">{r.department ?? "—"}</td>
+            <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.national_id ?? "—"}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.batch_intake_date)}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.termination_date)}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs max-w-[220px] truncate" title={(!isActive ? (r.remarks || reason || "") : "") || undefined}>
               {!isActive ? (r.remarks || reason || "—") : "—"}
             </td>
             <td className="px-3 py-2 text-muted-foreground text-xs">
-              {r.key_lock_type ?? "—"}{r.locker_row ? ` · row ${r.locker_row}` : ""}
+              {r.work_location ?? "—"}
             </td>
             <td className="px-3 py-2">
               {isFirst && (

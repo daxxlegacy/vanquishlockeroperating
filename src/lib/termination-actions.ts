@@ -1,7 +1,51 @@
 // Undo a recent termination (15 minute window) — restores employee, badge, and prior status.
+// Also exposes terminateLocker() for one-shot terminations (used by bulk flows).
 import { supabase } from "@/integrations/supabase/client";
+import { syncTerminationToOccupancy } from "@/lib/occupancy-sync";
+import type { Database } from "@/integrations/supabase/types";
+
+type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
 export const TERMINATION_UNDO_WINDOW_MS = 15 * 60 * 1000;
+
+/**
+ * Terminate a single locker occupant. Inserts a terminations row, clears the
+ * locker's occupant fields, sets the post-termination status, and syncs
+ * occupancy history. Mirrors TerminateUserDialog so bulk flows behave identically.
+ */
+export async function terminateLocker(
+  locker: Pick<Locker, "id" | "locker_number" | "location" | "row_label" | "employee_name" | "badge_number"> & Partial<Locker>,
+  terminationDateIso: string,
+  reason: string | null,
+  newStatus: "empty" | "cleaning" | "repair" | "on_hold" = "empty",
+): Promise<void> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Not signed in");
+  if (!locker.employee_name) throw new Error(`Locker ${locker.locker_number} has no occupant`);
+
+  const { error: e1 } = await supabase.from("terminations").insert({
+    locker_id: locker.id,
+    locker_number: locker.locker_number,
+    location: locker.location,
+    row_label: locker.row_label ?? null,
+    employee_name: locker.employee_name,
+    badge_number: locker.badge_number ?? null,
+    termination_date: terminationDateIso,
+    reason: reason && reason.trim() ? reason.trim() : null,
+    terminated_by: u.user.id,
+    terminated_by_email: u.user.email ?? null,
+  });
+  if (e1) throw e1;
+
+  const { error: e2 } = await supabase
+    .from("lockers")
+    .update({ employee_name: null, badge_number: null, national_id: null, batch_intake: null, status: newStatus })
+    .eq("id", locker.id);
+  if (e2) throw e2;
+
+  await syncTerminationToOccupancy(locker as Locker, terminationDateIso, reason && reason.trim() ? reason.trim() : null);
+}
+
 
 export async function undoTermination(terminationId: string): Promise<void> {
   const { data: me } = await supabase.auth.getUser();
