@@ -421,11 +421,11 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
                     <Th>Status</Th>
                     <Th>Badge</Th>
                     <Th>Employee</Th>
-                    <Th>Dept</Th>
+                    <Th>National ID</Th>
                     <Th>Intake</Th>
                     <Th>Terminated</Th>
                     <Th>Reason</Th>
-                    <Th>Key / Row</Th>
+                    <Th>Work Location</Th>
                     <Th>History</Th>
                   </tr>
                 </thead>
