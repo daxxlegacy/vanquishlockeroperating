@@ -494,7 +494,14 @@ function ReconcilePage() {
                   </TabsList>
 
                   <TabsContent value={tab} className="mt-4">
-                    <ResultsTable rows={filtered} bucket={tab} navigate={navigate} />
+                    <ResultsTable
+                      rows={filtered}
+                      bucket={tab}
+                      navigate={navigate}
+                      onRowsTerminated={(ids) => {
+                        setResults((prev) => (prev ? prev.filter((r) => !ids.includes(r.db.id)) : prev));
+                      }}
+                    />
                   </TabsContent>
                 </Tabs>
               </>
