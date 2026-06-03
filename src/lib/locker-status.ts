@@ -8,6 +8,9 @@ export const LOCKER_STATUSES = [
   "broken_door",
   "on_hold",
   "reserved",
+  "returning_locker",
+  "reset",
+  "done_reset",
   "unknown",
 ] as const;
 
@@ -22,6 +25,9 @@ export const STATUS_LABEL: Record<LockerStatus, string> = {
   broken_door: "Broken door",
   on_hold: "On hold",
   reserved: "Reserved",
+  returning_locker: "Returning locker",
+  reset: "Reset",
+  done_reset: "Done reset",
   unknown: "Unknown",
 };
 
@@ -35,6 +41,9 @@ export const STATUS_CELL: Record<LockerStatus, string> = {
   broken_door: "bg-rose-700 border-rose-700 text-white",
   on_hold: "bg-amber-300 border-amber-300 text-amber-950",
   reserved: "bg-violet-500 border-violet-500 text-white",
+  returning_locker: "bg-indigo-500 border-indigo-500 text-white",
+  reset: "bg-pink-500 border-pink-500 text-white",
+  done_reset: "bg-teal-600 border-teal-600 text-white",
   unknown: "bg-muted border-border text-muted-foreground",
 };
 
@@ -48,6 +57,9 @@ export const STATUS_SWATCH: Record<LockerStatus, string> = {
   broken_door: "bg-rose-700",
   on_hold: "bg-amber-300",
   reserved: "bg-violet-500",
+  returning_locker: "bg-indigo-500",
+  reset: "bg-pink-500",
+  done_reset: "bg-teal-600",
   unknown: "bg-muted-foreground",
 };
 
