@@ -53,7 +53,7 @@ function DuplicatesPage() {
     return Array.from(map.values())
       .filter((g) => g.length > 1)
       .map((g) => g.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number)))
-      .sort((a, b) => b.length - a.length || (a[0].employee_name ?? "").localeCompare(b[0].employee_name ?? ""));
+      .sort((a, b) => compareLockerNumbers(a[0].locker_number, b[0].locker_number));
   }, [lockers]);
 
   const badgeGroups = useMemo(() => {
