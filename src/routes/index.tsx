@@ -173,6 +173,36 @@ function MapPage() {
     return counts;
   }, [lockers]);
 
+  const categorySummary = useMemo(() => {
+    if (!lockers) return null;
+    const cats = ["Full", "Staff", "Shoe", "HR"] as const;
+    type Cat = (typeof cats)[number];
+    const empty = () => {
+      const o: Record<string, number> = { total: 0 };
+      for (const s of LOCKER_STATUSES) o[s] = 0;
+      return o;
+    };
+    const out: Record<Cat, Record<string, number>> = {
+      Full: empty(), Staff: empty(), Shoe: empty(), HR: empty(),
+    };
+    const classify = (n: string): Cat => {
+      const s = (n ?? "").toUpperCase().trim();
+      if (s.startsWith("LK")) return "HR";
+      if (/^\d/.test(s)) return "Full";
+      // alpha prefix
+      const m = s.match(/^([A-Z]+)/);
+      const alpha = m ? m[1] : "";
+      if (alpha.length >= 2) return "Staff";
+      return "Shoe";
+    };
+    for (const l of lockers) {
+      const c = classify(l.locker_number);
+      out[c].total++;
+      out[c][l.status] = (out[c][l.status] ?? 0) + 1;
+    }
+    return out;
+  }, [lockers]);
+
   if (loading || !user) return <FullPageLoader />;
 
   const sheetNames = Object.keys(LAYOUT);
