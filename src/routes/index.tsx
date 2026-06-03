@@ -173,6 +173,36 @@ function MapPage() {
     return counts;
   }, [lockers]);
 
+  const categorySummary = useMemo(() => {
+    if (!lockers) return null;
+    const cats = ["Full", "Staff", "Shoe", "HR"] as const;
+    type Cat = (typeof cats)[number];
+    const empty = () => {
+      const o: Record<string, number> = { total: 0 };
+      for (const s of LOCKER_STATUSES) o[s] = 0;
+      return o;
+    };
+    const out: Record<Cat, Record<string, number>> = {
+      Full: empty(), Staff: empty(), Shoe: empty(), HR: empty(),
+    };
+    const classify = (n: string): Cat => {
+      const s = (n ?? "").toUpperCase().trim();
+      if (s.startsWith("LK")) return "HR";
+      if (/^\d/.test(s)) return "Full";
+      // alpha prefix
+      const m = s.match(/^([A-Z]+)/);
+      const alpha = m ? m[1] : "";
+      if (alpha.length >= 2) return "Staff";
+      return "Shoe";
+    };
+    for (const l of lockers) {
+      const c = classify(l.locker_number);
+      out[c].total++;
+      out[c][l.status] = (out[c][l.status] ?? 0) + 1;
+    }
+    return out;
+  }, [lockers]);
+
   if (loading || !user) return <FullPageLoader />;
 
   const sheetNames = Object.keys(LAYOUT);
@@ -255,6 +285,51 @@ function MapPage() {
             ))}
           </div>
         )}
+
+        {categorySummary && (
+          <Card className="p-4 mb-6 overflow-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display text-lg font-semibold">Status by Locker Category</h2>
+              <span className="text-xs text-muted-foreground">Derived from locker number prefix</span>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-3 font-medium">Category</th>
+                  {LOCKER_STATUSES.map((s) => (
+                    <th key={s} className="py-2 px-2 font-medium text-center whitespace-nowrap">
+                      <span className={`inline-block w-2 h-2 rounded-full mr-1 align-middle ${STATUS_SWATCH[s]}`} />
+                      {STATUS_LABEL[s]}
+                    </th>
+                  ))}
+                  <th className="py-2 pl-3 font-semibold text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(["Full", "Staff", "Shoe", "HR"] as const).map((cat) => (
+                  <tr key={cat} className="border-b last:border-0">
+                    <td className="py-2 pr-3 font-medium">{cat} Locker</td>
+                    {LOCKER_STATUSES.map((s) => (
+                      <td key={s} className="py-2 px-2 text-center tabular-nums">
+                        {categorySummary[cat][s] || <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                    ))}
+                    <td className="py-2 pl-3 text-right font-semibold tabular-nums">{categorySummary[cat].total}</td>
+                  </tr>
+                ))}
+                <tr className="bg-muted/50 font-semibold">
+                  <td className="py-2 pr-3">Total</td>
+                  {LOCKER_STATUSES.map((s) => (
+                    <td key={s} className="py-2 px-2 text-center tabular-nums">{summary?.[s] || 0}</td>
+                  ))}
+                  <td className="py-2 pl-3 text-right tabular-nums">{summary?.total ?? 0}</td>
+                </tr>
+              </tbody>
+            </table>
+          </Card>
+        )}
+
+
 
         {!lockers ? (
           <Skeleton className="h-96 w-full" />

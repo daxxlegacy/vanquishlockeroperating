@@ -519,6 +519,9 @@ export type Database = {
         | "on_hold"
         | "reserved"
         | "find_spare_key"
+        | "returning_locker"
+        | "reset"
+        | "done_reset"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -680,6 +683,9 @@ export const Constants = {
         "on_hold",
         "reserved",
         "find_spare_key",
+        "returning_locker",
+        "reset",
+        "done_reset",
       ],
     },
   },
