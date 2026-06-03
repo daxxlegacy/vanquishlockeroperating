@@ -232,8 +232,15 @@ function AdminPage() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Temporary password (min 8 chars)</label>
-              <Input type="text" required minLength={8} placeholder="set a password"
-                     value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={creating} />
+              <div className="flex items-center gap-2">
+                <Input type={showPassword ? "text" : "password"} required minLength={8} placeholder="set a password"
+                       autoComplete="new-password"
+                       value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={creating} />
+                <Button type="button" size="sm" variant="outline" disabled={creating}
+                        onClick={() => setShowPassword((p) => !p)}>
+                  {showPassword ? "Hide" : "Show"}
+                </Button>
+              </div>
             </div>
             <div>
               <label className="text-xs text-muted-foreground block mb-1">Role</label>
