@@ -46,6 +46,7 @@ function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "viewer">("viewer");
   const [creating, setCreating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const createUser = useServerFn(createUserAccount);
 
   const submitCreate = async (e: React.FormEvent) => {
