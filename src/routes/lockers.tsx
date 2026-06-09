@@ -306,7 +306,32 @@ function LockersPage() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Lockers");
-    XLSX.writeFile(wb, `lockers${filterTag()}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    // Auto-width columns
+    const headers = Object.keys(rows[0] ?? {});
+    ws["!cols"] = headers.map((h) => {
+      const maxLen = Math.max(
+        h.length,
+        ...rows.map((r) => String(r[h as keyof typeof rows[0]] ?? "").length)
+      );
+      return { wch: maxLen + 2 };
+    });
+
+    // Bold header with dark background and white text
+    const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+    const headerColor = "1E293B";
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c });
+      const cell = ws[addr];
+      if (cell) {
+        cell.s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: headerColor } },
+        };
+      }
+    }
+
+    XLSX.writeFile(wb, `LockerOps_lockers${filterTag()}_${new Date().toISOString().slice(0, 10)}.xlsx`);
     toast.success(`Exported ${rows.length.toLocaleString()} rows`);
   };
 
