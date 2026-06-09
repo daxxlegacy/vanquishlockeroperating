@@ -1,6 +1,11 @@
 // Shared in-memory lockers cache with realtime patching.
 // Used by /lockers, /spare-keys, /duplicates so switching tabs is instant
 // and a single realtime subscription keeps every page in sync.
+//
+// Improvements:
+// - localStorage warm-cache (stale-while-revalidate, 5 min max age)
+// - O(1) id->index Map for realtime patches
+// - getLockerById() lookup without Supabase round-trip
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -9,19 +14,57 @@ type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
 type State = { data: Locker[] | null; loading: boolean };
 let state: State = { data: null, loading: false };
+let index: Map<string, number> = new Map();
 const subscribers = new Set<(s: State) => void>();
 let channel: ReturnType<typeof supabase.channel> | null = null;
 let fetchPromise: Promise<void> | null = null;
 let realtimePaused = 0; // counter for nested pauses
 
+const STORAGE_KEY = "lockerops.lockers.cache.v2";
+const MAX_AGE_MS = 5 * 60 * 1000;
+
+function rebuildIndex(data: Locker[]) {
+  const m = new Map<string, number>();
+  for (let i = 0; i < data.length; i++) m.set(data[i].id, i);
+  index = m;
+}
+
 function emit() {
   for (const fn of subscribers) fn(state);
 }
 
-async function fetchAll() {
+function writeToStorage(data: Locker[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ts: Date.now(), data }),
+    );
+  } catch {
+    // quota / serialization errors — ignore
+  }
+}
+
+function readFromStorage(): Locker[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { ts: number; data: Locker[] };
+    if (!parsed || typeof parsed.ts !== "number" || !Array.isArray(parsed.data)) return null;
+    if (Date.now() - parsed.ts > MAX_AGE_MS) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAll(silent = false): Promise<void> {
   if (fetchPromise) return fetchPromise;
-  state = { ...state, loading: true };
-  emit();
+  if (!silent) {
+    state = { ...state, loading: true };
+    emit();
+  }
   fetchPromise = (async () => {
     try {
       const all: Locker[] = [];
@@ -37,7 +80,9 @@ async function fetchAll() {
         if (data.length < 1000) break;
         from += 1000;
       }
+      rebuildIndex(all);
       state = { data: all, loading: false };
+      writeToStorage(all);
       emit();
     } finally {
       fetchPromise = null;
@@ -56,34 +101,58 @@ function ensureChannel() {
       if (!cur) return;
       if (payload.eventType === "INSERT") {
         const row = payload.new as Locker;
-        if (!row.deleted_at) {
-          state = { ...state, data: [...cur, row] };
+        if (!row.deleted_at && !index.has(row.id)) {
+          const next = [...cur, row];
+          index.set(row.id, next.length - 1);
+          state = { ...state, data: next };
+          writeToStorage(next);
           emit();
         }
       } else if (payload.eventType === "UPDATE") {
         const row = payload.new as Locker;
         if (row.deleted_at) {
-          state = { ...state, data: cur.filter((l) => l.id !== row.id) };
+          const next = cur.filter((l) => l.id !== row.id);
+          rebuildIndex(next);
+          state = { ...state, data: next };
         } else {
-          state = {
-            ...state,
-            data: cur.some((l) => l.id === row.id)
-              ? cur.map((l) => (l.id === row.id ? row : l))
-              : [...cur, row],
-          };
+          const i = index.get(row.id);
+          if (i != null && cur[i]?.id === row.id) {
+            // O(1) hot-swap in place
+            const next = cur.slice();
+            next[i] = row;
+            state = { ...state, data: next };
+          } else {
+            const next = [...cur, row];
+            index.set(row.id, next.length - 1);
+            state = { ...state, data: next };
+          }
         }
+        writeToStorage(state.data!);
         emit();
       } else if (payload.eventType === "DELETE") {
         const row = payload.old as Locker;
-        state = { ...state, data: cur.filter((l) => l.id !== row.id) };
+        const next = cur.filter((l) => l.id !== row.id);
+        rebuildIndex(next);
+        state = { ...state, data: next };
+        writeToStorage(next);
         emit();
       }
     })
     .subscribe();
 }
 
+export function getLockerById(id: string): Locker | null {
+  const data = state.data;
+  if (!data) return null;
+  const i = index.get(id);
+  if (i == null) return null;
+  const row = data[i];
+  return row && row.id === id ? row : null;
+}
+
 export function invalidateLockersCache() {
   state = { data: null, loading: false };
+  index = new Map();
   emit();
   fetchAll();
 }
@@ -103,8 +172,20 @@ export function useLockers() {
   useEffect(() => {
     subscribers.add(set);
     ensureChannel();
-    if (!state.data && !state.loading) fetchAll();
-    else set(state);
+    if (!state.data && !state.loading) {
+      const warm = readFromStorage();
+      if (warm && warm.length > 0) {
+        rebuildIndex(warm);
+        state = { data: warm, loading: false };
+        emit();
+        // silent background refresh
+        fetchAll(true);
+      } else {
+        fetchAll();
+      }
+    } else {
+      set(state);
+    }
     return () => { subscribers.delete(set); };
   }, []);
   return { lockers: s.data, loading: s.loading, refresh: invalidateLockersCache };
