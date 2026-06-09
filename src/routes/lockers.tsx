@@ -213,6 +213,8 @@ function LockersPage() {
     statusFilter !== "all" ||
     locFilter !== "all" ||
     keyLockFilter !== "all" ||
+    missingNidFilter ||
+    missingBadgeFilter ||
     sort !== null ||
     Object.values(colFilters).some((s) => s.size > 0);
 
