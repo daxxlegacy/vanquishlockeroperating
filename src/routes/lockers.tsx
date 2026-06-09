@@ -488,7 +488,7 @@ function LockersPage() {
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
                   <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker #" values={lockers.map((l) => l.locker_number)} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
                   <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={lockers.map((l) => l.location)} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
-                  <Th><SortHeader label="Row" col="row" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Row" values={lockers.map((l) => l.row_label)} selected={colFilters.row ?? new Set()} onChange={setColFilter("row")} /></Th>
+                  
                   <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Key Lock" values={lockers.map((l) => l.key_lock)} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
                   <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={lockers.map((l) => l.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
                   <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={lockers.map((l) => l.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
