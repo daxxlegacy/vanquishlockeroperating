@@ -17,7 +17,7 @@ export async function terminateLocker(
   locker: Pick<Locker, "id" | "locker_number" | "location" | "row_label" | "employee_name" | "badge_number"> & Partial<Locker>,
   terminationDateIso: string,
   reason: string | null,
-  newStatus: "empty" | "cleaning" | "repair" | "on_hold" = "empty",
+  newStatus: Database["public"]["Enums"]["locker_status"] = "empty",
 ): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Not signed in");
