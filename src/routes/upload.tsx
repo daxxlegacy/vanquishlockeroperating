@@ -15,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge } from "lucide-react";
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers, NATIONAL_ID_KEYS } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
