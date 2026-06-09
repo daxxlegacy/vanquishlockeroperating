@@ -113,6 +113,8 @@ function LockersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [keyLockFilter, setKeyLockFilter] = useState("all");
+  const [missingNidFilter, setMissingNidFilter] = useState(false);
+  const [missingBadgeFilter, setMissingBadgeFilter] = useState(false);
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
