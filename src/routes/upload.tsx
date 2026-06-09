@@ -930,6 +930,53 @@ function UploadPage() {
           Sync locker assignments, run roster checks, or update spare-key status from spreadsheets.
         </p>
 
+        {dbQuality && dbQuality.rows.length > 0 && (
+          <Card className="mt-4 p-4 border-warning/40 bg-warning/5">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <div className="text-sm">
+                  <span className="font-semibold">{dbQuality.rows.length.toLocaleString()}</span> lockers in DB currently missing Badge or NID
+                  <span className="text-muted-foreground"> — {dbQuality.missingBadge.toLocaleString()} badge · {dbQuality.missingNid.toLocaleString()} national ID</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setShowDbQualityDetails((v) => !v)} className="h-7 text-xs">
+                  {showDbQualityDetails ? <><ChevronDown className="h-3.5 w-3.5 mr-1" />Hide details</> : <><ChevronRight className="h-3.5 w-3.5 mr-1" />Show details</>}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => downloadMissingCsv(dbQuality.rows, `db-quality-missing-${new Date().toISOString().slice(0, 10)}.csv`)} className="h-7 text-xs">
+                  <Download className="h-3.5 w-3.5 mr-1" />Export
+                </Button>
+              </div>
+            </div>
+            {showDbQualityDetails && (
+              <div className="border rounded-md max-h-72 overflow-auto mt-3 bg-background">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr><Th>Locker #</Th><Th>Employee Name</Th><Th>Missing Field</Th></tr>
+                  </thead>
+                  <tbody>
+                    {dbQuality.rows.slice(0, 500).map((r) => (
+                      <tr key={r.locker_number} className="border-t">
+                        <td className="px-3 py-1.5 font-medium">{r.locker_number}</td>
+                        <td className="px-3 py-1.5">{r.employee_name ?? "—"}</td>
+                        <td className="px-3 py-1.5"><Badge variant="outline" className="capitalize">{r.missing.replace("_", " ")}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {dbQuality.rows.length > 500 && (
+                  <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                    Showing 500 of {dbQuality.rows.length.toLocaleString()} — export CSV for full list
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        )}
+
+
+
         <Tabs defaultValue="roster" className="mt-6">
           <TabsList>
             <TabsTrigger value="roster"><UploadIcon className="h-4 w-4 mr-1.5" /> Roster Sync</TabsTrigger>
