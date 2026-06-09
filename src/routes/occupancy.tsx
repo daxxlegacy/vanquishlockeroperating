@@ -710,9 +710,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
             <div className="text-center text-muted-foreground py-8 text-sm">No history recorded.</div>
           ) : (
             <ul className="space-y-2">
-              {events.map((e) => {
-                const active = e.status.toLowerCase() === "active";
-                return (
+              {events.map((e) => (
                   <li key={e.id} className="border rounded-md p-3 bg-card">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
