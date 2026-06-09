@@ -22,6 +22,7 @@ import { normalizeLockerStatus } from "@/lib/locker-status";
 import { Progress } from "@/components/ui/progress";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
 import { saveBatchIntakeWarnings, clearBatchIntakeWarnings } from "@/lib/batch-intake-warnings";
+import { terminateLocker } from "@/lib/termination-actions";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
