@@ -22,6 +22,7 @@ import { normalizeLockerStatus } from "@/lib/locker-status";
 import { Progress } from "@/components/ui/progress";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
 import { saveBatchIntakeWarnings, clearBatchIntakeWarnings } from "@/lib/batch-intake-warnings";
+import { terminateLocker } from "@/lib/termination-actions";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -363,16 +364,31 @@ function UploadPage() {
       }
 
       const resignedKeys = preview.newlyResigned.map((r) => r.locker_number);
-      for (let i = 0; i < resignedKeys.length; i += CHUNK) {
-        const slice = resignedKeys.slice(i, i + CHUNK);
-        const { error } = await supabase
+      const terminationDateIso = new Date().toISOString().slice(0, 10);
+      const TERM_BATCH = 10;
+      for (let i = 0; i < resignedKeys.length; i += TERM_BATCH) {
+        const slice = resignedKeys.slice(i, i + TERM_BATCH);
+        const { data: rows, error: fetchErr } = await supabase
           .from("lockers")
-          .update({ status: "empty", employee_name: null, badge_number: null, remark: "Auto-resigned via upload" })
+          .select("*")
           .in("locker_number", slice);
-        if (error) throw error;
-        done += slice.length;
-        setApplyProgress({ done, total: totalUnits, phase: "Marking resigned" });
+        if (fetchErr) throw fetchErr;
+        for (const row of rows ?? []) {
+          if (!row.employee_name && !row.badge_number) {
+            done += 1;
+            setApplyProgress({ done, total: totalUnits, phase: "Logging terminations" });
+            continue;
+          }
+          try {
+            await terminateLocker(row, terminationDateIso, "Auto-resigned via upload", "empty");
+          } catch (e) {
+            console.error("terminateLocker failed for", row.locker_number, e);
+          }
+          done += 1;
+          setApplyProgress({ done, total: totalUnits, phase: "Logging terminations" });
+        }
       }
+
 
       await supabase.from("upload_history").insert({
         uploaded_by: user.id,
