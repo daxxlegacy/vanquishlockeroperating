@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Plus, Download } from "lucide-react";
+import { Search, Plus, Download, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { List, type RowComponentProps } from "react-window";
@@ -28,6 +28,11 @@ import { useDebounced } from "@/hooks/use-debounced";
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import { AlertTriangle } from "lucide-react";
 import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
+import { SortHeader, type SortState } from "@/components/SortHeader";
+import {
+  encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
+  colFiltersToObj, objToColFilters, cycleSort,
+} from "@/lib/url-filter-state";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
