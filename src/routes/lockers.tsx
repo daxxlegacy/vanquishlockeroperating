@@ -432,6 +432,18 @@ function LockersPage() {
               {keyLocks.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button
+            variant={missingNidFilter ? "default" : "outline"}
+            onClick={() => setMissingNidFilter((v) => !v)}
+          >
+            Missing NID ({missingNidCount})
+          </Button>
+          <Button
+            variant={missingBadgeFilter ? "default" : "outline"}
+            onClick={() => setMissingBadgeFilter((v) => !v)}
+          >
+            Missing Badge ({missingBadgeCount})
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" disabled={filtered.length === 0}>
