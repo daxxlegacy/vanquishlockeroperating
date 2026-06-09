@@ -60,6 +60,8 @@ type LockerFilterState = {
   statusFilter: string;
   locFilter: string;
   keyLockFilter: string;
+  missingNidFilter: boolean;
+  missingBadgeFilter: boolean;
 };
 
 const DEFAULT_LOCKER_FILTERS: LockerFilterState = {
@@ -67,6 +69,8 @@ const DEFAULT_LOCKER_FILTERS: LockerFilterState = {
   statusFilter: "all",
   locFilter: "all",
   keyLockFilter: "all",
+  missingNidFilter: false,
+  missingBadgeFilter: false,
 };
 
 function readLockerFilters(): LockerFilterState {
@@ -109,6 +113,8 @@ function LockersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [keyLockFilter, setKeyLockFilter] = useState("all");
+  const [missingNidFilter, setMissingNidFilter] = useState(false);
+  const [missingBadgeFilter, setMissingBadgeFilter] = useState(false);
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -126,6 +132,8 @@ function LockersPage() {
       setStatusFilter(x.status ?? "all");
       setLocFilter(x.loc ?? "all");
       setKeyLockFilter(x.keyLock ?? "all");
+      setMissingNidFilter(x.missingNid === "true");
+      setMissingBadgeFilter(x.missingBadge === "true");
       setColFilters(objToColFilters(urlState.cf));
       setSort(urlState.sort ?? null);
     } else {
@@ -134,14 +142,16 @@ function LockersPage() {
       setStatusFilter(stored.statusFilter);
       setLocFilter(stored.locFilter);
       setKeyLockFilter(stored.keyLockFilter);
+      setMissingNidFilter(stored.missingNidFilter);
+      setMissingBadgeFilter(stored.missingBadgeFilter);
     }
     setFiltersHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!filtersHydrated) return;
-    writeLockerFilters({ search, statusFilter, locFilter, keyLockFilter });
-  }, [filtersHydrated, search, statusFilter, locFilter, keyLockFilter]);
+    writeLockerFilters({ search, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter });
+  }, [filtersHydrated, search, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter]);
 
   // Sort once when underlying data changes (avoid re-sorting on every render)
   const lockers = useMemo(() => {
@@ -171,14 +181,17 @@ function LockersPage() {
   // Mirror current filter/sort state into the URL ?f= param for sharing.
   useEffect(() => {
     if (!filtersHydrated) return;
+    const x: Record<string, string> = { status: statusFilter, loc: locFilter, keyLock: keyLockFilter };
+    if (missingNidFilter) x.missingNid = "true";
+    if (missingBadgeFilter) x.missingBadge = "true";
     const encoded = encodeFilterState({
       cf: colFiltersToObj(colFilters),
       q: search,
       sort,
-      x: { status: statusFilter, loc: locFilter, keyLock: keyLockFilter },
+      x,
     });
     writeFilterParam(encoded);
-  }, [filtersHydrated, colFilters, search, sort, statusFilter, locFilter, keyLockFilter]);
+  }, [filtersHydrated, colFilters, search, sort, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -200,6 +213,8 @@ function LockersPage() {
     statusFilter !== "all" ||
     locFilter !== "all" ||
     keyLockFilter !== "all" ||
+    missingNidFilter ||
+    missingBadgeFilter ||
     sort !== null ||
     Object.values(colFilters).some((s) => s.size > 0);
 
@@ -208,14 +223,16 @@ function LockersPage() {
     setStatusFilter("all");
     setLocFilter("all");
     setKeyLockFilter("all");
+    setMissingNidFilter(false);
+    setMissingBadgeFilter(false);
     setColFilters({});
     setSort(null);
   };
 
-  const filtered = useMemo(() => {
+  const preQuickFiltered = useMemo(() => {
     if (!lockers) return [];
     const q = debouncedSearch.toLowerCase().trim();
-    const base = lockers.filter((l) => {
+    return lockers.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (locFilter !== "all" && l.location !== locFilter) return false;
       if (keyLockFilter !== "all") {
@@ -240,8 +257,20 @@ function LockersPage() {
         l.key_lock?.toLowerCase().includes(q)
       );
     });
-    if (!sort) return base;
-    // Map column key → accessor. Locker # uses natural locker-number ordering.
+  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters]);
+
+  const missingNidCount = useMemo(() => preQuickFiltered.filter((l) => !l.national_id || l.national_id.trim() === "").length, [preQuickFiltered]);
+  const missingBadgeCount = useMemo(() => preQuickFiltered.filter((l) => !l.badge_number || l.badge_number.trim() === "").length, [preQuickFiltered]);
+
+  const filtered = useMemo(() => {
+    let result = preQuickFiltered;
+    if (missingNidFilter) {
+      result = result.filter((l) => !l.national_id || l.national_id.trim() === "");
+    }
+    if (missingBadgeFilter) {
+      result = result.filter((l) => !l.badge_number || l.badge_number.trim() === "");
+    }
+    if (!sort) return result;
     const accessors: Record<string, (l: Locker) => string | number | null | undefined> = {
       num: (l) => l.locker_number,
       loc: (l) => l.location,
@@ -252,22 +281,22 @@ function LockersPage() {
       emp: (l) => l.employee_name,
       work: (l) => l.work_location,
       status: (l) => l.status,
-      batch: (l) => l.batch_intake, // ISO; lexical compare == chronological
+      batch: (l) => l.batch_intake,
     };
     const get = accessors[sort.col] ?? accessors.num;
     const dir = sort.dir === "asc" ? 1 : -1;
-    const sorted = [...base].sort((a, b) => {
+    const sorted = [...result].sort((a, b) => {
       if (sort.col === "num") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
       const av = get(a), bv = get(b);
       const ae = av == null || av === "";
       const be = bv == null || bv === "";
       if (ae && be) return 0;
-      if (ae) return 1;   // blanks last regardless of direction
+      if (ae) return 1;
       if (be) return -1;
       return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
     });
     return sorted;
-  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters, sort]);
+  }, [preQuickFiltered, missingNidFilter, missingBadgeFilter, sort]);
 
 
   const buildExportRows = () => filtered.map((l) => ({
@@ -403,6 +432,18 @@ function LockersPage() {
               {keyLocks.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button
+            variant={missingNidFilter ? "default" : "outline"}
+            onClick={() => setMissingNidFilter((v) => !v)}
+          >
+            Missing NID ({missingNidCount})
+          </Button>
+          <Button
+            variant={missingBadgeFilter ? "default" : "outline"}
+            onClick={() => setMissingBadgeFilter((v) => !v)}
+          >
+            Missing Badge ({missingBadgeCount})
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" disabled={filtered.length === 0}>
