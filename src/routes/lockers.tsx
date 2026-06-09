@@ -27,6 +27,7 @@ import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import { AlertTriangle } from "lucide-react";
+import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
