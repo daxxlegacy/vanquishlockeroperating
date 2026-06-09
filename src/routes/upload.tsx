@@ -184,6 +184,82 @@ function UploadPage() {
       .then(({ data }) => setHistory((data as UploadHistoryRow[]) ?? []));
   }, [user]);
 
+  // ── Data Quality state ──────────────────────────────────────────────
+  const [showMissingDetails, setShowMissingDetails] = useState(false);
+  const [dbQuality, setDbQuality] = useState<{
+    rows: { locker_number: string; employee_name: string | null; missing: "badge" | "national_id" | "both" }[];
+    missingBadge: number;
+    missingNid: number;
+  } | null>(null);
+  const [showDbQualityDetails, setShowDbQualityDetails] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const all: { locker_number: string; employee_name: string | null; badge_number: string | null; national_id: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number,employee_name,badge_number,national_id")
+          .is("deleted_at", null)
+          .or("badge_number.is.null,national_id.is.null")
+          .range(from, from + 999);
+        if (error || !data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      if (cancelled) return;
+      const rows = all.map((r) => {
+        const noBadge = !r.badge_number || r.badge_number.trim() === "";
+        const noNid = !r.national_id || r.national_id.trim() === "";
+        const missing: "badge" | "national_id" | "both" = noBadge && noNid ? "both" : noBadge ? "badge" : "national_id";
+        return { locker_number: r.locker_number, employee_name: r.employee_name, missing };
+      }).sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+      setDbQuality({
+        rows,
+        missingBadge: rows.filter((r) => r.missing === "badge" || r.missing === "both").length,
+        missingNid: rows.filter((r) => r.missing === "national_id" || r.missing === "both").length,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Missing-data scan of the currently-parsed preview rows.
+  const previewMissing = useMemo(() => {
+    if (!preview) return null;
+    const rows: { locker_number: string; employee_name: string | null; missing: "badge" | "national_id" | "both" }[] = [];
+    for (const p of preview.parsed) {
+      const noBadge = !p.badge_number || p.badge_number.trim() === "";
+      const noNid = !p.national_id || p.national_id.trim() === "";
+      if (!noBadge && !noNid) continue;
+      const missing: "badge" | "national_id" | "both" = noBadge && noNid ? "both" : noBadge ? "badge" : "national_id";
+      rows.push({ locker_number: p.locker_number, employee_name: p.employee_name, missing });
+    }
+    rows.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+    return {
+      rows,
+      missingBadge: rows.filter((r) => r.missing === "badge" || r.missing === "both").length,
+      missingNid: rows.filter((r) => r.missing === "national_id" || r.missing === "both").length,
+    };
+  }, [preview]);
+
+  const downloadMissingCsv = (
+    rows: { locker_number: string; employee_name: string | null; missing: string }[],
+    filename: string,
+  ) => {
+    const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const header = "Locker Number,Employee Name,Missing Field\n";
+    const body = rows.map((r) => [r.locker_number, r.employee_name ?? "", r.missing].map((v) => esc(String(v))).join(",")).join("\n");
+    const blob = new Blob([header + body], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleFile = async (f: File) => {
     setFile(f);
     setPreview(null);
