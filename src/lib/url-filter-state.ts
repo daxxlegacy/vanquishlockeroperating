@@ -59,18 +59,18 @@ export function objToColFilters(o: Record<string, string[]> | undefined): Record
   return out;
 }
 
-/** Write `?f=...` to the current URL without triggering a navigation. */
-export function writeFilterParam(encoded: string) {
+/** Write `?<key>=...` to the current URL without triggering a navigation. */
+export function writeFilterParam(encoded: string, key = "f") {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  if (encoded) url.searchParams.set("f", encoded);
-  else url.searchParams.delete("f");
+  if (encoded) url.searchParams.set(key, encoded);
+  else url.searchParams.delete(key);
   window.history.replaceState(null, "", url.toString());
 }
 
-export function readFilterParam(): string | null {
+export function readFilterParam(key = "f"): string | null {
   if (typeof window === "undefined") return null;
-  return new URL(window.location.href).searchParams.get("f");
+  return new URL(window.location.href).searchParams.get(key);
 }
 
 /** Cycle asc -> desc -> off for a given column key. */
