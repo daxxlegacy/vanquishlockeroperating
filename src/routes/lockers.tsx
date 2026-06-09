@@ -181,14 +181,17 @@ function LockersPage() {
   // Mirror current filter/sort state into the URL ?f= param for sharing.
   useEffect(() => {
     if (!filtersHydrated) return;
+    const x: Record<string, string> = { status: statusFilter, loc: locFilter, keyLock: keyLockFilter };
+    if (missingNidFilter) x.missingNid = "true";
+    if (missingBadgeFilter) x.missingBadge = "true";
     const encoded = encodeFilterState({
       cf: colFiltersToObj(colFilters),
       q: search,
       sort,
-      x: { status: statusFilter, loc: locFilter, keyLock: keyLockFilter },
+      x,
     });
     writeFilterParam(encoded);
-  }, [filtersHydrated, colFilters, search, sort, statusFilter, locFilter, keyLockFilter]);
+  }, [filtersHydrated, colFilters, search, sort, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
