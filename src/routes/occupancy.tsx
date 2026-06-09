@@ -601,9 +601,7 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
           >
             <td className="px-3 py-2 font-medium font-mono">{isFirst ? lockerNumber : <span className="text-muted-foreground/60 text-xs pl-3">↳</span>}</td>
             <td className="px-3 py-2">
-              <Badge variant={isActive ? "default" : "secondary"} className={isActive ? "" : "text-muted-foreground"}>
-                {r.status ?? "—"}
-              </Badge>
+              <StatusBadge status={r.status} />
             </td>
             <td className="px-3 py-2 font-mono text-xs">{r.badge_number ?? "—"}</td>
             <td className="px-3 py-2">{r.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</td>
