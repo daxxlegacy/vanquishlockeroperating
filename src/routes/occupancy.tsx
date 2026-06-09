@@ -184,6 +184,10 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     return { rowOpts: [...r].sort(), locOpts: [...l].sort() };
   }, [rows]);
 
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+  const setColFilter = (k: string) => (next: Set<string>) =>
+    setColFilters((cur) => ({ ...cur, [k]: next }));
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.toLowerCase().trim();
@@ -193,6 +197,14 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
       if (statusFilter === "terminate" && st !== "terminate" && st !== "terminated") return false;
       if (rowFilter !== "all" && (r.locker_row ?? "") !== rowFilter) return false;
       if (locFilter !== "all" && (r.locker_location_by_row ?? "") !== locFilter) return false;
+      if (!passesColumnFilter(r.locker_number, colFilters.locker ?? new Set())) return false;
+      if (!passesColumnFilter(r.status, colFilters.status ?? new Set())) return false;
+      if (!passesColumnFilter(r.badge_number, colFilters.badge ?? new Set())) return false;
+      if (!passesColumnFilter(r.employee_name, colFilters.emp ?? new Set())) return false;
+      if (!passesColumnFilter(r.national_id, colFilters.nid ?? new Set())) return false;
+      if (!passesColumnFilter(fmtDate(r.batch_intake_date), colFilters.intake ?? new Set())) return false;
+      if (!passesColumnFilter(fmtDate(r.termination_date), colFilters.term ?? new Set())) return false;
+      if (!passesColumnFilter(r.work_location, colFilters.work ?? new Set())) return false;
       if (!q) return true;
       return (
         r.locker_number.toLowerCase().includes(q) ||
@@ -213,7 +225,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
       return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
     });
     return f;
-  }, [rows, search, statusFilter, rowFilter, locFilter]);
+  }, [rows, search, statusFilter, rowFilter, locFilter, colFilters]);
 
   // Group by locker number — limit to 1 active + 1 most-recent terminate
   const grouped = useMemo(() => {
