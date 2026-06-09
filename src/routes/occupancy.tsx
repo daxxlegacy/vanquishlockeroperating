@@ -430,15 +430,15 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <Th>Locker</Th>
-                    <Th>Status</Th>
-                    <Th>Badge</Th>
-                    <Th>Employee</Th>
-                    <Th>National ID</Th>
-                    <Th>Intake</Th>
-                    <Th>Terminated</Th>
+                    <Th>Locker <ColumnFilter label="Locker" values={(rows ?? []).map((r) => r.locker_number)} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
+                    <Th>Status <ColumnFilter label="Status" values={(rows ?? []).map((r) => r.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                    <Th>Badge <ColumnFilter label="Badge" values={(rows ?? []).map((r) => r.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
+                    <Th>Employee <ColumnFilter label="Employee" values={(rows ?? []).map((r) => r.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
+                    <Th>National ID <ColumnFilter label="National ID" values={(rows ?? []).map((r) => r.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
+                    <Th>Intake <ColumnFilter label="Intake" values={(rows ?? []).map((r) => fmtDate(r.batch_intake_date))} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
+                    <Th>Terminated <ColumnFilter label="Terminated" values={(rows ?? []).map((r) => fmtDate(r.termination_date))} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
                     <Th>Reason</Th>
-                    <Th>Work Location</Th>
+                    <Th>Work Location <ColumnFilter label="Work Location" values={(rows ?? []).map((r) => r.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
                     <Th>History</Th>
                   </tr>
                 </thead>
