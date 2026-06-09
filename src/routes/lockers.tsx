@@ -146,8 +146,8 @@ function LockersPage() {
 
   useEffect(() => {
     if (!filtersHydrated) return;
-    writeLockerFilters({ search, statusFilter, locFilter, keyLockFilter });
-  }, [filtersHydrated, search, statusFilter, locFilter, keyLockFilter]);
+    writeLockerFilters({ search, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter });
+  }, [filtersHydrated, search, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter]);
 
   // Sort once when underlying data changes (avoid re-sorting on every render)
   const lockers = useMemo(() => {
