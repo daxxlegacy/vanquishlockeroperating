@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
@@ -110,6 +110,7 @@ function LockersPage() {
   const [locFilter, setLocFilter] = useState("all");
   const [keyLockFilter, setKeyLockFilter] = useState("all");
   const [filtersHydrated, setFiltersHydrated] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const { set: batchWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
@@ -178,6 +179,21 @@ function LockersPage() {
     });
     writeFilterParam(encoded);
   }, [filtersHydrated, colFilters, search, sort, statusFilter, locFilter, keyLockFilter]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.key === "/" &&
+        document.activeElement &&
+        !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   const hasAnyFilter =
     !!search ||
@@ -331,7 +347,12 @@ function LockersPage() {
         <Card className="p-4 mt-6 flex gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search locker, employee, badge, key lock…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input ref={searchInputRef} placeholder="Search locker, employee, badge, key lock…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            {!search && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none hidden sm:inline">
+                Press / to search
+              </span>
+            )}
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
@@ -450,7 +471,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 type LockerRowProps = { rows: Locker[]; onPick: (id: string) => void; warnings: Set<string> };
-function LockerRow({ index, style, rows, onPick, warnings }: RowComponentProps<LockerRowProps>) {
+const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings }: RowComponentProps<LockerRowProps>) {
   const l = rows[index];
   const flagged = warnings.has(l.locker_number.trim().toUpperCase());
   return (
@@ -477,7 +498,7 @@ function LockerRow({ index, style, rows, onPick, warnings }: RowComponentProps<L
       </div>
     </div>
   );
-}
+});
 
 // ---------- Add Locker Dialog (manual entry) ----------
 function AddLockerDialog({
