@@ -716,7 +716,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
                   <li key={e.id} className="border rounded-md p-3 bg-card">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant={active ? "default" : "secondary"}>{e.status}</Badge>
+                        <StatusBadge status={e.status} />
                         <span className="font-medium">{e.employee_name ?? "—"}</span>
                         {e.badge_number && <span className="font-mono text-xs text-muted-foreground">#{e.badge_number}</span>}
                       </div>
