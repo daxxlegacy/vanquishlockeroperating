@@ -314,8 +314,16 @@ function LockersPage() {
             <div className="overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                  <Th>Locker #</Th><Th>Location</Th><Th>Row</Th><Th>Key Lock</Th><Th>Badge</Th><Th>National ID</Th><Th>Employee</Th>
-                  <Th>Work Location</Th><Th>Status</Th><Th>Batch</Th>
+                  <Th>Locker # <ColumnFilter label="Locker #" values={lockers.map((l) => l.locker_number)} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
+                  <Th>Location <ColumnFilter label="Location" values={lockers.map((l) => l.location)} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
+                  <Th>Row <ColumnFilter label="Row" values={lockers.map((l) => l.row_label)} selected={colFilters.row ?? new Set()} onChange={setColFilter("row")} /></Th>
+                  <Th>Key Lock <ColumnFilter label="Key Lock" values={lockers.map((l) => l.key_lock)} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
+                  <Th>Badge <ColumnFilter label="Badge" values={lockers.map((l) => l.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
+                  <Th>National ID <ColumnFilter label="National ID" values={lockers.map((l) => l.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
+                  <Th>Employee <ColumnFilter label="Employee" values={lockers.map((l) => l.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
+                  <Th>Work Location <ColumnFilter label="Work Location" values={lockers.map((l) => l.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
+                  <Th>Status <ColumnFilter label="Status" values={lockers.map((l) => l.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                  <Th>Batch <ColumnFilter label="Batch" values={lockers.map((l) => formatBatchIntake(l.batch_intake))} selected={colFilters.batch ?? new Set()} onChange={setColFilter("batch")} /></Th>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
