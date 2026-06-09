@@ -60,6 +60,8 @@ type LockerFilterState = {
   statusFilter: string;
   locFilter: string;
   keyLockFilter: string;
+  missingNidFilter: boolean;
+  missingBadgeFilter: boolean;
 };
 
 const DEFAULT_LOCKER_FILTERS: LockerFilterState = {
@@ -67,6 +69,8 @@ const DEFAULT_LOCKER_FILTERS: LockerFilterState = {
   statusFilter: "all",
   locFilter: "all",
   keyLockFilter: "all",
+  missingNidFilter: false,
+  missingBadgeFilter: false,
 };
 
 function readLockerFilters(): LockerFilterState {
