@@ -117,11 +117,23 @@ function LockersPage() {
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
   useEffect(() => {
-    const stored = readLockerFilters();
-    setSearch(stored.search);
-    setStatusFilter(stored.statusFilter);
-    setLocFilter(stored.locFilter);
-    setKeyLockFilter(stored.keyLockFilter);
+    // URL takes precedence over localStorage so shared links work.
+    const urlState = decodeFilterState(readFilterParam());
+    if (urlState) {
+      if (urlState.q !== undefined) setSearch(urlState.q);
+      const x = urlState.x ?? {};
+      setStatusFilter(x.status ?? "all");
+      setLocFilter(x.loc ?? "all");
+      setKeyLockFilter(x.keyLock ?? "all");
+      setColFilters(objToColFilters(urlState.cf));
+      setSort(urlState.sort ?? null);
+    } else {
+      const stored = readLockerFilters();
+      setSearch(stored.search);
+      setStatusFilter(stored.statusFilter);
+      setLocFilter(stored.locFilter);
+      setKeyLockFilter(stored.keyLockFilter);
+    }
     setFiltersHydrated(true);
   }, []);
 
@@ -151,10 +163,43 @@ function LockersPage() {
   const setColFilter = (k: string) => (next: Set<string>) =>
     setColFilters((cur) => ({ ...cur, [k]: next }));
 
+  // Click-to-sort state (single column at a time, cycles asc → desc → none).
+  const [sort, setSort] = useState<SortState>(null);
+  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
+
+  // Mirror current filter/sort state into the URL ?f= param for sharing.
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    const encoded = encodeFilterState({
+      cf: colFiltersToObj(colFilters),
+      q: search,
+      sort,
+      x: { status: statusFilter, loc: locFilter, keyLock: keyLockFilter },
+    });
+    writeFilterParam(encoded);
+  }, [filtersHydrated, colFilters, search, sort, statusFilter, locFilter, keyLockFilter]);
+
+  const hasAnyFilter =
+    !!search ||
+    statusFilter !== "all" ||
+    locFilter !== "all" ||
+    keyLockFilter !== "all" ||
+    sort !== null ||
+    Object.values(colFilters).some((s) => s.size > 0);
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setLocFilter("all");
+    setKeyLockFilter("all");
+    setColFilters({});
+    setSort(null);
+  };
+
   const filtered = useMemo(() => {
     if (!lockers) return [];
     const q = debouncedSearch.toLowerCase().trim();
-    return lockers.filter((l) => {
+    const base = lockers.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (locFilter !== "all" && l.location !== locFilter) return false;
       if (keyLockFilter !== "all") {
@@ -179,7 +224,34 @@ function LockersPage() {
         l.key_lock?.toLowerCase().includes(q)
       );
     });
-  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters]);
+    if (!sort) return base;
+    // Map column key → accessor. Locker # uses natural locker-number ordering.
+    const accessors: Record<string, (l: Locker) => string | number | null | undefined> = {
+      num: (l) => l.locker_number,
+      loc: (l) => l.location,
+      row: (l) => l.row_label,
+      key_lock: (l) => l.key_lock,
+      badge: (l) => l.badge_number,
+      nid: (l) => l.national_id,
+      emp: (l) => l.employee_name,
+      work: (l) => l.work_location,
+      status: (l) => l.status,
+      batch: (l) => l.batch_intake, // ISO; lexical compare == chronological
+    };
+    const get = accessors[sort.col] ?? accessors.num;
+    const dir = sort.dir === "asc" ? 1 : -1;
+    const sorted = [...base].sort((a, b) => {
+      if (sort.col === "num") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
+      const av = get(a), bv = get(b);
+      const ae = av == null || av === "";
+      const be = bv == null || bv === "";
+      if (ae && be) return 0;
+      if (ae) return 1;   // blanks last regardless of direction
+      if (be) return -1;
+      return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
+    });
+    return sorted;
+  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters, sort]);
 
 
   const buildExportRows = () => filtered.map((l) => ({
