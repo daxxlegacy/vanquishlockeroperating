@@ -141,6 +141,11 @@ function LockersPage() {
     return Array.from(new Set(lockers.map((l) => (l.key_lock ?? "").trim()).filter(Boolean))).sort();
   }, [lockers]);
 
+  // Excel-style per-column checkbox filters (keyed by column id in COLS).
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+  const setColFilter = (k: string) => (next: Set<string>) =>
+    setColFilters((cur) => ({ ...cur, [k]: next }));
+
   const filtered = useMemo(() => {
     if (!lockers) return [];
     const q = debouncedSearch.toLowerCase().trim();
@@ -151,6 +156,16 @@ function LockersPage() {
         const k = (l.key_lock ?? "").trim();
         if (keyLockFilter === "__none__" ? k !== "" : k !== keyLockFilter) return false;
       }
+      if (!passesColumnFilter(l.locker_number, colFilters.num ?? new Set())) return false;
+      if (!passesColumnFilter(l.location, colFilters.loc ?? new Set())) return false;
+      if (!passesColumnFilter(l.row_label, colFilters.row ?? new Set())) return false;
+      if (!passesColumnFilter(l.key_lock, colFilters.key_lock ?? new Set())) return false;
+      if (!passesColumnFilter(l.badge_number, colFilters.badge ?? new Set())) return false;
+      if (!passesColumnFilter(l.national_id, colFilters.nid ?? new Set())) return false;
+      if (!passesColumnFilter(l.employee_name, colFilters.emp ?? new Set())) return false;
+      if (!passesColumnFilter(l.work_location, colFilters.work ?? new Set())) return false;
+      if (!passesColumnFilter(l.status, colFilters.status ?? new Set())) return false;
+      if (!passesColumnFilter(formatBatchIntake(l.batch_intake), colFilters.batch ?? new Set())) return false;
       if (!q) return true;
       return (
         l.locker_number.toLowerCase().includes(q) ||
@@ -159,7 +174,7 @@ function LockersPage() {
         l.key_lock?.toLowerCase().includes(q)
       );
     });
-  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter]);
+  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters]);
 
 
   const buildExportRows = () => filtered.map((l) => ({
