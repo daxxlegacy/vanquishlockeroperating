@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
+import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
 
 type Category = "main" | "staff" | "shoe";
 
@@ -183,6 +184,10 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     return { rowOpts: [...r].sort(), locOpts: [...l].sort() };
   }, [rows]);
 
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+  const setColFilter = (k: string) => (next: Set<string>) =>
+    setColFilters((cur) => ({ ...cur, [k]: next }));
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.toLowerCase().trim();
@@ -192,6 +197,14 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
       if (statusFilter === "terminate" && st !== "terminate" && st !== "terminated") return false;
       if (rowFilter !== "all" && (r.locker_row ?? "") !== rowFilter) return false;
       if (locFilter !== "all" && (r.locker_location_by_row ?? "") !== locFilter) return false;
+      if (!passesColumnFilter(r.locker_number, colFilters.locker ?? new Set())) return false;
+      if (!passesColumnFilter(r.status, colFilters.status ?? new Set())) return false;
+      if (!passesColumnFilter(r.badge_number, colFilters.badge ?? new Set())) return false;
+      if (!passesColumnFilter(r.employee_name, colFilters.emp ?? new Set())) return false;
+      if (!passesColumnFilter(r.national_id, colFilters.nid ?? new Set())) return false;
+      if (!passesColumnFilter(fmtDate(r.batch_intake_date), colFilters.intake ?? new Set())) return false;
+      if (!passesColumnFilter(fmtDate(r.termination_date), colFilters.term ?? new Set())) return false;
+      if (!passesColumnFilter(r.work_location, colFilters.work ?? new Set())) return false;
       if (!q) return true;
       return (
         r.locker_number.toLowerCase().includes(q) ||
@@ -212,7 +225,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
       return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
     });
     return f;
-  }, [rows, search, statusFilter, rowFilter, locFilter]);
+  }, [rows, search, statusFilter, rowFilter, locFilter, colFilters]);
 
   // Group by locker number — limit to 1 active + 1 most-recent terminate
   const grouped = useMemo(() => {
@@ -417,15 +430,15 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <Th>Locker</Th>
-                    <Th>Status</Th>
-                    <Th>Badge</Th>
-                    <Th>Employee</Th>
-                    <Th>National ID</Th>
-                    <Th>Intake</Th>
-                    <Th>Terminated</Th>
+                    <Th>Locker <ColumnFilter label="Locker" values={(rows ?? []).map((r) => r.locker_number)} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
+                    <Th>Status <ColumnFilter label="Status" values={(rows ?? []).map((r) => r.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                    <Th>Badge <ColumnFilter label="Badge" values={(rows ?? []).map((r) => r.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
+                    <Th>Employee <ColumnFilter label="Employee" values={(rows ?? []).map((r) => r.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
+                    <Th>National ID <ColumnFilter label="National ID" values={(rows ?? []).map((r) => r.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
+                    <Th>Intake <ColumnFilter label="Intake" values={(rows ?? []).map((r) => fmtDate(r.batch_intake_date))} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
+                    <Th>Terminated <ColumnFilter label="Terminated" values={(rows ?? []).map((r) => fmtDate(r.termination_date))} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
                     <Th>Reason</Th>
-                    <Th>Work Location</Th>
+                    <Th>Work Location <ColumnFilter label="Work Location" values={(rows ?? []).map((r) => r.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
                     <Th>History</Th>
                   </tr>
                 </thead>
