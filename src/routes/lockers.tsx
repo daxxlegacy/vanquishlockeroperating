@@ -132,6 +132,8 @@ function LockersPage() {
       setStatusFilter(x.status ?? "all");
       setLocFilter(x.loc ?? "all");
       setKeyLockFilter(x.keyLock ?? "all");
+      setMissingNidFilter(x.missingNid === "true");
+      setMissingBadgeFilter(x.missingBadge === "true");
       setColFilters(objToColFilters(urlState.cf));
       setSort(urlState.sort ?? null);
     } else {
@@ -140,6 +142,8 @@ function LockersPage() {
       setStatusFilter(stored.statusFilter);
       setLocFilter(stored.locFilter);
       setKeyLockFilter(stored.keyLockFilter);
+      setMissingNidFilter(stored.missingNidFilter);
+      setMissingBadgeFilter(stored.missingBadgeFilter);
     }
     setFiltersHydrated(true);
   }, []);
