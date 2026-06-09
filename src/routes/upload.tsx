@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge } from "lucide-react";
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers, NATIONAL_ID_KEYS } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
@@ -183,6 +183,82 @@ function UploadPage() {
     supabase.from("upload_history").select("*").order("created_at", { ascending: false }).limit(10)
       .then(({ data }) => setHistory((data as UploadHistoryRow[]) ?? []));
   }, [user]);
+
+  // ── Data Quality state ──────────────────────────────────────────────
+  const [showMissingDetails, setShowMissingDetails] = useState(false);
+  const [dbQuality, setDbQuality] = useState<{
+    rows: { locker_number: string; employee_name: string | null; missing: "badge" | "national_id" | "both" }[];
+    missingBadge: number;
+    missingNid: number;
+  } | null>(null);
+  const [showDbQualityDetails, setShowDbQualityDetails] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const all: { locker_number: string; employee_name: string | null; badge_number: string | null; national_id: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number,employee_name,badge_number,national_id")
+          .is("deleted_at", null)
+          .or("badge_number.is.null,national_id.is.null")
+          .range(from, from + 999);
+        if (error || !data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      if (cancelled) return;
+      const rows = all.map((r) => {
+        const noBadge = !r.badge_number || r.badge_number.trim() === "";
+        const noNid = !r.national_id || r.national_id.trim() === "";
+        const missing: "badge" | "national_id" | "both" = noBadge && noNid ? "both" : noBadge ? "badge" : "national_id";
+        return { locker_number: r.locker_number, employee_name: r.employee_name, missing };
+      }).sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+      setDbQuality({
+        rows,
+        missingBadge: rows.filter((r) => r.missing === "badge" || r.missing === "both").length,
+        missingNid: rows.filter((r) => r.missing === "national_id" || r.missing === "both").length,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Missing-data scan of the currently-parsed preview rows.
+  const previewMissing = useMemo(() => {
+    if (!preview) return null;
+    const rows: { locker_number: string; employee_name: string | null; missing: "badge" | "national_id" | "both" }[] = [];
+    for (const p of preview.parsed) {
+      const noBadge = !p.badge_number || p.badge_number.trim() === "";
+      const noNid = !p.national_id || p.national_id.trim() === "";
+      if (!noBadge && !noNid) continue;
+      const missing: "badge" | "national_id" | "both" = noBadge && noNid ? "both" : noBadge ? "badge" : "national_id";
+      rows.push({ locker_number: p.locker_number, employee_name: p.employee_name, missing });
+    }
+    rows.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+    return {
+      rows,
+      missingBadge: rows.filter((r) => r.missing === "badge" || r.missing === "both").length,
+      missingNid: rows.filter((r) => r.missing === "national_id" || r.missing === "both").length,
+    };
+  }, [preview]);
+
+  const downloadMissingCsv = (
+    rows: { locker_number: string; employee_name: string | null; missing: string }[],
+    filename: string,
+  ) => {
+    const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const header = "Locker Number,Employee Name,Missing Field\n";
+    const body = rows.map((r) => [r.locker_number, r.employee_name ?? "", r.missing].map((v) => esc(String(v))).join(",")).join("\n");
+    const blob = new Blob([header + body], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleFile = async (f: File) => {
     setFile(f);
@@ -854,6 +930,53 @@ function UploadPage() {
           Sync locker assignments, run roster checks, or update spare-key status from spreadsheets.
         </p>
 
+        {dbQuality && dbQuality.rows.length > 0 && (
+          <Card className="mt-4 p-4 border-warning/40 bg-warning/5">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <div className="text-sm">
+                  <span className="font-semibold">{dbQuality.rows.length.toLocaleString()}</span> lockers in DB currently missing Badge or NID
+                  <span className="text-muted-foreground"> — {dbQuality.missingBadge.toLocaleString()} badge · {dbQuality.missingNid.toLocaleString()} national ID</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setShowDbQualityDetails((v) => !v)} className="h-7 text-xs">
+                  {showDbQualityDetails ? <><ChevronDown className="h-3.5 w-3.5 mr-1" />Hide details</> : <><ChevronRight className="h-3.5 w-3.5 mr-1" />Show details</>}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => downloadMissingCsv(dbQuality.rows, `db-quality-missing-${new Date().toISOString().slice(0, 10)}.csv`)} className="h-7 text-xs">
+                  <Download className="h-3.5 w-3.5 mr-1" />Export
+                </Button>
+              </div>
+            </div>
+            {showDbQualityDetails && (
+              <div className="border rounded-md max-h-72 overflow-auto mt-3 bg-background">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr><Th>Locker #</Th><Th>Employee Name</Th><Th>Missing Field</Th></tr>
+                  </thead>
+                  <tbody>
+                    {dbQuality.rows.slice(0, 500).map((r) => (
+                      <tr key={r.locker_number} className="border-t">
+                        <td className="px-3 py-1.5 font-medium">{r.locker_number}</td>
+                        <td className="px-3 py-1.5">{r.employee_name ?? "—"}</td>
+                        <td className="px-3 py-1.5"><Badge variant="outline" className="capitalize">{r.missing.replace("_", " ")}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {dbQuality.rows.length > 500 && (
+                  <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                    Showing 500 of {dbQuality.rows.length.toLocaleString()} — export CSV for full list
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        )}
+
+
+
         <Tabs defaultValue="roster" className="mt-6">
           <TabsList>
             <TabsTrigger value="roster"><UploadIcon className="h-4 w-4 mr-1.5" /> Roster Sync</TabsTrigger>
@@ -979,6 +1102,56 @@ function UploadPage() {
                 </table>
               </div>
             </details>
+
+            {previewMissing && previewMissing.rows.length > 0 && (
+              <Card className="mb-4 p-4 border-warning/40 bg-warning/5">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <div className="text-sm">
+                      <span className="font-semibold">{previewMissing.missingBadge.toLocaleString()}</span> lockers missing Badge Number
+                      <span className="text-muted-foreground"> · </span>
+                      <span className="font-semibold">{previewMissing.missingNid.toLocaleString()}</span> lockers missing National ID
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setShowMissingDetails((v) => !v)} className="h-7 text-xs">
+                      {showMissingDetails ? <><ChevronDown className="h-3.5 w-3.5 mr-1" />Hide details</> : <><ChevronRight className="h-3.5 w-3.5 mr-1" />Show details</>}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => downloadMissingCsv(previewMissing.rows, `upload-missing-${new Date().toISOString().slice(0, 10)}.csv`)} className="h-7 text-xs">
+                      <Download className="h-3.5 w-3.5 mr-1" />Export missing list
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  These rows will still be uploaded. Fix and re-upload to clean them.
+                </p>
+                {showMissingDetails && (
+                  <div className="border rounded-md max-h-72 overflow-auto mt-3 bg-background">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr><Th>Locker #</Th><Th>Employee Name</Th><Th>Missing Field</Th></tr>
+                      </thead>
+                      <tbody>
+                        {previewMissing.rows.slice(0, 500).map((r) => (
+                          <tr key={r.locker_number} className="border-t">
+                            <td className="px-3 py-1.5 font-medium">{r.locker_number}</td>
+                            <td className="px-3 py-1.5">{r.employee_name ?? "—"}</td>
+                            <td className="px-3 py-1.5"><Badge variant="outline" className="capitalize">{r.missing.replace("_", " ")}</Badge></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {previewMissing.rows.length > 500 && (
+                      <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                        Showing 500 of {previewMissing.rows.length.toLocaleString()} — export CSV for full list
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            )}
+
 
             {preview.batchIntakeWarnings.length > 0 && (
               <Alert variant="destructive" className="mb-4">
