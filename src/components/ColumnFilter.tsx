@@ -3,24 +3,37 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Filter, Search, X } from "lucide-react";
+import { Filter, Search, X, ChevronRight } from "lucide-react";
 
 /**
  * Excel-style per-column filter dropdown.
  *
- *  - Search box narrows the checkbox list to "search results".
- *  - "(Select All Search Results)" toggles every value currently matching
- *    the search.
- *  - "Add current selection to filter" preserves prior selections that fall
- *    outside the current search instead of replacing them. (Same semantics
- *    as the Excel popup the user referenced.)
+ * When `label === "Batch"`, render a 3-level Year → Month → Day tree
+ * (Excel-style date grouping). Non-date values (blanks, free text)
+ * fall through to an "Other" section at the bottom and behave like the
+ * flat checkbox list used by every other column.
  *
- *  `selected` is the set of values currently included by the filter. An
- *  empty set means "no filter" (everything passes). When the user picks
- *  values the parent stores them; the parent applies the predicate
- *  `selected.size === 0 || selected.has(value)` to each row.
+ * The selected Set<string> still stores individual dd/mm/yyyy strings
+ * (or the BLANK marker) so passesColumnFilter keeps working unchanged.
  */
 const BLANK = "(Blanks)";
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const DATE_RE = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
+function parseDdMmYyyy(v: string): { y: number; m: number; d: number } | null {
+  const m = v.match(DATE_RE);
+  if (!m) return null;
+  const d = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  const y = parseInt(m[3], 10);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return { y, m: mo, d };
+}
 
 export function ColumnFilter({
   values,
@@ -37,6 +50,10 @@ export function ColumnFilter({
   const [search, setSearch] = useState("");
   const [addMode, setAddMode] = useState(false);
   const [draft, setDraft] = useState<Set<string>>(selected);
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set()); // "y-m"
+
+  const isBatch = label === "Batch";
 
   // Reset draft each time the popover opens so cancelling discards changes.
   const onOpenChange = (v: boolean) => {
@@ -44,6 +61,8 @@ export function ColumnFilter({
       setDraft(new Set(selected));
       setSearch("");
       setAddMode(false);
+      setExpandedYears(new Set());
+      setExpandedMonths(new Set());
     }
     setOpen(v);
   };
@@ -65,6 +84,27 @@ export function ColumnFilter({
     return unique.filter((v) => v.toLowerCase().includes(q));
   }, [unique, search]);
 
+  // Split filtered values into dates + others (for Batch mode).
+  const { dateTree, others } = useMemo(() => {
+    const others: string[] = [];
+    // year -> month -> Map<dateString, count>
+    const tree = new Map<number, Map<number, Map<string, number>>>();
+    if (!isBatch) return { dateTree: tree, others };
+    for (const v of filtered) {
+      const parsed = v === BLANK ? null : parseDdMmYyyy(v);
+      if (!parsed) {
+        others.push(v);
+        continue;
+      }
+      let ym = tree.get(parsed.y);
+      if (!ym) { ym = new Map(); tree.set(parsed.y, ym); }
+      let dm = ym.get(parsed.m);
+      if (!dm) { dm = new Map(); ym.set(parsed.m, dm); }
+      dm.set(v, (dm.get(v) ?? 0) + 1);
+    }
+    return { dateTree: tree, others };
+  }, [filtered, isBatch]);
+
   const allFilteredChecked = filtered.length > 0 && filtered.every((v) => draft.has(v));
 
   const toggle = (v: string, checked: boolean) => {
@@ -74,19 +114,24 @@ export function ColumnFilter({
     setDraft(next);
   };
 
+  const toggleMany = (vals: string[], checked: boolean) => {
+    const next = new Set(draft);
+    for (const v of vals) {
+      if (checked) next.add(v);
+      else next.delete(v);
+    }
+    setDraft(next);
+  };
+
   const toggleAllFiltered = (checked: boolean) => {
     const next = new Set(draft);
     if (!addMode && search.trim() === "") {
-      // No search: select-all toggles every value, no merge with prior state.
       if (checked) for (const v of unique) next.add(v);
       else next.clear();
       setDraft(next);
       return;
     }
-    if (!addMode) {
-      // Search active, "Add" off → start from only the filtered selection.
-      next.clear();
-    }
+    if (!addMode) next.clear();
     for (const v of filtered) {
       if (checked) next.add(v);
       else next.delete(v);
@@ -95,7 +140,6 @@ export function ColumnFilter({
   };
 
   const apply = () => {
-    // Normalise: if user picked every value, treat as "no filter".
     if (draft.size === 0 || draft.size === unique.length) onChange(new Set());
     else onChange(new Set(draft));
     setOpen(false);
@@ -107,6 +151,33 @@ export function ColumnFilter({
   };
 
   const active = selected.size > 0;
+
+  // Render tri-state for year / month rows.
+  const triState = (vals: string[]): boolean | "indeterminate" => {
+    if (vals.length === 0) return false;
+    let on = 0;
+    for (const v of vals) if (draft.has(v)) on++;
+    if (on === 0) return false;
+    if (on === vals.length) return true;
+    return "indeterminate";
+  };
+
+  const toggleYear = (y: number) => {
+    const next = new Set(expandedYears);
+    if (next.has(y)) next.delete(y); else next.add(y);
+    setExpandedYears(next);
+  };
+  const toggleMonth = (y: number, m: number) => {
+    const k = `${y}-${m}`;
+    const next = new Set(expandedMonths);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    setExpandedMonths(next);
+  };
+
+  const sortedYears = useMemo(
+    () => [...dateTree.keys()].sort((a, b) => b - a),
+    [dateTree],
+  );
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -161,7 +232,114 @@ export function ColumnFilter({
             </label>
           )}
           <div className="max-h-64 overflow-y-auto border-t pt-1 mt-1">
-            {filtered.length === 0 ? (
+            {isBatch ? (
+              sortedYears.length === 0 && others.length === 0 ? (
+                <div className="px-2 py-4 text-center text-xs text-muted-foreground">No values</div>
+              ) : (
+                <>
+                  {sortedYears.map((y) => {
+                    const months = dateTree.get(y)!;
+                    const yearVals: string[] = [];
+                    for (const dm of months.values()) for (const v of dm.keys()) yearVals.push(v);
+                    const yState = triState(yearVals);
+                    const yExpanded = expandedYears.has(y);
+                    const sortedMonths = [...months.keys()].sort((a, b) => a - b);
+                    return (
+                      <div key={y}>
+                        <div className="flex items-center gap-1 px-1 py-1 rounded hover:bg-muted">
+                          <button
+                            type="button"
+                            onClick={() => toggleYear(y)}
+                            className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
+                            aria-label={yExpanded ? "Collapse" : "Expand"}
+                          >
+                            <ChevronRight
+                              className={`h-3.5 w-3.5 transition-transform ${yExpanded ? "rotate-90" : ""}`}
+                            />
+                          </button>
+                          <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                            <Checkbox
+                              checked={yState}
+                              onCheckedChange={(c) => toggleMany(yearVals, c === true)}
+                            />
+                            <span className="truncate font-medium">{y}</span>
+                            <span className="text-xs text-muted-foreground ml-auto">{yearVals.length}</span>
+                          </label>
+                        </div>
+                        {yExpanded && sortedMonths.map((m) => {
+                          const dm = months.get(m)!;
+                          const monthVals = [...dm.keys()];
+                          const mState = triState(monthVals);
+                          const mKey = `${y}-${m}`;
+                          const mExpanded = expandedMonths.has(mKey);
+                          const sortedDates = monthVals.sort((a, b) => {
+                            const pa = parseDdMmYyyy(a)!;
+                            const pb = parseDdMmYyyy(b)!;
+                            return pa.d - pb.d;
+                          });
+                          return (
+                            <div key={m}>
+                              <div className="flex items-center gap-1 pl-5 pr-1 py-1 rounded hover:bg-muted">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleMonth(y, m)}
+                                  className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
+                                  aria-label={mExpanded ? "Collapse" : "Expand"}
+                                >
+                                  <ChevronRight
+                                    className={`h-3.5 w-3.5 transition-transform ${mExpanded ? "rotate-90" : ""}`}
+                                  />
+                                </button>
+                                <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                                  <Checkbox
+                                    checked={mState}
+                                    onCheckedChange={(c) => toggleMany(monthVals, c === true)}
+                                  />
+                                  <span className="truncate">{MONTH_NAMES[m - 1]}</span>
+                                  <span className="text-xs text-muted-foreground ml-auto">{monthVals.length}</span>
+                                </label>
+                              </div>
+                              {mExpanded && sortedDates.map((v) => (
+                                <label
+                                  key={v}
+                                  className="flex items-center gap-2 pl-10 pr-1 py-1 rounded hover:bg-muted cursor-pointer"
+                                >
+                                  <Checkbox
+                                    checked={draft.has(v)}
+                                    onCheckedChange={(c) => toggle(v, c === true)}
+                                  />
+                                  <span className="truncate">{v}</span>
+                                  <span className="text-xs text-muted-foreground ml-auto">{dm.get(v)}</span>
+                                </label>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                  {others.length > 0 && (
+                    <div className="mt-2 pt-2 border-t">
+                      <div className="px-1 py-1 text-xs text-muted-foreground font-medium">Other</div>
+                      {others.map((v) => (
+                        <label
+                          key={v}
+                          className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={draft.has(v)}
+                            onCheckedChange={(c) => toggle(v, c === true)}
+                          />
+                          <span className={`truncate ${v === BLANK ? "italic text-muted-foreground" : ""}`}>
+                            {v}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )
+            ) : filtered.length === 0 ? (
               <div className="px-2 py-4 text-center text-xs text-muted-foreground">No values</div>
             ) : (
               filtered.map((v) => (
