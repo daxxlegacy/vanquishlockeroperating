@@ -41,16 +41,15 @@ type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 const ROW_HEIGHT = 40;
 const VIEWPORT_HEIGHT = 640;
 const COLS = [
-  { key: "num", w: 110 },
-  { key: "loc", w: 160 },
-  { key: "row", w: 110 },
+  { key: "num", w: 100 },
+  { key: "loc", w: 180 },
   { key: "key_lock", w: 160 },
-  { key: "badge", w: 110 },
-  { key: "nid", w: 140 },
-  { key: "emp", w: 200 },
-  { key: "work", w: 160 },
-  { key: "status", w: 130 },
-  { key: "batch", w: 130 },
+  { key: "badge", w: 120 },
+  { key: "nid", w: 150 },
+  { key: "emp", w: 260 },
+  { key: "work", w: 150 },
+  { key: "status", w: 140 },
+  { key: "batch", w: 120 },
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
 const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
@@ -489,7 +488,7 @@ function LockersPage() {
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
                   <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker #" values={lockers.map((l) => l.locker_number)} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
                   <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={lockers.map((l) => l.location)} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
-                  <Th><SortHeader label="Row" col="row" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Row" values={lockers.map((l) => l.row_label)} selected={colFilters.row ?? new Set()} onChange={setColFilter("row")} /></Th>
+                  
                   <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Key Lock" values={lockers.map((l) => l.key_lock)} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
                   <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={lockers.map((l) => l.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
                   <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={lockers.map((l) => l.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
@@ -542,13 +541,12 @@ const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings
         {flagged && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" aria-hidden />}
         <span className="truncate">{l.locker_number}</span>
       </div>
-      <div className="px-3 truncate">{l.location}</div>
-      <div className="px-3 truncate text-muted-foreground">{l.row_label}</div>
-      <div className="px-3 truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</div>
-      <div className="px-3 truncate text-muted-foreground">{l.badge_number ?? "—"}</div>
-      <div className="px-3 truncate text-xs text-muted-foreground">{l.national_id ?? "—"}</div>
-      <div className="px-3 truncate">{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
-      <div className="px-3 truncate text-muted-foreground">{l.work_location ?? "—"}</div>
+      <div className="px-3 truncate" title={l.location}>{l.location}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground" title={l.key_lock ?? ""}>{l.key_lock ?? "—"}</div>
+      <div className="px-3 truncate text-muted-foreground" title={l.badge_number ?? ""}>{l.badge_number ?? "—"}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground" title={l.national_id ?? ""}>{l.national_id ?? "—"}</div>
+      <div className="px-3 truncate" title={l.employee_name ?? ""}>{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
+      <div className="px-3 truncate text-muted-foreground" title={l.work_location ?? ""}>{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} /></div>
       <div className={`px-3 truncate text-xs ${flagged ? "text-warning font-medium" : "text-muted-foreground"}`}>
         {formatBatchIntake(l.batch_intake) || (flagged ? "missing" : "")}
