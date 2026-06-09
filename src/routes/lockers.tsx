@@ -541,13 +541,12 @@ const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings
         {flagged && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" aria-hidden />}
         <span className="truncate">{l.locker_number}</span>
       </div>
-      <div className="px-3 truncate">{l.location}</div>
-      <div className="px-3 truncate text-muted-foreground">{l.row_label}</div>
-      <div className="px-3 truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</div>
-      <div className="px-3 truncate text-muted-foreground">{l.badge_number ?? "—"}</div>
-      <div className="px-3 truncate text-xs text-muted-foreground">{l.national_id ?? "—"}</div>
-      <div className="px-3 truncate">{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
-      <div className="px-3 truncate text-muted-foreground">{l.work_location ?? "—"}</div>
+      <div className="px-3 truncate" title={l.location}>{l.location}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground" title={l.key_lock ?? ""}>{l.key_lock ?? "—"}</div>
+      <div className="px-3 truncate text-muted-foreground" title={l.badge_number ?? ""}>{l.badge_number ?? "—"}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground" title={l.national_id ?? ""}>{l.national_id ?? "—"}</div>
+      <div className="px-3 truncate" title={l.employee_name ?? ""}>{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
+      <div className="px-3 truncate text-muted-foreground" title={l.work_location ?? ""}>{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} /></div>
       <div className={`px-3 truncate text-xs ${flagged ? "text-warning font-medium" : "text-muted-foreground"}`}>
         {formatBatchIntake(l.batch_intake) || (flagged ? "missing" : "")}
