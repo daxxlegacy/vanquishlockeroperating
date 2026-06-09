@@ -13,10 +13,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye } from "lucide-react";
+import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye, Download, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
+import { downloadCsv } from "@/lib/csv-export";
 import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
+import { SortHeader, type SortState } from "@/components/SortHeader";
+import {
+  encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
+  colFiltersToObj, objToColFilters, cycleSort,
+} from "@/lib/url-filter-state";
 
 type Category = "main" | "staff" | "shoe";
 
