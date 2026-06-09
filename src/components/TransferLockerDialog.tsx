@@ -12,7 +12,7 @@ import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
-import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
+import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -24,14 +24,6 @@ interface Props {
   onTransferred?: () => void;
 }
 
-type OldAction = "empty" | "cleaning" | "broken_door" | "find_spare_key";
-
-const OLD_ACTIONS: { value: OldAction; label: string; desc: string }[] = [
-  { value: "empty", label: "Empty (ready for use)", desc: "Mark old locker as empty." },
-  { value: "find_spare_key", label: "Find spare key", desc: "Put old locker on hold and flag spare key as missing." },
-  { value: "cleaning", label: "Cleaning", desc: "Send old locker to cleaning." },
-  { value: "broken_door", label: "Damage / broken door", desc: "Mark old locker as damaged." },
-];
 
 export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred }: Props) {
   const { lockers } = useLockers();
@@ -40,7 +32,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   const [locFilter, setLocFilter] = useState<string>(locker.location);
   const [statusFilter, setStatusFilter] = useState<"all" | "empty" | "cleaning" | "repair">("all");
   const [targetId, setTargetId] = useState<string | null>(null);
-  const [oldAction, setOldAction] = useState<OldAction>("empty");
+  const [oldAction, setOldAction] = useState<LockerStatus>("empty");
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -69,7 +61,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   }, [lockers, debounced, locFilter, statusFilter, locker.id]);
 
   const target = useMemo(() => available.find((l) => l.id === targetId) ?? null, [available, targetId]);
-  const oldActionMeta = OLD_ACTIONS.find((o) => o.value === oldAction)!;
+  
 
   const reset = () => { setSearch(""); setTargetId(null); setOldAction("empty"); setConfirming(false); };
 
@@ -178,19 +170,16 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
 
             <div>
               <Label>What to do with old locker {locker.locker_number}?</Label>
-              <Select value={oldAction} onValueChange={(v) => setOldAction(v as OldAction)}>
+              <Select value={oldAction} onValueChange={(v) => setOldAction(v as LockerStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {OLD_ACTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
+                  {LOCKER_STATUSES.filter((s) => s !== "active").map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABEL[s]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                {oldActionMeta.desc}
-              </p>
             </div>
           </div>
         ) : (
@@ -221,8 +210,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
               </div>
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Old locker action</div>
-                <div className="font-semibold">{oldActionMeta.label}</div>
-                <div className="text-xs text-muted-foreground">{oldActionMeta.desc}</div>
+                <div className="font-semibold">{STATUS_LABEL[oldAction]}</div>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
