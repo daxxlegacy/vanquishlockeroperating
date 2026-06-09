@@ -42,8 +42,10 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
 
   useEffect(() => {
     if (!lockerId || !open) return;
+    const cached = getLockerById(lockerId);
+    if (cached) setLocker(cached);
     supabase.from("lockers").select("*").eq("id", lockerId).single().then(({ data }) => {
-      setLocker(data);
+      if (data) setLocker(data);
     });
   }, [lockerId, open]);
 
