@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { StatusBadge } from "@/components/StatusBadge";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState, memo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -525,16 +526,6 @@ function Th({ children }: { children: React.ReactNode }) {
   return <div className="px-3 py-2.5">{children}</div>;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const swatch = STATUS_SWATCH[status as LockerStatus] ?? "bg-muted-foreground";
-  const label = STATUS_LABEL[status as LockerStatus] ?? status;
-  return (
-    <Badge variant="outline" className="gap-1.5 capitalize">
-      <span className={`h-2 w-2 rounded-full ${swatch}`} />
-      {label}
-    </Badge>
-  );
-}
 
 type LockerRowProps = { rows: Locker[]; onPick: (id: string) => void; warnings: Set<string> };
 const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings }: RowComponentProps<LockerRowProps>) {
