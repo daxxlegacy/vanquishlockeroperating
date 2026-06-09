@@ -229,10 +229,10 @@ function LockersPage() {
     setSort(null);
   };
 
-  const filtered = useMemo(() => {
+  const preQuickFiltered = useMemo(() => {
     if (!lockers) return [];
     const q = debouncedSearch.toLowerCase().trim();
-    const base = lockers.filter((l) => {
+    return lockers.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (locFilter !== "all" && l.location !== locFilter) return false;
       if (keyLockFilter !== "all") {
@@ -257,8 +257,20 @@ function LockersPage() {
         l.key_lock?.toLowerCase().includes(q)
       );
     });
-    if (!sort) return base;
-    // Map column key → accessor. Locker # uses natural locker-number ordering.
+  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters]);
+
+  const missingNidCount = useMemo(() => preQuickFiltered.filter((l) => !l.national_id || l.national_id.trim() === "").length, [preQuickFiltered]);
+  const missingBadgeCount = useMemo(() => preQuickFiltered.filter((l) => !l.badge_number || l.badge_number.trim() === "").length, [preQuickFiltered]);
+
+  const filtered = useMemo(() => {
+    let result = preQuickFiltered;
+    if (missingNidFilter) {
+      result = result.filter((l) => !l.national_id || l.national_id.trim() === "");
+    }
+    if (missingBadgeFilter) {
+      result = result.filter((l) => !l.badge_number || l.badge_number.trim() === "");
+    }
+    if (!sort) return result;
     const accessors: Record<string, (l: Locker) => string | number | null | undefined> = {
       num: (l) => l.locker_number,
       loc: (l) => l.location,
@@ -269,22 +281,22 @@ function LockersPage() {
       emp: (l) => l.employee_name,
       work: (l) => l.work_location,
       status: (l) => l.status,
-      batch: (l) => l.batch_intake, // ISO; lexical compare == chronological
+      batch: (l) => l.batch_intake,
     };
     const get = accessors[sort.col] ?? accessors.num;
     const dir = sort.dir === "asc" ? 1 : -1;
-    const sorted = [...base].sort((a, b) => {
+    const sorted = [...result].sort((a, b) => {
       if (sort.col === "num") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
       const av = get(a), bv = get(b);
       const ae = av == null || av === "";
       const be = bv == null || bv === "";
       if (ae && be) return 0;
-      if (ae) return 1;   // blanks last regardless of direction
+      if (ae) return 1;
       if (be) return -1;
       return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
     });
     return sorted;
-  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters, sort]);
+  }, [preQuickFiltered, missingNidFilter, missingBadgeFilter, sort]);
 
 
   const buildExportRows = () => filtered.map((l) => ({
