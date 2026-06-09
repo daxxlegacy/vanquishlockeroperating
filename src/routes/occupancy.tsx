@@ -726,8 +726,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
                     </div>
                     {e.remarks && <div className="mt-1 text-xs italic text-muted-foreground">"{e.remarks}"</div>}
                   </li>
-                );
-              })}
+              ))}
             </ul>
           )}
         </div>
