@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, UserMinus, ArrowRightLeft, Repeat } from "lucide-react";
+import { getLockerById } from "@/lib/lockers-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -41,8 +42,10 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
 
   useEffect(() => {
     if (!lockerId || !open) return;
+    const cached = getLockerById(lockerId);
+    if (cached) setLocker(cached);
     supabase.from("lockers").select("*").eq("id", lockerId).single().then(({ data }) => {
-      setLocker(data);
+      if (data) setLocker(data);
     });
   }, [lockerId, open]);
 
