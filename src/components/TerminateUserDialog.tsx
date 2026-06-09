@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBatchIntake } from "@/lib/locker-utils";
 import { syncTerminationToOccupancy } from "@/lib/occupancy-sync";
+import { LOCKER_STATUSES, STATUS_LABEL } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -26,7 +27,7 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
   const [reason, setReason] = useState("");
-  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "repair" | "on_hold">("empty");
+  const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>("empty");
   const [busy, setBusy] = useState(false);
 
   const iso = parseBatchIntake(date);
@@ -99,13 +100,12 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
           </div>
           <div>
             <Label htmlFor="term-status">Locker status after termination *</Label>
-            <Select value={newStatus} onValueChange={(v) => setNewStatus(v as typeof newStatus)}>
+            <Select value={newStatus} onValueChange={(v) => setNewStatus(v as Database["public"]["Enums"]["locker_status"])}>
               <SelectTrigger id="term-status"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="empty">Empty (ready for next user)</SelectItem>
-                <SelectItem value="cleaning">Cleaning</SelectItem>
-                <SelectItem value="repair">Damage / Repair</SelectItem>
-                <SelectItem value="on_hold">On hold</SelectItem>
+                {LOCKER_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
