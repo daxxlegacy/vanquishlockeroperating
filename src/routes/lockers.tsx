@@ -223,6 +223,8 @@ function LockersPage() {
     setStatusFilter("all");
     setLocFilter("all");
     setKeyLockFilter("all");
+    setMissingNidFilter(false);
+    setMissingBadgeFilter(false);
     setColFilters({});
     setSort(null);
   };
