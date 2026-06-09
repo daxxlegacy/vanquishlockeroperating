@@ -194,6 +194,55 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   const setColFilter = (k: string) => (next: Set<string>) =>
     setColFilters((cur) => ({ ...cur, [k]: next }));
 
+  // Click-to-sort (single column, cycle asc → desc → off).
+  const [sort, setSort] = useState<SortState>(null);
+  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
+
+  // Per-category URL param so each tab keeps its own shareable state.
+  const urlKey = `f_${category}`;
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const s = decodeFilterState(readFilterParam(urlKey));
+    if (s) {
+      setSearch(s.q ?? "");
+      const x = s.x ?? {};
+      setStatusFilter(x.status ?? "all");
+      setRowFilter(x.row ?? "all");
+      setLocFilter(x.loc ?? "all");
+      setColFilters(objToColFilters(s.cf));
+      setSort(s.sort ?? null);
+    } else {
+      setSearch(""); setStatusFilter("all"); setRowFilter("all"); setLocFilter("all");
+      setColFilters({}); setSort(null);
+    }
+    setHydrated(true);
+     
+  }, [category]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const encoded = encodeFilterState({
+      cf: colFiltersToObj(colFilters),
+      q: search,
+      sort,
+      x: { status: statusFilter, row: rowFilter, loc: locFilter },
+    });
+    writeFilterParam(encoded, urlKey);
+  }, [hydrated, colFilters, search, sort, statusFilter, rowFilter, locFilter, urlKey]);
+
+  const hasAnyFilter =
+    !!search ||
+    statusFilter !== "all" ||
+    rowFilter !== "all" ||
+    locFilter !== "all" ||
+    sort !== null ||
+    Object.values(colFilters).some((s) => s.size > 0);
+
+  const clearAllFilters = () => {
+    setSearch(""); setStatusFilter("all"); setRowFilter("all"); setLocFilter("all");
+    setColFilters({}); setSort(null);
+  };
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.toLowerCase().trim();
@@ -222,16 +271,65 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         (r.locker_location_by_row ?? "").toLowerCase().includes(q)
       );
     });
-    f.sort((a, b) => {
-      const c = compareLockerNumbers(a.locker_number, b.locker_number);
-      if (c !== 0) return c;
-      const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
-      const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
-      return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
-    });
+    if (sort) {
+      const accessors: Record<string, (r: Row) => string | null | undefined> = {
+        locker: (r) => r.locker_number,
+        status: (r) => r.status,
+        badge: (r) => r.badge_number,
+        emp: (r) => r.employee_name,
+        nid: (r) => r.national_id,
+        intake: (r) => r.batch_intake_date,
+        term: (r) => r.termination_date,
+        work: (r) => r.work_location,
+      };
+      const get = accessors[sort.col] ?? accessors.locker;
+      const dir = sort.dir === "asc" ? 1 : -1;
+      f.sort((a, b) => {
+        if (sort.col === "locker") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
+        const av = get(a), bv = get(b);
+        const ae = av == null || av === "";
+        const be = bv == null || bv === "";
+        if (ae && be) return 0;
+        if (ae) return 1;
+        if (be) return -1;
+        return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
+      });
+    } else {
+      f.sort((a, b) => {
+        const c = compareLockerNumbers(a.locker_number, b.locker_number);
+        if (c !== 0) return c;
+        const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
+        const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
+        if (aActive !== bActive) return aActive - bActive;
+        return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
+      });
+    }
     return f;
-  }, [rows, search, statusFilter, rowFilter, locFilter, colFilters]);
+  }, [rows, search, statusFilter, rowFilter, locFilter, colFilters, sort]);
+
+  const exportCsv = () => {
+    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    const rowsOut = filtered.map((r) => ({
+      "Locker Number": r.locker_number,
+      "Category": r.category,
+      "Status": r.status ?? "",
+      "Badge Number": r.badge_number ?? "",
+      "Employee Name": r.employee_name ?? "",
+      "National ID": r.national_id ?? "",
+      "Work Location": r.work_location ?? "",
+      "Locker Row": r.locker_row ?? "",
+      "Locker Location": r.locker_location_by_row ?? "",
+      "Key Lock": r.key_lock_type ?? "",
+      "Batch Intake": fmtDate(r.batch_intake_date),
+      "Termination Date": fmtDate(r.termination_date),
+      "Department": r.department ?? "",
+      "Gradeset": r.gradeset ?? "",
+      "Remarks": r.remarks ?? "",
+      "Source File": r.source_filename ?? "",
+    }));
+    downloadCsv(`occupancy_${category}_${new Date().toISOString().slice(0, 10)}.csv`, rowsOut);
+    toast.success(`Exported ${rowsOut.length.toLocaleString()} rows`);
+  };
 
   // Group by locker number — limit to 1 active + 1 most-recent terminate
   const grouped = useMemo(() => {
