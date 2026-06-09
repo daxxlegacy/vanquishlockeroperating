@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
+import { StatusBadge } from "@/components/StatusBadge";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -600,9 +601,7 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
           >
             <td className="px-3 py-2 font-medium font-mono">{isFirst ? lockerNumber : <span className="text-muted-foreground/60 text-xs pl-3">↳</span>}</td>
             <td className="px-3 py-2">
-              <Badge variant={isActive ? "default" : "secondary"} className={isActive ? "" : "text-muted-foreground"}>
-                {r.status ?? "—"}
-              </Badge>
+              <StatusBadge status={r.status} />
             </td>
             <td className="px-3 py-2 font-mono text-xs">{r.badge_number ?? "—"}</td>
             <td className="px-3 py-2">{r.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</td>
@@ -711,13 +710,11 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
             <div className="text-center text-muted-foreground py-8 text-sm">No history recorded.</div>
           ) : (
             <ul className="space-y-2">
-              {events.map((e) => {
-                const active = e.status.toLowerCase() === "active";
-                return (
+              {events.map((e) => (
                   <li key={e.id} className="border rounded-md p-3 bg-card">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant={active ? "default" : "secondary"}>{e.status}</Badge>
+                        <StatusBadge status={e.status} />
                         <span className="font-medium">{e.employee_name ?? "—"}</span>
                         {e.badge_number && <span className="font-mono text-xs text-muted-foreground">#{e.badge_number}</span>}
                       </div>
@@ -729,8 +726,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
                     </div>
                     {e.remarks && <div className="mt-1 text-xs italic text-muted-foreground">"{e.remarks}"</div>}
                   </li>
-                );
-              })}
+              ))}
             </ul>
           )}
         </div>
