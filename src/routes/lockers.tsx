@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Plus, Download } from "lucide-react";
+import { Search, Plus, Download, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { List, type RowComponentProps } from "react-window";
@@ -28,6 +28,11 @@ import { useDebounced } from "@/hooks/use-debounced";
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import { AlertTriangle } from "lucide-react";
 import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
+import { SortHeader, type SortState } from "@/components/SortHeader";
+import {
+  encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
+  colFiltersToObj, objToColFilters, cycleSort,
+} from "@/lib/url-filter-state";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -112,11 +117,23 @@ function LockersPage() {
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
   useEffect(() => {
-    const stored = readLockerFilters();
-    setSearch(stored.search);
-    setStatusFilter(stored.statusFilter);
-    setLocFilter(stored.locFilter);
-    setKeyLockFilter(stored.keyLockFilter);
+    // URL takes precedence over localStorage so shared links work.
+    const urlState = decodeFilterState(readFilterParam());
+    if (urlState) {
+      if (urlState.q !== undefined) setSearch(urlState.q);
+      const x = urlState.x ?? {};
+      setStatusFilter(x.status ?? "all");
+      setLocFilter(x.loc ?? "all");
+      setKeyLockFilter(x.keyLock ?? "all");
+      setColFilters(objToColFilters(urlState.cf));
+      setSort(urlState.sort ?? null);
+    } else {
+      const stored = readLockerFilters();
+      setSearch(stored.search);
+      setStatusFilter(stored.statusFilter);
+      setLocFilter(stored.locFilter);
+      setKeyLockFilter(stored.keyLockFilter);
+    }
     setFiltersHydrated(true);
   }, []);
 
@@ -146,10 +163,43 @@ function LockersPage() {
   const setColFilter = (k: string) => (next: Set<string>) =>
     setColFilters((cur) => ({ ...cur, [k]: next }));
 
+  // Click-to-sort state (single column at a time, cycles asc → desc → none).
+  const [sort, setSort] = useState<SortState>(null);
+  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
+
+  // Mirror current filter/sort state into the URL ?f= param for sharing.
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    const encoded = encodeFilterState({
+      cf: colFiltersToObj(colFilters),
+      q: search,
+      sort,
+      x: { status: statusFilter, loc: locFilter, keyLock: keyLockFilter },
+    });
+    writeFilterParam(encoded);
+  }, [filtersHydrated, colFilters, search, sort, statusFilter, locFilter, keyLockFilter]);
+
+  const hasAnyFilter =
+    !!search ||
+    statusFilter !== "all" ||
+    locFilter !== "all" ||
+    keyLockFilter !== "all" ||
+    sort !== null ||
+    Object.values(colFilters).some((s) => s.size > 0);
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setLocFilter("all");
+    setKeyLockFilter("all");
+    setColFilters({});
+    setSort(null);
+  };
+
   const filtered = useMemo(() => {
     if (!lockers) return [];
     const q = debouncedSearch.toLowerCase().trim();
-    return lockers.filter((l) => {
+    const base = lockers.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (locFilter !== "all" && l.location !== locFilter) return false;
       if (keyLockFilter !== "all") {
@@ -174,7 +224,34 @@ function LockersPage() {
         l.key_lock?.toLowerCase().includes(q)
       );
     });
-  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters]);
+    if (!sort) return base;
+    // Map column key → accessor. Locker # uses natural locker-number ordering.
+    const accessors: Record<string, (l: Locker) => string | number | null | undefined> = {
+      num: (l) => l.locker_number,
+      loc: (l) => l.location,
+      row: (l) => l.row_label,
+      key_lock: (l) => l.key_lock,
+      badge: (l) => l.badge_number,
+      nid: (l) => l.national_id,
+      emp: (l) => l.employee_name,
+      work: (l) => l.work_location,
+      status: (l) => l.status,
+      batch: (l) => l.batch_intake, // ISO; lexical compare == chronological
+    };
+    const get = accessors[sort.col] ?? accessors.num;
+    const dir = sort.dir === "asc" ? 1 : -1;
+    const sorted = [...base].sort((a, b) => {
+      if (sort.col === "num") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
+      const av = get(a), bv = get(b);
+      const ae = av == null || av === "";
+      const be = bv == null || bv === "";
+      if (ae && be) return 0;
+      if (ae) return 1;   // blanks last regardless of direction
+      if (be) return -1;
+      return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
+    });
+    return sorted;
+  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters, sort]);
 
 
   const buildExportRows = () => filtered.map((l) => ({
@@ -291,6 +368,14 @@ function LockersPage() {
               <DropdownMenuItem onClick={exportCsv}>CSV (.csv)</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            variant="outline"
+            onClick={clearAllFilters}
+            disabled={!hasAnyFilter}
+            title="Clear all filters, search, and sorting"
+          >
+            <FilterX className="h-4 w-4 mr-1.5" /> Clear filters
+          </Button>
         </Card>
 
         {batchWarnings.size > 0 && (
@@ -314,16 +399,16 @@ function LockersPage() {
             <div className="overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                  <Th>Locker # <ColumnFilter label="Locker #" values={lockers.map((l) => l.locker_number)} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
-                  <Th>Location <ColumnFilter label="Location" values={lockers.map((l) => l.location)} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
-                  <Th>Row <ColumnFilter label="Row" values={lockers.map((l) => l.row_label)} selected={colFilters.row ?? new Set()} onChange={setColFilter("row")} /></Th>
-                  <Th>Key Lock <ColumnFilter label="Key Lock" values={lockers.map((l) => l.key_lock)} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
-                  <Th>Badge <ColumnFilter label="Badge" values={lockers.map((l) => l.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
-                  <Th>National ID <ColumnFilter label="National ID" values={lockers.map((l) => l.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
-                  <Th>Employee <ColumnFilter label="Employee" values={lockers.map((l) => l.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
-                  <Th>Work Location <ColumnFilter label="Work Location" values={lockers.map((l) => l.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
-                  <Th>Status <ColumnFilter label="Status" values={lockers.map((l) => l.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
-                  <Th>Batch <ColumnFilter label="Batch" values={lockers.map((l) => formatBatchIntake(l.batch_intake))} selected={colFilters.batch ?? new Set()} onChange={setColFilter("batch")} /></Th>
+                  <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker #" values={lockers.map((l) => l.locker_number)} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
+                  <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={lockers.map((l) => l.location)} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
+                  <Th><SortHeader label="Row" col="row" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Row" values={lockers.map((l) => l.row_label)} selected={colFilters.row ?? new Set()} onChange={setColFilter("row")} /></Th>
+                  <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Key Lock" values={lockers.map((l) => l.key_lock)} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
+                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={lockers.map((l) => l.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
+                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={lockers.map((l) => l.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
+                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={lockers.map((l) => l.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
+                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={lockers.map((l) => l.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
+                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={lockers.map((l) => l.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                  <Th><SortHeader label="Batch" col="batch" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Batch" values={lockers.map((l) => formatBatchIntake(l.batch_intake))} selected={colFilters.batch ?? new Set()} onChange={setColFilter("batch")} /></Th>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>

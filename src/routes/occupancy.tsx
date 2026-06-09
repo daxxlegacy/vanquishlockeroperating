@@ -13,10 +13,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye } from "lucide-react";
+import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye, Download, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
+import { downloadCsv } from "@/lib/csv-export";
 import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
+import { SortHeader, type SortState } from "@/components/SortHeader";
+import {
+  encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
+  colFiltersToObj, objToColFilters, cycleSort,
+} from "@/lib/url-filter-state";
 
 type Category = "main" | "staff" | "shoe";
 
@@ -188,6 +194,55 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
   const setColFilter = (k: string) => (next: Set<string>) =>
     setColFilters((cur) => ({ ...cur, [k]: next }));
 
+  // Click-to-sort (single column, cycle asc → desc → off).
+  const [sort, setSort] = useState<SortState>(null);
+  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
+
+  // Per-category URL param so each tab keeps its own shareable state.
+  const urlKey = `f_${category}`;
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const s = decodeFilterState(readFilterParam(urlKey));
+    if (s) {
+      setSearch(s.q ?? "");
+      const x = s.x ?? {};
+      setStatusFilter(x.status ?? "all");
+      setRowFilter(x.row ?? "all");
+      setLocFilter(x.loc ?? "all");
+      setColFilters(objToColFilters(s.cf));
+      setSort(s.sort ?? null);
+    } else {
+      setSearch(""); setStatusFilter("all"); setRowFilter("all"); setLocFilter("all");
+      setColFilters({}); setSort(null);
+    }
+    setHydrated(true);
+     
+  }, [category]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const encoded = encodeFilterState({
+      cf: colFiltersToObj(colFilters),
+      q: search,
+      sort,
+      x: { status: statusFilter, row: rowFilter, loc: locFilter },
+    });
+    writeFilterParam(encoded, urlKey);
+  }, [hydrated, colFilters, search, sort, statusFilter, rowFilter, locFilter, urlKey]);
+
+  const hasAnyFilter =
+    !!search ||
+    statusFilter !== "all" ||
+    rowFilter !== "all" ||
+    locFilter !== "all" ||
+    sort !== null ||
+    Object.values(colFilters).some((s) => s.size > 0);
+
+  const clearAllFilters = () => {
+    setSearch(""); setStatusFilter("all"); setRowFilter("all"); setLocFilter("all");
+    setColFilters({}); setSort(null);
+  };
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.toLowerCase().trim();
@@ -216,16 +271,65 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         (r.locker_location_by_row ?? "").toLowerCase().includes(q)
       );
     });
-    f.sort((a, b) => {
-      const c = compareLockerNumbers(a.locker_number, b.locker_number);
-      if (c !== 0) return c;
-      const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
-      const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
-      return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
-    });
+    if (sort) {
+      const accessors: Record<string, (r: Row) => string | null | undefined> = {
+        locker: (r) => r.locker_number,
+        status: (r) => r.status,
+        badge: (r) => r.badge_number,
+        emp: (r) => r.employee_name,
+        nid: (r) => r.national_id,
+        intake: (r) => r.batch_intake_date,
+        term: (r) => r.termination_date,
+        work: (r) => r.work_location,
+      };
+      const get = accessors[sort.col] ?? accessors.locker;
+      const dir = sort.dir === "asc" ? 1 : -1;
+      f.sort((a, b) => {
+        if (sort.col === "locker") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
+        const av = get(a), bv = get(b);
+        const ae = av == null || av === "";
+        const be = bv == null || bv === "";
+        if (ae && be) return 0;
+        if (ae) return 1;
+        if (be) return -1;
+        return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
+      });
+    } else {
+      f.sort((a, b) => {
+        const c = compareLockerNumbers(a.locker_number, b.locker_number);
+        if (c !== 0) return c;
+        const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
+        const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
+        if (aActive !== bActive) return aActive - bActive;
+        return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
+      });
+    }
     return f;
-  }, [rows, search, statusFilter, rowFilter, locFilter, colFilters]);
+  }, [rows, search, statusFilter, rowFilter, locFilter, colFilters, sort]);
+
+  const exportCsv = () => {
+    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    const rowsOut = filtered.map((r) => ({
+      "Locker Number": r.locker_number,
+      "Category": r.category,
+      "Status": r.status ?? "",
+      "Badge Number": r.badge_number ?? "",
+      "Employee Name": r.employee_name ?? "",
+      "National ID": r.national_id ?? "",
+      "Work Location": r.work_location ?? "",
+      "Locker Row": r.locker_row ?? "",
+      "Locker Location": r.locker_location_by_row ?? "",
+      "Key Lock": r.key_lock_type ?? "",
+      "Batch Intake": fmtDate(r.batch_intake_date),
+      "Termination Date": fmtDate(r.termination_date),
+      "Department": r.department ?? "",
+      "Gradeset": r.gradeset ?? "",
+      "Remarks": r.remarks ?? "",
+      "Source File": r.source_filename ?? "",
+    }));
+    downloadCsv(`occupancy_${category}_${new Date().toISOString().slice(0, 10)}.csv`, rowsOut);
+    toast.success(`Exported ${rowsOut.length.toLocaleString()} rows`);
+  };
 
   // Group by locker number — limit to 1 active + 1 most-recent terminate
   const grouped = useMemo(() => {
@@ -413,6 +517,17 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
             </Button>
           </>
         )}
+        <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
+          <Download className="h-4 w-4 mr-1.5" /> Export CSV
+        </Button>
+        <Button
+          variant="outline"
+          onClick={clearAllFilters}
+          disabled={!hasAnyFilter}
+          title="Clear all filters, search, and sorting"
+        >
+          <FilterX className="h-4 w-4 mr-1.5" /> Clear filters
+        </Button>
       </Card>
 
       <Card className="overflow-hidden">
@@ -430,15 +545,15 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <Th>Locker <ColumnFilter label="Locker" values={(rows ?? []).map((r) => r.locker_number)} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
-                    <Th>Status <ColumnFilter label="Status" values={(rows ?? []).map((r) => r.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
-                    <Th>Badge <ColumnFilter label="Badge" values={(rows ?? []).map((r) => r.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
-                    <Th>Employee <ColumnFilter label="Employee" values={(rows ?? []).map((r) => r.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
-                    <Th>National ID <ColumnFilter label="National ID" values={(rows ?? []).map((r) => r.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
-                    <Th>Intake <ColumnFilter label="Intake" values={(rows ?? []).map((r) => fmtDate(r.batch_intake_date))} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
-                    <Th>Terminated <ColumnFilter label="Terminated" values={(rows ?? []).map((r) => fmtDate(r.termination_date))} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
+                    <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker" values={(rows ?? []).map((r) => r.locker_number)} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
+                    <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={(rows ?? []).map((r) => r.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                    <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={(rows ?? []).map((r) => r.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
+                    <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={(rows ?? []).map((r) => r.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
+                    <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={(rows ?? []).map((r) => r.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
+                    <Th><SortHeader label="Intake" col="intake" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Intake" values={(rows ?? []).map((r) => fmtDate(r.batch_intake_date))} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
+                    <Th><SortHeader label="Terminated" col="term" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Terminated" values={(rows ?? []).map((r) => fmtDate(r.termination_date))} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
                     <Th>Reason</Th>
-                    <Th>Work Location <ColumnFilter label="Work Location" values={(rows ?? []).map((r) => r.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
+                    <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={(rows ?? []).map((r) => r.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
                     <Th>History</Th>
                   </tr>
                 </thead>
