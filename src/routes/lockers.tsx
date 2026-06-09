@@ -368,6 +368,14 @@ function LockersPage() {
               <DropdownMenuItem onClick={exportCsv}>CSV (.csv)</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            variant="outline"
+            onClick={clearAllFilters}
+            disabled={!hasAnyFilter}
+            title="Clear all filters, search, and sorting"
+          >
+            <FilterX className="h-4 w-4 mr-1.5" /> Clear filters
+          </Button>
         </Card>
 
         {batchWarnings.size > 0 && (
