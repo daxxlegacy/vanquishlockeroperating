@@ -24,6 +24,8 @@ import {
   encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
+import { useOccupancy, invalidateOccupancyCache, type OccupancyRow } from "@/lib/occupancy-cache";
+
 
 type Category = "main" | "staff" | "shoe";
 
