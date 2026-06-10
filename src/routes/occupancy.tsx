@@ -191,6 +191,22 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     return { rowOpts: [...r].sort(), locOpts: [...l].sort() };
   }, [rows]);
 
+  // Pre-extract column values once per data change so ColumnFilter props are
+  // stable across keystrokes (avoids O(N) re-mapping on every search input).
+  const columnValues = useMemo(() => {
+    const rs = rows ?? [];
+    return {
+      locker: rs.map((r) => r.locker_number),
+      status: rs.map((r) => r.status),
+      badge: rs.map((r) => r.badge_number),
+      emp: rs.map((r) => r.employee_name),
+      nid: rs.map((r) => r.national_id),
+      intake: rs.map((r) => fmtDate(r.batch_intake_date)),
+      term: rs.map((r) => fmtDate(r.termination_date)),
+      work: rs.map((r) => r.work_location),
+    };
+  }, [rows]);
+
   const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
   const setColFilter = (k: string) => (next: Set<string>) =>
     setColFilters((cur) => ({ ...cur, [k]: next }));
