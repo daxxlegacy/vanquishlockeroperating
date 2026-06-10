@@ -211,13 +211,17 @@ function ReconcilePage() {
     setRestored(null);
     setFilename(f.name);
     try {
-      const hr = await parseHr(f, f.name);
-      const dbRows = await fetchActiveDb();
+      // Yield once so the "Comparing…" indicator paints before the
+      // synchronous xlsx parse + matching work begins.
+      await new Promise((r) => setTimeout(r, 0));
+      const [hr, dbRows] = await Promise.all([parseHr(f, f.name), fetchActiveDb()]);
       setHrCount({
         current: hr.filter((p) => p.status === "current").length,
         terminated: hr.filter((p) => p.status === "terminated").length,
       });
       setDbCount(dbRows.length);
+      await new Promise((r) => setTimeout(r, 0));
+
       // Sort HR matches: badge match wins, then name, then termination date recency.
       // (Used implicitly via Map.get(); but when multiple terminated rows exist for
       // the same person, we pick the most recent termination date below.)
