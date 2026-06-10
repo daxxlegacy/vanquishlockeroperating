@@ -16,6 +16,22 @@ interface AuthCtx {
 
 const AuthContext = createContext<AuthCtx | undefined>(undefined);
 
+const ROLE_CACHE_KEY = "lockerops.auth.role.v1";
+
+function readCachedRole(): { userId: string; role: Role } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(ROLE_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function writeCachedRole(userId: string, role: Role) {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ userId, role })); } catch { /* ignore */ }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -34,12 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTimeout(() => fetchRole(s.user.id), 0);
       } else {
         setRole(null);
+        if (typeof window !== "undefined") {
+          try { localStorage.removeItem(ROLE_CACHE_KEY); } catch { /* ignore */ }
+        }
       }
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      if (data.session?.user) fetchRole(data.session.user.id);
+      if (data.session?.user) {
+        // Hydrate role from cache instantly so PageGuard doesn't blank.
+        const cached = readCachedRole();
+        if (cached && cached.userId === data.session.user.id) setRole(cached.role);
+        fetchRole(data.session.user.id);
+      }
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
@@ -51,7 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("role")
       .eq("user_id", userId)
       .maybeSingle();
-    setRole((data?.role as Role) ?? "viewer");
+    const r = (data?.role as Role) ?? "viewer";
+    setRole(r);
+    writeCachedRole(userId, r);
   }
 
   const signIn: AuthCtx["signIn"] = async (email, password) => {
@@ -89,6 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { clearReconcileState } = await import("@/lib/reconcile-store");
       await clearReconcileState();
     } catch { /* ignore */ }
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(ROLE_CACHE_KEY);
+        localStorage.removeItem("lockerops.auth.perms.v1");
+      } catch { /* ignore */ }
+    }
     await supabase.auth.signOut();
   };
 

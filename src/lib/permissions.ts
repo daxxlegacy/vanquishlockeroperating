@@ -50,17 +50,48 @@ export const ACTION_PERMISSIONS: AppPermission[] = [
   "run_automation",
 ];
 
+const PERMS_CACHE_KEY = "lockerops.auth.perms.v1";
+
+function readCachedPerms(userId: string): AppPermission[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PERMS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.userId !== userId || !Array.isArray(parsed.perms)) return null;
+    return parsed.perms;
+  } catch { return null; }
+}
+
+function writeCachedPerms(userId: string, perms: AppPermission[]) {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(PERMS_CACHE_KEY, JSON.stringify({ userId, perms })); } catch { /* ignore */ }
+}
+
 export function usePermissions() {
   const { user, role } = useAuth();
-  const [perms, setPerms] = useState<Set<AppPermission>>(new Set());
-  const [loaded, setLoaded] = useState(false);
-
   const userId = user?.id ?? null;
+  const [perms, setPerms] = useState<Set<AppPermission>>(() => {
+    if (!userId) return new Set();
+    const cached = readCachedPerms(userId);
+    return cached ? new Set(cached) : new Set();
+  });
+  const [loaded, setLoaded] = useState<boolean>(() => {
+    if (!userId) return true;
+    return readCachedPerms(userId) !== null;
+  });
+
   useEffect(() => {
     if (!userId) { setPerms(new Set()); setLoaded(true); return; }
-    setLoaded(false);
+    const cached = readCachedPerms(userId);
+    if (cached) {
+      setPerms(new Set(cached));
+      setLoaded(true);
+    }
     supabase.from("user_permissions").select("permission").eq("user_id", userId).then(({ data }) => {
-      setPerms(new Set((data ?? []).map((d) => d.permission as AppPermission)));
+      const list = (data ?? []).map((d) => d.permission as AppPermission);
+      setPerms(new Set(list));
+      writeCachedPerms(userId, list);
       setLoaded(true);
     });
   }, [userId]);
