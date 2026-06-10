@@ -790,6 +790,30 @@ function toExportRow(r: RowResult): Record<string, unknown> {
 }
 
 async function fetchActiveDb(): Promise<DbRow[]> {
+  // Fast path: reuse the in-memory lockers cache (already loaded if the user
+  // has visited /lockers). Skips a paginated 1k-row roundtrip and any
+  // network latency.
+  const snap = getLockersSnapshot();
+  if (snap && snap.length > 0) {
+    const out: DbRow[] = [];
+    for (const l of snap) {
+      if (l.deleted_at) continue;
+      if (!l.employee_name && !l.badge_number) continue;
+      out.push({
+        id: l.id,
+        locker_number: l.locker_number,
+        location: l.location,
+        row_label: l.row_label,
+        employee_name: l.employee_name,
+        badge_number: l.badge_number,
+        national_id: l.national_id,
+        batch_intake: l.batch_intake,
+        work_location: l.work_location,
+      });
+    }
+    return out;
+  }
+
   const out: DbRow[] = [];
   let from = 0;
   while (true) {
@@ -807,6 +831,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
   }
   return out;
 }
+
 
 async function parseHr(f: File, filename?: string): Promise<HrPerson[]> {
   const ext = f.name.split(".").pop()?.toLowerCase();
