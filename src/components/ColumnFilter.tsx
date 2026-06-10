@@ -103,11 +103,13 @@ export function ColumnFilter({
     );
   }, [values]);
 
+  const debouncedSearch = useDebounced(search, 120);
+
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
     if (!q) return unique;
     return unique.filter((v) => v.toLowerCase().includes(q));
-  }, [unique, search]);
+  }, [unique, debouncedSearch]);
 
   // Split filtered values into dates + others (for Batch mode).
   const { dateTree, others } = useMemo(() => {
