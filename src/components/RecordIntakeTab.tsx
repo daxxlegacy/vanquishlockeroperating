@@ -228,14 +228,14 @@ export function RecordIntakeTab() {
         await Promise.all(slice.map(async (r) => {
           const existing = dbMap.get(r.locker_number);
           const batchIso = parseBatchIntake(r.batch_intake);
-          const payload: Record<string, unknown> = {
+          const payload = {
             employee_name: r.employee_name,
             badge_number: r.badge_number || existing?.badge_number || null,
             national_id: r.national_id || existing?.national_id || null,
-            status: "active",
+            status: "active" as const,
             updated_at: new Date().toISOString(),
+            ...(batchIso ? { batch_intake: batchIso } : {}),
           };
-          if (batchIso) payload.batch_intake = batchIso;
           const { error, count } = await supabase
             .from("lockers")
             .update(payload, { count: "exact" })
