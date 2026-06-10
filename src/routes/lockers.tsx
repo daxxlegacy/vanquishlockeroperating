@@ -507,7 +507,7 @@ function LockersPage() {
           {!lockers ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : isMobile ? (
-            <MobileLockerList rows={filtered} onPick={setQuickViewId} warnings={batchWarnings} />
+            <MobileLockerList rows={filtered} onPick={setSelected} warnings={batchWarnings} />
           ) : (
             <div className="overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
