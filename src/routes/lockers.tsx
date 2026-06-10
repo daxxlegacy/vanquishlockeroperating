@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
+import { LockerQuickView } from "@/components/LockerQuickView";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,7 +120,9 @@ function LockersPage() {
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [quickViewId, setQuickViewId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const isMobile = useIsMobile();
   const { set: batchWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
@@ -167,6 +171,26 @@ function LockersPage() {
   const keyLocks = useMemo(() => {
     if (!lockers) return [];
     return Array.from(new Set(lockers.map((l) => (l.key_lock ?? "").trim()).filter(Boolean))).sort();
+  }, [lockers]);
+
+  // Pre-extract column values ONCE per data change. Without this, every
+  // keystroke in the search box re-created 9 fresh `lockers.map(...)` arrays
+  // inline in JSX — each column's <ColumnFilter> then re-ran its O(N) unique
+  // Set computation on every render. With thousands of lockers this is the
+  // dominant cause of search-input lag.
+  const columnValues = useMemo(() => {
+    const ls = lockers ?? [];
+    return {
+      num: ls.map((l) => l.locker_number),
+      loc: ls.map((l) => l.location),
+      key_lock: ls.map((l) => l.key_lock),
+      badge: ls.map((l) => l.badge_number),
+      nid: ls.map((l) => l.national_id),
+      emp: ls.map((l) => l.employee_name),
+      work: ls.map((l) => l.work_location),
+      status: ls.map((l) => l.status),
+      batch: ls.map((l) => formatBatchIntake(l.batch_intake)),
+    };
   }, [lockers]);
 
   // Excel-style per-column checkbox filters (keyed by column id in COLS).
@@ -482,20 +506,21 @@ function LockersPage() {
         <Card className="mt-4 overflow-hidden">
           {!lockers ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
+          ) : isMobile ? (
+            <MobileLockerList rows={filtered} onPick={setQuickViewId} warnings={batchWarnings} />
           ) : (
             <div className="overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                  <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker #" values={lockers.map((l) => l.locker_number)} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
-                  <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={lockers.map((l) => l.location)} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
-                  
-                  <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Key Lock" values={lockers.map((l) => l.key_lock)} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
-                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={lockers.map((l) => l.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
-                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={lockers.map((l) => l.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
-                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={lockers.map((l) => l.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
-                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={lockers.map((l) => l.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
-                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={lockers.map((l) => l.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
-                  <Th><SortHeader label="Batch" col="batch" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Batch" values={lockers.map((l) => formatBatchIntake(l.batch_intake))} selected={colFilters.batch ?? new Set()} onChange={setColFilter("batch")} /></Th>
+                  <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker #" values={columnValues.num} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
+                  <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={columnValues.loc} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
+                  <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Key Lock" values={columnValues.key_lock} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
+                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={columnValues.badge} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
+                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={columnValues.nid} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
+                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={columnValues.emp} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
+                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
+                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={columnValues.status} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                  <Th><SortHeader label="Batch" col="batch" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Batch" values={columnValues.batch} selected={colFilters.batch ?? new Set()} onChange={setColFilter("batch")} /></Th>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
@@ -504,7 +529,7 @@ function LockersPage() {
                     rowComponent={LockerRow as any}
                     rowCount={filtered.length}
                     rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: filtered, onPick: setSelected, warnings: batchWarnings }}
+                    rowProps={{ rows: filtered, onPick: setQuickViewId, warnings: batchWarnings }}
                     style={{ height: Math.min(VIEWPORT_HEIGHT, filtered.length * ROW_HEIGHT + 4) }}
                   />
                 )}
@@ -516,7 +541,83 @@ function LockersPage() {
           )}
         </Card>
       </main>
+      <LockerQuickView
+        locker={quickViewId ? (lockers?.find((l) => l.id === quickViewId) ?? null) : null}
+        open={!!quickViewId}
+        onOpenChange={(v) => { if (!v) setQuickViewId(null); }}
+        canEdit={role === "admin"}
+        onEdit={() => {
+          const id = quickViewId;
+          setQuickViewId(null);
+          setSelected(id);
+        }}
+      />
       <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
+    </div>
+  );
+}
+
+// ---------- Mobile card list ----------
+function MobileLockerList({
+  rows,
+  onPick,
+  warnings,
+}: {
+  rows: Locker[];
+  onPick: (id: string) => void;
+  warnings: Set<string>;
+}) {
+  if (rows.length === 0) {
+    return <div className="p-8 text-center text-muted-foreground text-sm">No lockers match these filters.</div>;
+  }
+  const CAP = 200;
+  const shown = rows.slice(0, CAP);
+  return (
+    <div className="divide-y">
+      {shown.map((l) => {
+        const flagged = warnings.has(l.locker_number.trim().toUpperCase());
+        return (
+          <button
+            type="button"
+            key={l.id}
+            onClick={() => onPick(l.id)}
+            className={`w-full text-left px-4 py-3 active:bg-muted/60 hover:bg-muted/40 transition-colors ${flagged ? "bg-warning/10" : ""}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  {flagged && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" aria-hidden />}
+                  <span className="font-semibold text-base truncate">{l.locker_number}</span>
+                </div>
+                <div className="text-xs text-muted-foreground truncate">{l.location}</div>
+              </div>
+              <StatusBadge status={l.status} />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+              <MobileField label="Employee" value={l.employee_name} wide />
+              <MobileField label="Badge" value={l.badge_number} />
+              <MobileField label="National ID" value={l.national_id} />
+              <MobileField label="Key Lock" value={l.key_lock} />
+              <MobileField label="Work" value={l.work_location} />
+              <MobileField label="Batch" value={formatBatchIntake(l.batch_intake)} />
+            </div>
+          </button>
+        );
+      })}
+      {rows.length > CAP && (
+        <div className="p-3 text-center text-xs text-muted-foreground">
+          Showing first {CAP} of {rows.length.toLocaleString()}. Narrow the filters to see more.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileField({ label, value, wide }: { label: string; value: string | null | undefined; wide?: boolean }) {
+  return (
+    <div className={wide ? "col-span-2" : ""}>
+      <span className="text-muted-foreground">{label}: </span>
+      <span className="font-medium break-words">{value && value.trim() !== "" ? value : "—"}</span>
     </div>
   );
 }
