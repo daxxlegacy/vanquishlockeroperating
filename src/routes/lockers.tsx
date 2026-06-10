@@ -541,17 +541,6 @@ function LockersPage() {
           )}
         </Card>
       </main>
-      <LockerQuickView
-        locker={quickViewId ? (lockers?.find((l) => l.id === quickViewId) ?? null) : null}
-        open={!!quickViewId}
-        onOpenChange={(v) => { if (!v) setQuickViewId(null); }}
-        canEdit={role === "admin"}
-        onEdit={() => {
-          const id = quickViewId;
-          setQuickViewId(null);
-          setSelected(id);
-        }}
-      />
       <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
     </div>
   );
