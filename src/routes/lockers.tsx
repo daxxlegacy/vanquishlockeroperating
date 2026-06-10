@@ -173,6 +173,26 @@ function LockersPage() {
     return Array.from(new Set(lockers.map((l) => (l.key_lock ?? "").trim()).filter(Boolean))).sort();
   }, [lockers]);
 
+  // Pre-extract column values ONCE per data change. Without this, every
+  // keystroke in the search box re-created 9 fresh `lockers.map(...)` arrays
+  // inline in JSX — each column's <ColumnFilter> then re-ran its O(N) unique
+  // Set computation on every render. With thousands of lockers this is the
+  // dominant cause of search-input lag.
+  const columnValues = useMemo(() => {
+    const ls = lockers ?? [];
+    return {
+      num: ls.map((l) => l.locker_number),
+      loc: ls.map((l) => l.location),
+      key_lock: ls.map((l) => l.key_lock),
+      badge: ls.map((l) => l.badge_number),
+      nid: ls.map((l) => l.national_id),
+      emp: ls.map((l) => l.employee_name),
+      work: ls.map((l) => l.work_location),
+      status: ls.map((l) => l.status),
+      batch: ls.map((l) => formatBatchIntake(l.batch_intake)),
+    };
+  }, [lockers]);
+
   // Excel-style per-column checkbox filters (keyed by column id in COLS).
   const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
   const setColFilter = (k: string) => (next: Set<string>) =>
