@@ -29,27 +29,8 @@ import { useOccupancy, invalidateOccupancyCache, type OccupancyRow } from "@/lib
 
 type Category = "main" | "staff" | "shoe";
 
-type Row = {
-  id: string;
-  category: Category;
-  locker_number: string;
-  locker_row: string | null;
-  locker_unit: string | null;
-  locker_location_by_row: string | null;
-  key_lock_type: string | null;
-  badge_number: string | null;
-  employee_name: string | null;
-  national_id: string | null;
-  work_location: string | null;
-  contact: string | null;
-  status: string | null;
-  batch_intake_date: string | null;
-  termination_date: string | null;
-  gradeset: string | null;
-  department: string | null;
-  remarks: string | null;
-  source_filename: string | null;
-};
+type Row = OccupancyRow;
+
 
 const CATEGORY_LABEL: Record<Category, string> = {
   main: "Full Locker (Occupied + Vacant)",
