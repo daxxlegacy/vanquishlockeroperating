@@ -406,7 +406,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         if (error) { toast.error(`Insert failed: ${error.message}`); return; }
       }
       toast.success(`Imported ${records.length.toLocaleString()} rows for ${CATEGORY_LABEL[category]}`);
-      setRefresh((k) => k + 1);
+      invalidateOccupancyCache(category);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import failed");
     } finally {
