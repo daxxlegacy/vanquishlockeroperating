@@ -4,6 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, Search, X, ChevronRight } from "lucide-react";
+import { useDebounced } from "@/hooks/use-debounced";
+
+// Cap rendered checkbox rows to keep the popover snappy on huge columns
+// (Employee/Badge can have thousands of unique values). User narrows further
+// via the search box.
+const RENDER_CAP = 300;
+
+// Lightweight native checkbox — Radix <Checkbox> is ~30× slower to render
+// in long lists because of its internal portal/state machinery.
+function LiteCheck({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.currentTarget.checked)}
+      className="h-3.5 w-3.5 accent-primary cursor-pointer"
+    />
+  );
+}
 
 /**
  * Excel-style per-column filter dropdown.
