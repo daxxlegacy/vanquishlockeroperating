@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
-import { LockerQuickView } from "@/components/LockerQuickView";
+
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -120,7 +120,7 @@ function LockersPage() {
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [quickViewId, setQuickViewId] = useState<string | null>(null);
+  
   const [addOpen, setAddOpen] = useState(false);
   const isMobile = useIsMobile();
   const { set: batchWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
@@ -507,7 +507,7 @@ function LockersPage() {
           {!lockers ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : isMobile ? (
-            <MobileLockerList rows={filtered} onPick={setQuickViewId} warnings={batchWarnings} />
+            <MobileLockerList rows={filtered} onPick={setSelected} warnings={batchWarnings} />
           ) : (
             <div className="overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
@@ -529,7 +529,7 @@ function LockersPage() {
                     rowComponent={LockerRow as any}
                     rowCount={filtered.length}
                     rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: filtered, onPick: setQuickViewId, warnings: batchWarnings }}
+                    rowProps={{ rows: filtered, onPick: setSelected, warnings: batchWarnings }}
                     style={{ height: Math.min(VIEWPORT_HEIGHT, filtered.length * ROW_HEIGHT + 4) }}
                   />
                 )}
@@ -541,17 +541,6 @@ function LockersPage() {
           )}
         </Card>
       </main>
-      <LockerQuickView
-        locker={quickViewId ? (lockers?.find((l) => l.id === quickViewId) ?? null) : null}
-        open={!!quickViewId}
-        onOpenChange={(v) => { if (!v) setQuickViewId(null); }}
-        canEdit={role === "admin"}
-        onEdit={() => {
-          const id = quickViewId;
-          setQuickViewId(null);
-          setSelected(id);
-        }}
-      />
       <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
     </div>
   );
