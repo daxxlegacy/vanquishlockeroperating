@@ -115,6 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { clearReconcileState } = await import("@/lib/reconcile-store");
       await clearReconcileState();
     } catch { /* ignore */ }
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(ROLE_CACHE_KEY);
+        localStorage.removeItem("lockerops.auth.perms.v1");
+      } catch { /* ignore */ }
+    }
     await supabase.auth.signOut();
   };
 
