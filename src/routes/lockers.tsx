@@ -120,7 +120,7 @@ function LockersPage() {
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [quickViewId, setQuickViewId] = useState<string | null>(null);
+  
   const [addOpen, setAddOpen] = useState(false);
   const isMobile = useIsMobile();
   const { set: batchWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
