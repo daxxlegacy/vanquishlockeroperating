@@ -976,7 +976,9 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
     setResults(null);
     setFilename(f.name);
     try {
+      await new Promise((r) => setTimeout(r, 0));
       const deletions = await parseMednefits(f);
+
       setDeletionsCount(deletions.length);
       if (deletions.length === 0) {
         toast.info("No 'Deletion' rows found in the Mednefits file.");
