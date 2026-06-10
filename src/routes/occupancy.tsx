@@ -421,7 +421,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     const { error } = await supabase.from("locker_occupancy").delete().eq("category", category);
     if (error) { toast.error(error.message); return; }
     toast.success("Cleared");
-    setRefresh((k) => k + 1);
+    invalidateOccupancyCache(category);
   };
 
   return (
