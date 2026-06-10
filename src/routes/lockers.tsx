@@ -529,7 +529,7 @@ function LockersPage() {
                     rowComponent={LockerRow as any}
                     rowCount={filtered.length}
                     rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: filtered, onPick: setQuickViewId, warnings: batchWarnings }}
+                    rowProps={{ rows: filtered, onPick: setSelected, warnings: batchWarnings }}
                     style={{ height: Math.min(VIEWPORT_HEIGHT, filtered.length * ROW_HEIGHT + 4) }}
                   />
                 )}
