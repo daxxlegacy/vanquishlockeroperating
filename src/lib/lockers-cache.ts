@@ -150,6 +150,12 @@ export function getLockerById(id: string): Locker | null {
   return row && row.id === id ? row : null;
 }
 
+/** Synchronous snapshot of lockers in memory (null if not loaded yet). */
+export function getLockersSnapshot(): Locker[] | null {
+  return state.data;
+}
+
+
 export function invalidateLockersCache() {
   state = { data: null, loading: false };
   index = new Map();

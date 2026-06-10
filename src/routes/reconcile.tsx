@@ -17,6 +17,7 @@ import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, File
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
+import { getLockersSnapshot } from "@/lib/lockers-cache";
 import { terminateLocker } from "@/lib/termination-actions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -210,13 +211,17 @@ function ReconcilePage() {
     setRestored(null);
     setFilename(f.name);
     try {
-      const hr = await parseHr(f, f.name);
-      const dbRows = await fetchActiveDb();
+      // Yield once so the "Comparing…" indicator paints before the
+      // synchronous xlsx parse + matching work begins.
+      await new Promise((r) => setTimeout(r, 0));
+      const [hr, dbRows] = await Promise.all([parseHr(f, f.name), fetchActiveDb()]);
       setHrCount({
         current: hr.filter((p) => p.status === "current").length,
         terminated: hr.filter((p) => p.status === "terminated").length,
       });
       setDbCount(dbRows.length);
+      await new Promise((r) => setTimeout(r, 0));
+
       // Sort HR matches: badge match wins, then name, then termination date recency.
       // (Used implicitly via Map.get(); but when multiple terminated rows exist for
       // the same person, we pick the most recent termination date below.)
@@ -789,6 +794,30 @@ function toExportRow(r: RowResult): Record<string, unknown> {
 }
 
 async function fetchActiveDb(): Promise<DbRow[]> {
+  // Fast path: reuse the in-memory lockers cache (already loaded if the user
+  // has visited /lockers). Skips a paginated 1k-row roundtrip and any
+  // network latency.
+  const snap = getLockersSnapshot();
+  if (snap && snap.length > 0) {
+    const out: DbRow[] = [];
+    for (const l of snap) {
+      if (l.deleted_at) continue;
+      if (!l.employee_name && !l.badge_number) continue;
+      out.push({
+        id: l.id,
+        locker_number: l.locker_number,
+        location: l.location,
+        row_label: l.row_label,
+        employee_name: l.employee_name,
+        badge_number: l.badge_number,
+        national_id: l.national_id,
+        batch_intake: l.batch_intake,
+        work_location: l.work_location,
+      });
+    }
+    return out;
+  }
+
   const out: DbRow[] = [];
   let from = 0;
   while (true) {
@@ -806,6 +835,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
   }
   return out;
 }
+
 
 async function parseHr(f: File, filename?: string): Promise<HrPerson[]> {
   const ext = f.name.split(".").pop()?.toLowerCase();
@@ -946,7 +976,9 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
     setResults(null);
     setFilename(f.name);
     try {
+      await new Promise((r) => setTimeout(r, 0));
       const deletions = await parseMednefits(f);
+
       setDeletionsCount(deletions.length);
       if (deletions.length === 0) {
         toast.info("No 'Deletion' rows found in the Mednefits file.");

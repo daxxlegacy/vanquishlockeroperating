@@ -24,30 +24,13 @@ import {
   encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
+import { useOccupancy, invalidateOccupancyCache, type OccupancyRow } from "@/lib/occupancy-cache";
+
 
 type Category = "main" | "staff" | "shoe";
 
-type Row = {
-  id: string;
-  category: Category;
-  locker_number: string;
-  locker_row: string | null;
-  locker_unit: string | null;
-  locker_location_by_row: string | null;
-  key_lock_type: string | null;
-  badge_number: string | null;
-  employee_name: string | null;
-  national_id: string | null;
-  work_location: string | null;
-  contact: string | null;
-  status: string | null;
-  batch_intake_date: string | null;
-  termination_date: string | null;
-  gradeset: string | null;
-  department: string | null;
-  remarks: string | null;
-  source_filename: string | null;
-};
+type Row = OccupancyRow;
+
 
 const CATEGORY_LABEL: Record<Category, string> = {
   main: "Full Locker (Occupied + Vacant)",
@@ -106,78 +89,39 @@ function OccupancyPage() {
 }
 
 function CategoryView({ category, isAdmin }: { category: Category; isAdmin: boolean }) {
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const { rows } = useOccupancy(category);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [rowFilter, setRowFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [refresh, setRefresh] = useState(0);
   const [importing, setImporting] = useState(false);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const importingRef = useRef(false);
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [reasons, setReasons] = useState<Map<string, string>>(new Map());
 
+  // Latest termination reason per locker (for Reason column on Full Lockers)
   useEffect(() => {
+    if (category !== "main") { setReasons(new Map()); return; }
+    let cancelled = false;
     (async () => {
-      setRows(null);
-      const all: Row[] = [];
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("locker_occupancy")
-          .select("*")
-          .eq("category", category)
-          .range(from, from + 999);
-        if (error) { toast.error(error.message); break; }
-        if (!data) break;
-        all.push(...(data as Row[]));
-        if (data.length < 1000) break;
-        from += 1000;
+      const { data: terms } = await supabase
+        .from("terminations")
+        .select("locker_number,reason,termination_date")
+        .order("termination_date", { ascending: false });
+      if (cancelled) return;
+      const map = new Map<string, string>();
+      for (const t of terms ?? []) {
+        if (!t.locker_number || !t.reason) continue;
+        if (!map.has(t.locker_number)) map.set(t.locker_number, t.reason);
       }
-      setRows(all);
-
-      // Latest termination reason per locker (for Reason column)
-      if (category === "main") {
-        const { data: terms } = await supabase
-          .from("terminations")
-          .select("locker_number,reason,termination_date")
-          .order("termination_date", { ascending: false });
-        const map = new Map<string, string>();
-        for (const t of terms ?? []) {
-          if (!t.locker_number || !t.reason) continue;
-          if (!map.has(t.locker_number)) map.set(t.locker_number, t.reason);
-        }
-        setReasons(map);
-      } else {
-        setReasons(new Map());
-      }
+      setReasons(map);
     })();
-  }, [category, refresh]);
-
-  // Auto-refresh when occupancy or terminations change elsewhere (e.g. after
-  // saving a locker, marking active/terminated, or running automation).
-  useEffect(() => {
-    const schedule = () => {
-      // Skip realtime refreshes while a bulk import is running — the chunked
-      // inserts fire dozens of events and would cause the table to flash.
-      if (importingRef.current) return;
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
-      refreshTimer.current = setTimeout(() => setRefresh((k) => k + 1), 600);
-    };
-    const ch = supabase
-      .channel(`occupancy-${category}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, schedule)
-      .on("postgres_changes", { event: "*", schema: "public", table: "lockers" }, schedule)
-      .subscribe();
-    return () => {
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
-      supabase.removeChannel(ch);
-    };
+    return () => { cancelled = true; };
   }, [category]);
+
 
   useEffect(() => { setPage(1); }, [search, statusFilter, rowFilter, locFilter]);
 
@@ -462,7 +406,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
         if (error) { toast.error(`Insert failed: ${error.message}`); return; }
       }
       toast.success(`Imported ${records.length.toLocaleString()} rows for ${CATEGORY_LABEL[category]}`);
-      setRefresh((k) => k + 1);
+      invalidateOccupancyCache(category);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import failed");
     } finally {
@@ -477,7 +421,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
     const { error } = await supabase.from("locker_occupancy").delete().eq("category", category);
     if (error) { toast.error(error.message); return; }
     toast.success("Cleared");
-    setRefresh((k) => k + 1);
+    invalidateOccupancyCache(category);
   };
 
   return (
