@@ -4,6 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, Search, X, ChevronRight } from "lucide-react";
+import { useDebounced } from "@/hooks/use-debounced";
+
+// Cap rendered checkbox rows to keep the popover snappy on huge columns
+// (Employee/Badge can have thousands of unique values). User narrows further
+// via the search box.
+const RENDER_CAP = 300;
+
+// Lightweight native checkbox — Radix <Checkbox> is ~30× slower to render
+// in long lists because of its internal portal/state machinery.
+function LiteCheck({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.currentTarget.checked)}
+      className="h-3.5 w-3.5 accent-primary cursor-pointer"
+    />
+  );
+}
 
 /**
  * Excel-style per-column filter dropdown.
@@ -78,11 +103,13 @@ export function ColumnFilter({
     );
   }, [values]);
 
+  const debouncedSearch = useDebounced(search, 120);
+
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
     if (!q) return unique;
     return unique.filter((v) => v.toLowerCase().includes(q));
-  }, [unique, search]);
+  }, [unique, debouncedSearch]);
 
   // Split filtered values into dates + others (for Batch mode).
   const { dateTree, others } = useMemo(() => {
@@ -342,20 +369,27 @@ export function ColumnFilter({
             ) : filtered.length === 0 ? (
               <div className="px-2 py-4 text-center text-xs text-muted-foreground">No values</div>
             ) : (
-              filtered.map((v) => (
-                <label
-                  key={v}
-                  className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer"
-                >
-                  <Checkbox
-                    checked={draft.has(v)}
-                    onCheckedChange={(c) => toggle(v, c === true)}
-                  />
-                  <span className={`truncate ${v === BLANK ? "italic text-muted-foreground" : ""}`}>
-                    {v}
-                  </span>
-                </label>
-              ))
+              <>
+                {filtered.slice(0, RENDER_CAP).map((v) => (
+                  <label
+                    key={v}
+                    className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted cursor-pointer"
+                  >
+                    <LiteCheck
+                      checked={draft.has(v)}
+                      onChange={(c) => toggle(v, c)}
+                    />
+                    <span className={`truncate ${v === BLANK ? "italic text-muted-foreground" : ""}`}>
+                      {v}
+                    </span>
+                  </label>
+                ))}
+                {filtered.length > RENDER_CAP && (
+                  <div className="px-2 py-2 text-center text-[11px] text-muted-foreground">
+                    Showing first {RENDER_CAP} of {filtered.length}. Type to narrow down.
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
