@@ -562,15 +562,15 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
-                    <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker" values={(rows ?? []).map((r) => r.locker_number)} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
-                    <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={(rows ?? []).map((r) => r.status)} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
-                    <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={(rows ?? []).map((r) => r.badge_number)} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
-                    <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={(rows ?? []).map((r) => r.employee_name)} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
-                    <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={(rows ?? []).map((r) => r.national_id)} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
-                    <Th><SortHeader label="Intake" col="intake" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Intake" values={(rows ?? []).map((r) => fmtDate(r.batch_intake_date))} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
-                    <Th><SortHeader label="Terminated" col="term" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Terminated" values={(rows ?? []).map((r) => fmtDate(r.termination_date))} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
+                    <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker" values={columnValues.locker} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
+                    <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={columnValues.status} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                    <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={columnValues.badge} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
+                    <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={columnValues.emp} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
+                    <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={columnValues.nid} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
+                    <Th><SortHeader label="Intake" col="intake" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Intake" values={columnValues.intake} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
+                    <Th><SortHeader label="Terminated" col="term" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Terminated" values={columnValues.term} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
                     <Th>Reason</Th>
-                    <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={(rows ?? []).map((r) => r.work_location)} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
+                    <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
                     <Th>History</Th>
                   </tr>
                 </thead>
