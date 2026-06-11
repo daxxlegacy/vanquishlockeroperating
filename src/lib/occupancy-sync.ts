@@ -125,6 +125,8 @@ export async function syncActivationToOccupancy(locker: Locker): Promise<void> {
     key_lock_type: locker.key_lock,
     badge_number: locker.badge_number,
     employee_name: locker.employee_name,
+    national_id: locker.national_id,
+    work_location: locker.work_location,
     status: "Active",
     batch_intake_date: locker.batch_intake ?? null,
     termination_date: null,
