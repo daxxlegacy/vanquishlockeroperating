@@ -217,7 +217,7 @@ function UploadPage() {
         const noBadge = !r.badge_number || r.badge_number.trim() === "";
         const noNid = !r.national_id || r.national_id.trim() === "";
         const missing: "badge" | "national_id" | "both" = noBadge && noNid ? "both" : noBadge ? "badge" : "national_id";
-        return { locker_number: r.locker_number, employee_name: r.employee_name, missing };
+        return { locker_number: r.locker_number, employee_name: r.employee_name, badge_number: r.badge_number, national_id: r.national_id, missing };
       }).sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
       setDbQuality({
         rows,
