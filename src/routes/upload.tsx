@@ -231,13 +231,13 @@ function UploadPage() {
   // Missing-data scan of the currently-parsed preview rows.
   const previewMissing = useMemo(() => {
     if (!preview) return null;
-    const rows: { locker_number: string; employee_name: string | null; missing: "badge" | "national_id" | "both" }[] = [];
+    const rows: { locker_number: string; employee_name: string | null; badge_number: string | null; national_id: string | null; missing: "badge" | "national_id" | "both" }[] = [];
     for (const p of preview.parsed) {
       const noBadge = !p.badge_number || p.badge_number.trim() === "";
       const noNid = !p.national_id || p.national_id.trim() === "";
       if (!noBadge && !noNid) continue;
       const missing: "badge" | "national_id" | "both" = noBadge && noNid ? "both" : noBadge ? "badge" : "national_id";
-      rows.push({ locker_number: p.locker_number, employee_name: p.employee_name, missing });
+      rows.push({ locker_number: p.locker_number, employee_name: p.employee_name, badge_number: p.badge_number ?? null, national_id: p.national_id ?? null, missing });
     }
     rows.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
     return {
@@ -248,12 +248,12 @@ function UploadPage() {
   }, [preview]);
 
   const downloadMissingCsv = (
-    rows: { locker_number: string; employee_name: string | null; missing: string }[],
+    rows: { locker_number: string; employee_name: string | null; badge_number?: string | null; national_id?: string | null; missing: string }[],
     filename: string,
   ) => {
     const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const header = "Locker Number,Employee Name,Missing Field\n";
-    const body = rows.map((r) => [r.locker_number, r.employee_name ?? "", r.missing].map((v) => esc(String(v))).join(",")).join("\n");
+    const header = "Locker Number,Employee Name,Badge Number,National ID,Missing Field\n";
+    const body = rows.map((r) => [r.locker_number, r.employee_name ?? "", r.badge_number ?? "", r.national_id ?? "", r.missing].map((v) => esc(String(v))).join(",")).join("\n");
     const blob = new Blob([header + body], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
