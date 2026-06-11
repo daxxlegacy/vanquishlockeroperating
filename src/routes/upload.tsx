@@ -188,7 +188,7 @@ function UploadPage() {
   // ── Data Quality state ──────────────────────────────────────────────
   const [showMissingDetails, setShowMissingDetails] = useState(false);
   const [dbQuality, setDbQuality] = useState<{
-    rows: { locker_number: string; employee_name: string | null; missing: "badge" | "national_id" | "both" }[];
+    rows: { locker_number: string; employee_name: string | null; badge_number: string | null; national_id: string | null; missing: "badge" | "national_id" | "both" }[];
     missingBadge: number;
     missingNid: number;
   } | null>(null);
