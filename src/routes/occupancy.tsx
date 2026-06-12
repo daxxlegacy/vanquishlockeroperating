@@ -478,9 +478,11 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
             </Button>
           </>
         )}
-        <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
-          <Download className="h-4 w-4 mr-1.5" /> Export CSV
-        </Button>
+        {isAdmin && (
+          <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
+            <Download className="h-4 w-4 mr-1.5" /> Export CSV
+          </Button>
+        )}
         <Button
           variant="outline"
           onClick={clearAllFilters}

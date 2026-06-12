@@ -47,7 +47,7 @@ async function parseRoster(f: File): Promise<Record<string, unknown>[]> {
 
 export function AutomationPanel() {
   const { user } = useAuth();
-  const { has } = usePermissions();
+  const { has, isAdmin } = usePermissions();
   const canRunAutomation = has("run_automation");
 
   const [busy, setBusy] = useState(false);
@@ -280,7 +280,7 @@ export function AutomationPanel() {
               <UserMinus className="h-5 w-5 text-destructive" />
               <h3 className="font-display text-lg font-bold">Step 2 — Review candidates ({candidates.length})</h3>
             </div>
-            {candidates.length > 0 && (
+            {candidates.length > 0 && isAdmin && (
               <Button size="sm" variant="outline" onClick={exportPreviewCsv}>
                 <Download className="h-4 w-4 mr-1" />Export CSV
               </Button>
@@ -377,7 +377,7 @@ export function AutomationPanel() {
               <AlertCircle className="h-5 w-5 text-primary" />
               <h3 className="font-display text-lg font-bold">Roster employees not in our data ({missingFromDb.length})</h3>
             </div>
-            {missingFromDb.length > 0 && (
+            {missingFromDb.length > 0 && isAdmin && (
               <Button size="sm" variant="outline" onClick={exportMissingFromDbCsv}>
                 <Download className="h-4 w-4 mr-1" />Export CSV
               </Button>

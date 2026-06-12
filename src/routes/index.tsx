@@ -599,6 +599,7 @@ function ValidationReportDialog({
   lockers: Locker[] | null;
   layout: MapLayout;
 }) {
+  const { role } = useAuth();
   const report = useMemo(() => {
     if (!lockers) return null;
     // All prefixes present in any sheet
@@ -697,9 +698,11 @@ function ValidationReportDialog({
                       ))}
                   </div>
                 </div>
-                <div className="flex justify-end">
-                  <Button onClick={exportCsv}>Export CSV</Button>
-                </div>
+                {role === "admin" && (
+                  <div className="flex justify-end">
+                    <Button onClick={exportCsv}>Export CSV</Button>
+                  </div>
+                )}
               </>
             )}
           </div>

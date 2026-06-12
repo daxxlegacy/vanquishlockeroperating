@@ -468,17 +468,19 @@ function LockersPage() {
           >
             Missing Badge ({missingBadgeCount})
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={filtered.length === 0}>
-                <Download className="h-4 w-4 mr-1.5" /> Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={exportXlsx}>Excel (.xlsx)</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportCsv}>CSV (.csv)</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {role === "admin" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={filtered.length === 0}>
+                  <Download className="h-4 w-4 mr-1.5" /> Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportXlsx}>Excel (.xlsx)</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportCsv}>CSV (.csv)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Button
             variant="outline"
             onClick={clearAllFilters}

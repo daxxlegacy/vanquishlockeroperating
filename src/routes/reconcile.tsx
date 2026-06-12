@@ -82,7 +82,7 @@ type SavedState = {
 };
 
 function ReconcilePage() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const navigate = useNavigate();
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
@@ -460,14 +460,16 @@ function ReconcilePage() {
                     <Input className="pl-9" placeholder="Search locker / badge / name…"
                       value={search} onChange={(e) => setSearch(e.target.value)} />
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => exportAll("xlsx")}>
-                      <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => exportAll("csv")}>
-                      <Download className="h-4 w-4 mr-1.5" /> Export CSV
-                    </Button>
-                  </div>
+                  {role === "admin" && (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => exportAll("xlsx")}>
+                        <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => exportAll("csv")}>
+                        <Download className="h-4 w-4 mr-1.5" /> Export CSV
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <Alert className="mt-4 border-warning/50 bg-warning/5">
@@ -964,6 +966,7 @@ type MedResult =
   | { kind: "unmatched"; med: MedRow };
 
 function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const { role } = useAuth();
   const [busy, setBusy] = useState(false);
   const [filename, setFilename] = useState<string | null>(null);
   const [results, setResults] = useState<MedResult[] | null>(null);
@@ -1090,9 +1093,11 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pl-9" placeholder="Search name / national ID / locker…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <Button variant="outline" size="sm" onClick={exportXlsx}>
-              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
-            </Button>
+            {role === "admin" && (
+              <Button variant="outline" size="sm" onClick={exportXlsx}>
+                <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Export Excel
+              </Button>
+            )}
           </div>
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as "matched" | "unmatched")} className="mt-4">
