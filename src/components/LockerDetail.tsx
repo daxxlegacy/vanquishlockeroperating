@@ -115,7 +115,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
             <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
             <DateField label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
             <Field label="National ID" value={locker.national_id ?? ""} onChange={(v) => update("national_id", v)} disabled={!isAdmin} />
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Label>Remark</Label>
               <Textarea
                 value={locker.remark ?? ""}

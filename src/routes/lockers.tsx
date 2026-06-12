@@ -762,7 +762,7 @@ function AddLockerDialog({
           <Label>Batch Intake (dd/mm/yyyy)</Label>
           <Input value={form.batch_intake} onChange={(e) => set("batch_intake", e.target.value)} placeholder="16/01/2026" />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <Label>Remark</Label>
           <Input value={form.remark} onChange={(e) => set("remark", e.target.value)} />
         </div>
