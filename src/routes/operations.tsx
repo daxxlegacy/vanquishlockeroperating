@@ -29,7 +29,7 @@ function OperationsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <h1 className="font-display text-3xl font-bold mb-1">Operations</h1>
         <p className="text-muted-foreground text-sm mb-6">
           Manage terminations, run automation, review history, and audit deletions — all in one place.

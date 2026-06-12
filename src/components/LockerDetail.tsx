@@ -104,7 +104,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
           <DialogHeader>
             <DialogTitle className="font-display">Locker {locker.locker_number}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
             <Field label="Location" value={locker.location} onChange={(v) => update("location", v)} disabled={!isAdmin} />
             <Field label="Row" value={locker.row_label ?? ""} onChange={(v) => update("row_label", v)} disabled={!isAdmin} />
             <Field label="Unit Type" value={locker.unit_type ?? ""} onChange={(v) => update("unit_type", v)} disabled={!isAdmin} />

@@ -393,7 +393,7 @@ function LockersPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="font-display text-3xl font-bold">Lockers</h1>
@@ -715,7 +715,7 @@ function AddLockerDialog({
       <DialogHeader>
         <DialogTitle className="font-display">Add new locker</DialogTitle>
       </DialogHeader>
-      <div className="grid grid-cols-2 gap-4 py-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
         <div>
           <Label>Locker Number *</Label>
           <Input value={form.locker_number} onChange={(e) => set("locker_number", e.target.value)} placeholder="e.g. 1A, A01, LK01, AA01" />

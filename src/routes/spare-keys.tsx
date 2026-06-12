@@ -119,7 +119,7 @@ function SpareKeysPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-[1400px] mx-auto px-6 py-8">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <div className="flex items-center gap-3 mb-1">

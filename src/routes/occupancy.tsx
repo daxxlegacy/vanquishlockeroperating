@@ -62,7 +62,7 @@ function OccupancyPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-[1500px] mx-auto px-6 py-8">
+      <main className="max-w-[1500px] mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center gap-3 mb-1">
           <History className="h-6 w-6 text-primary" />
           <h1 className="font-display text-3xl font-bold">Occupancy History</h1>

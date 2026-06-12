@@ -186,7 +186,7 @@ function AdminPage() {
     return (
       <div className="min-h-screen bg-background">
         <AppHeader />
-        <main className="max-w-3xl mx-auto px-6 py-12">
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Admins only</AlertTitle>
@@ -203,7 +203,7 @@ function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center gap-3 mb-2">
           <UserCog className="h-6 w-6 text-primary" />
           <h1 className="font-display text-3xl font-bold">Admin — User Permissions</h1>
