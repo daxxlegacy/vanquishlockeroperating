@@ -77,14 +77,14 @@ function TerminatePage() {
   }, [user, lockerId]);
 
   if (loading || !user || locker === undefined) {
-    return <div className="min-h-screen"><AppHeader /><main className="max-w-2xl mx-auto px-6 py-8"><Skeleton className="h-96" /></main></div>;
+    return <div className="min-h-screen"><AppHeader /><main className="max-w-2xl mx-auto px-4 sm:px-6 py-8"><Skeleton className="h-96" /></main></div>;
   }
 
   if (!locker) {
     return (
       <div className="min-h-screen bg-background">
         <AppHeader />
-        <main className="max-w-2xl mx-auto px-6 py-8">
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
           <Card className="p-8 text-center">
             <AlertCircle className="h-10 w-10 mx-auto text-destructive mb-3" />
             <h1 className="font-display text-xl font-bold">Locker not found</h1>
@@ -143,7 +143,7 @@ function TerminatePage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-2xl mx-auto px-6 py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <Button variant="ghost" size="sm" onClick={() => window.close()} className="mb-3">
           <ArrowLeft className="h-4 w-4 mr-1" /> Close tab
         </Button>

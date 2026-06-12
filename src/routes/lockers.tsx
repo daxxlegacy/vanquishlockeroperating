@@ -393,7 +393,7 @@ function LockersPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
             <h1 className="font-display text-3xl font-bold">Lockers</h1>

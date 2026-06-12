@@ -21,7 +21,7 @@ export function PageGuard({ permission, children }: { permission: AppPermission;
     return (
       <div className="min-h-screen bg-background">
         <AppHeader />
-        <main className="max-w-2xl mx-auto px-6 py-12">
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
           <Alert variant="destructive">
             <ShieldAlert className="h-4 w-4" />
             <AlertTitle>Access denied</AlertTitle>

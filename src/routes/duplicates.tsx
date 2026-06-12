@@ -76,7 +76,7 @@ function DuplicatesPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center gap-3 mb-6">
           <Users className="h-6 w-6" />
           <div>

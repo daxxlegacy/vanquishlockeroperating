@@ -925,7 +925,7 @@ function UploadPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <h1 className="font-display text-3xl font-bold">Upload Locker Data</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Sync locker assignments, run roster checks, or update spare-key status from spreadsheets.
