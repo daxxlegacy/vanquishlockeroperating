@@ -945,9 +945,11 @@ function UploadPage() {
                 <Button size="sm" variant="ghost" onClick={() => setShowDbQualityDetails((v) => !v)} className="h-7 text-xs">
                   {showDbQualityDetails ? <><ChevronDown className="h-3.5 w-3.5 mr-1" />Hide details</> : <><ChevronRight className="h-3.5 w-3.5 mr-1" />Show details</>}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => downloadMissingCsv(dbQuality.rows, `db-quality-missing-${new Date().toISOString().slice(0, 10)}.csv`)} className="h-7 text-xs">
-                  <Download className="h-3.5 w-3.5 mr-1" />Export
-                </Button>
+                {role === "admin" && (
+                  <Button size="sm" variant="outline" onClick={() => downloadMissingCsv(dbQuality.rows, `db-quality-missing-${new Date().toISOString().slice(0, 10)}.csv`)} className="h-7 text-xs">
+                    <Download className="h-3.5 w-3.5 mr-1" />Export
+                  </Button>
+                )}
               </div>
             </div>
             {showDbQualityDetails && (
@@ -1006,15 +1008,17 @@ function UploadPage() {
                 {parsing && <Badge variant="secondary">Parsing…</Badge>}
               </div>
             </div>
-            <div className="flex flex-col gap-2 min-w-[180px]">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Export current data</Label>
-              <Button variant="outline" size="sm" onClick={() => exportLockers("xlsx")}>
-                <Download className="h-4 w-4 mr-1" /> Export as Excel
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => exportLockers("csv")}>
-                <Download className="h-4 w-4 mr-1" /> Export as CSV
-              </Button>
-            </div>
+            {role === "admin" && (
+              <div className="flex flex-col gap-2 min-w-[180px]">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Export current data</Label>
+                <Button variant="outline" size="sm" onClick={() => exportLockers("xlsx")}>
+                  <Download className="h-4 w-4 mr-1" /> Export as Excel
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => exportLockers("csv")}>
+                  <Download className="h-4 w-4 mr-1" /> Export as CSV
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -1125,9 +1129,11 @@ function UploadPage() {
                     <Button size="sm" variant="ghost" onClick={() => setShowMissingDetails((v) => !v)} className="h-7 text-xs">
                       {showMissingDetails ? <><ChevronDown className="h-3.5 w-3.5 mr-1" />Hide details</> : <><ChevronRight className="h-3.5 w-3.5 mr-1" />Show details</>}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => downloadMissingCsv(previewMissing.rows, `upload-missing-${new Date().toISOString().slice(0, 10)}.csv`)} className="h-7 text-xs">
-                      <Download className="h-3.5 w-3.5 mr-1" />Export missing list
-                    </Button>
+                    {role === "admin" && (
+                      <Button size="sm" variant="outline" onClick={() => downloadMissingCsv(previewMissing.rows, `upload-missing-${new Date().toISOString().slice(0, 10)}.csv`)} className="h-7 text-xs">
+                        <Download className="h-3.5 w-3.5 mr-1" />Export missing list
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -1336,14 +1342,16 @@ function UploadPage() {
                 <Stat icon={UserMinus} label="In DB, NOT in file" value={checkResult.inDbNotInFile.length} accent="text-destructive" />
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => exportRosterCheck("xlsx")}>
-                  <Download className="h-4 w-4 mr-1" /> Export Excel
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => exportRosterCheck("csv")}>
-                  <Download className="h-4 w-4 mr-1" /> Export CSV
-                </Button>
-              </div>
+              {role === "admin" && (
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => exportRosterCheck("xlsx")}>
+                    <Download className="h-4 w-4 mr-1" /> Export Excel
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => exportRosterCheck("csv")}>
+                    <Download className="h-4 w-4 mr-1" /> Export CSV
+                  </Button>
+                </div>
+              )}
 
               <details open className="rounded-md border">
                 <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
@@ -1470,11 +1478,13 @@ function UploadPage() {
                 <Stat icon={AlertCircle} label="No locker match" value={nidResult.unmatched.length} accent="text-warning" />
               </div>
 
-              <div className="flex justify-end">
-                <Button size="sm" onClick={exportNationalIdCsv} disabled={nidResult.matched.length === 0}>
-                  <Download className="h-4 w-4 mr-1" /> Export CSV ({nidResult.matched.length})
-                </Button>
-              </div>
+              {role === "admin" && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={exportNationalIdCsv} disabled={nidResult.matched.length === 0}>
+                    <Download className="h-4 w-4 mr-1" /> Export CSV ({nidResult.matched.length})
+                  </Button>
+                </div>
+              )}
 
               <details open className="rounded-md border">
                 <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">

@@ -114,10 +114,12 @@ export function DeletionsPanel() {
         </div>
       </Card>
 
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={() => exportDeletions("xlsx")}><Download className="h-4 w-4 mr-1" /> Excel</Button>
-        <Button variant="outline" size="sm" onClick={() => exportDeletions("csv")}><Download className="h-4 w-4 mr-1" /> CSV</Button>
-      </div>
+      {role === "admin" && (
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportDeletions("xlsx")}><Download className="h-4 w-4 mr-1" /> Excel</Button>
+          <Button variant="outline" size="sm" onClick={() => exportDeletions("csv")}><Download className="h-4 w-4 mr-1" /> CSV</Button>
+        </div>
+      )}
 
       {!items ? (
         <Skeleton className="h-96 w-full" />
