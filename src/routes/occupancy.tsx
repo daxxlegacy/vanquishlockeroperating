@@ -478,7 +478,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
             </Button>
           </>
         )}
-        {role === "admin" && (
+        {isAdmin && (
           <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
             <Download className="h-4 w-4 mr-1.5" /> Export CSV
           </Button>

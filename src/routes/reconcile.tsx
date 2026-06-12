@@ -966,6 +966,7 @@ type MedResult =
   | { kind: "unmatched"; med: MedRow };
 
 function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const { role } = useAuth();
   const [busy, setBusy] = useState(false);
   const [filename, setFilename] = useState<string | null>(null);
   const [results, setResults] = useState<MedResult[] | null>(null);
