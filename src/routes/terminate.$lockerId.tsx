@@ -160,7 +160,6 @@ function TerminatePage() {
           <div className="grid grid-cols-2 gap-4 rounded-md border p-4 bg-muted/30 mb-4">
             <Detail label="Locker #" value={locker.locker_number} mono />
             <Detail label="Location" value={locker.location} />
-            <Detail label="Row" value={locker.row_label ?? "—"} />
             <Detail label="Status">
               <Badge variant="outline">{locker.status}</Badge>
             </Detail>
