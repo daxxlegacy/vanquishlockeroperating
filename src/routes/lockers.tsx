@@ -326,7 +326,6 @@ function LockersPage() {
   const buildExportRows = () => filtered.map((l) => ({
     "Locker Number": l.locker_number,
     "Location": l.location,
-    "Row": l.row_label ?? "",
     "Unit Type": l.unit_type ?? "",
     "Key Lock": l.key_lock ?? "",
     "Badge Number": l.badge_number ?? "",

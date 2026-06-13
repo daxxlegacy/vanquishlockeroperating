@@ -198,7 +198,6 @@ function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
       "Locker Count": g.length,
       "Locker Number": l.locker_number,
       "Location": l.location,
-      "Row": l.row_label ?? "",
       "Employee Name": l.employee_name ?? "",
       "Badge Number": l.badge_number ?? "",
       "Status": l.status,
