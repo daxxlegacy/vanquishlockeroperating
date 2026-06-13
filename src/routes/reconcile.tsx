@@ -779,7 +779,6 @@ function toExportRow(r: RowResult): Record<string, unknown> {
   return {
     locker_number: r.db.locker_number,
     location: r.db.location,
-    row: r.db.row_label ?? "",
     db_badge: r.db.badge_number ?? "",
     db_name: r.db.employee_name ?? "",
     db_batch_intake: formatBatchIntake(r.db.batch_intake),
