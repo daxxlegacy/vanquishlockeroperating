@@ -1602,8 +1602,21 @@ function UploadPage() {
                   </details>
                 )}
 
+                {spareProgress && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{spareProgress.phase}…</span>
+                      <span>
+                        {spareProgress.done.toLocaleString()} / {spareProgress.total.toLocaleString()}
+                        {spareProgress.total > 0 && ` (${Math.round((spareProgress.done / spareProgress.total) * 100)}%)`}
+                      </span>
+                    </div>
+                    <Progress value={spareProgress.total ? (spareProgress.done / spareProgress.total) * 100 : 0} />
+                  </div>
+                )}
+
                 <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => { setSpareResult(null); setSpareFile(null); }}>Cancel</Button>
+                  <Button variant="outline" onClick={() => { setSpareResult(null); setSpareFile(null); }} disabled={spareBusy}>Cancel</Button>
                   <Button onClick={() => spareFile && runSpareKeySync(spareFile, true)} disabled={spareBusy}>
                     {spareBusy ? "Applying…" : "Apply spare key sync"}
                   </Button>
