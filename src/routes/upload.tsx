@@ -160,6 +160,7 @@ function UploadPage() {
   const [spareFile, setSpareFile] = useState<File | null>(null);
   const [spareBusy, setSpareBusy] = useState(false);
   const [spareResult, setSpareResult] = useState<SpareSyncResult | null>(null);
+  const [spareProgress, setSpareProgress] = useState<{ done: number; total: number; phase: string } | null>(null);
   // Configurable merge & normalization rules
   const [mergeCfg, setMergeCfg] = useState<MergeConfig>({
     preferRowsWithBadgeAndName: true,
