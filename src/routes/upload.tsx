@@ -609,7 +609,7 @@ function UploadPage() {
           let doneSteps = 0;
           setSpareProgress({ done: 0, total: totalSteps, phase: "Updating spare key statuses" });
           // Batch updates by status value so we can use .in() instead of one round-trip per locker
-          const byStatus = new Map<string, string[]>();
+          const byStatus = new Map<LockerRow["spare_key_status"], string[]>();
           for (const u of updates) {
             const arr = byStatus.get(u.spare_key_status) ?? [];
             arr.push(u.locker_number);
