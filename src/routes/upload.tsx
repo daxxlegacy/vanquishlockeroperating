@@ -608,13 +608,21 @@ function UploadPage() {
           const totalSteps = updates.length + noSpare.length;
           let doneSteps = 0;
           setSpareProgress({ done: 0, total: totalSteps, phase: "Updating spare key statuses" });
+          // Batch updates by status value so we can use .in() instead of one round-trip per locker
+          const byStatus = new Map<string, string[]>();
           for (const u of updates) {
-            const { error } = await supabase.from("lockers")
-              .update({ spare_key_status: u.spare_key_status })
-              .eq("locker_number", u.locker_number);
-            if (error) throw error;
-            doneSteps += 1;
-            if (doneSteps % 25 === 0 || doneSteps === totalSteps) {
+            const arr = byStatus.get(u.spare_key_status) ?? [];
+            arr.push(u.locker_number);
+            byStatus.set(u.spare_key_status, arr);
+          }
+          for (const [status, lockers] of byStatus) {
+            for (let i = 0; i < lockers.length; i += 500) {
+              const slice = lockers.slice(i, i + 500);
+              const { error } = await supabase.from("lockers")
+                .update({ spare_key_status: status })
+                .in("locker_number", slice);
+              if (error) throw error;
+              doneSteps += slice.length;
               setSpareProgress({ done: doneSteps, total: totalSteps, phase: "Updating spare key statuses" });
             }
           }
@@ -625,6 +633,7 @@ function UploadPage() {
             doneSteps += slice.length;
             setSpareProgress({ done: doneSteps, total: totalSteps, phase: "Marking unlisted as missing" });
           }
+
           toast.success(`Spare keys synced — ${updates.length} updated, ${noSpare.length} marked missing.`);
           setSpareResult(null);
           setSpareFile(null);
