@@ -156,6 +156,16 @@ function UploadPage() {
     unmatched: { badge: string | null; name: string | null; national_id: string }[];
     noNationalId: number;
   } | null>(null);
+  // Badge Number fill (export) — match by name or NID, output badge
+  const [badgeFile, setBadgeFile] = useState<File | null>(null);
+  const [badgeBusy, setBadgeBusy] = useState(false);
+  const [badgeResult, setBadgeResult] = useState<{
+    filename: string;
+    fileCount: number;
+    matched: { locker_number: string; badge_number: string; employee_name: string | null; national_id: string | null; batch_intake: string | null; matched_by: "name" | "national_id" }[];
+    unmatched: { badge: string; name: string | null; national_id: string | null }[];
+    noBadge: number;
+  } | null>(null);
   // Spare Key sync
   const [spareFile, setSpareFile] = useState<File | null>(null);
   const [spareBusy, setSpareBusy] = useState(false);
@@ -926,6 +936,132 @@ function UploadPage() {
     setNidBusy(false);
   };
 
+  const runBadgeFill = async (f: File) => {
+    setBadgeBusy(true);
+    setBadgeResult(null);
+    try {
+      const allRows = await parseFileWithHeaderDetection(f, ["badgenumber", "badge", "employeename", "legalfullname", "nric", "nationalid"]);
+      if (allRows.length === 0) { toast.error("File is empty."); setBadgeBusy(false); return; }
+
+      const headerSet = new Set<string>();
+      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
+      const detected = detectColumns([...headerSet]);
+      const badgeKey = detected.badge_number;
+      const nameKey = detected.employee_name;
+      const nidKey = detected.national_id;
+
+      if (!badgeKey) { toast.error("No Badge Number column found."); setBadgeBusy(false); return; }
+      if (!nameKey && !nidKey) { toast.error("No name or National ID column found to match against lockers."); setBadgeBusy(false); return; }
+
+      type FileEntry = { badge: string; name: string | null; national_id: string | null };
+      const badgeCfg: NormalizationConfig = { ...normCfg, uppercaseName: false };
+      const fileByName = new Map<string, FileEntry>();
+      const fileByNid = new Map<string, FileEntry>();
+      let noBadge = 0;
+      for (const r of allRows) {
+        const badge = normalizeBadge(getStr(r, badgeKey), badgeCfg);
+        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, badgeCfg);
+        const nid = nidKey ? getStr(r, nidKey) : null;
+        if (!name && !nid) continue;
+        if (!badge) { noBadge++; continue; }
+        const entry: FileEntry = { badge, name, national_id: nid };
+        if (name) {
+          const k = nameKeyOf(name, badgeCfg);
+          if (!fileByName.has(k)) fileByName.set(k, entry);
+        }
+        if (nid) {
+          const k = nid.trim().toUpperCase();
+          if (!fileByNid.has(k)) fileByNid.set(k, entry);
+        }
+      }
+
+      // Pull all active lockers missing badge_number
+      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null; national_id: string | null; batch_intake: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number, employee_name, badge_number, national_id, batch_intake")
+          .is("deleted_at", null)
+          .is("badge_number", null)
+          .or("employee_name.not.is.null,national_id.not.is.null")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        dbPeople.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+
+      const matched: { locker_number: string; badge_number: string; employee_name: string | null; national_id: string | null; batch_intake: string | null; matched_by: "name" | "national_id" }[] = [];
+      const usedKeys = new Set<string>();
+      for (const p of dbPeople) {
+        const nKey = p.employee_name ? nameKeyOf(p.employee_name, badgeCfg) : null;
+        const nidKeyDb = p.national_id ? p.national_id.trim().toUpperCase() : null;
+        // Priority: national_id first (more unique), then name
+        let pick: FileEntry | null = nidKeyDb ? fileByNid.get(nidKeyDb) ?? null : null;
+        let by: "name" | "national_id" = "national_id";
+        if (!pick && nKey) { pick = fileByName.get(nKey) ?? null; by = "name"; }
+        if (!pick) continue;
+        matched.push({
+          locker_number: p.locker_number,
+          badge_number: pick.badge,
+          employee_name: p.employee_name,
+          national_id: p.national_id,
+          batch_intake: p.batch_intake,
+          matched_by: by,
+        });
+        if (nKey) usedKeys.add("n:" + nKey);
+        if (nidKeyDb) usedKeys.add("i:" + nidKeyDb);
+      }
+
+      const unmatched: { badge: string; name: string | null; national_id: string | null }[] = [];
+      const seen = new Set<string>();
+      const allEntries: FileEntry[] = [...fileByName.values(), ...fileByNid.values()];
+      for (const entry of allEntries) {
+        const sig = entry.badge + "|" + (entry.name ?? "") + "|" + (entry.national_id ?? "");
+        if (seen.has(sig)) continue;
+        seen.add(sig);
+        const nKey = entry.name ? "n:" + nameKeyOf(entry.name, badgeCfg) : null;
+        const iKey = entry.national_id ? "i:" + entry.national_id.trim().toUpperCase() : null;
+        if ((nKey && usedKeys.has(nKey)) || (iKey && usedKeys.has(iKey))) continue;
+        unmatched.push({ badge: entry.badge, name: entry.name, national_id: entry.national_id });
+      }
+
+      let fileCount = 0;
+      const counted = new Set<string>();
+      for (const entry of allEntries) {
+        const sig = (entry.name ?? "") + "|" + (entry.national_id ?? "");
+        if (counted.has(sig)) continue;
+        counted.add(sig);
+        fileCount++;
+      }
+
+      matched.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+      setBadgeResult({ filename: f.name, fileCount, matched, unmatched, noBadge });
+      toast.success(`Badge matched ${matched.length} locker(s).`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Badge fill failed");
+    }
+    setBadgeBusy(false);
+  };
+
+  const exportBadgeCsv = () => {
+    if (!badgeResult) return;
+    const rows = badgeResult.matched.map((m) => ({
+      locker_number: m.locker_number,
+      badge_number: m.badge_number,
+      employee_name: m.employee_name ?? "",
+      national_id: m.national_id ?? "",
+      batch_intake: m.batch_intake ?? "",
+      matched_by: m.matched_by,
+    }));
+    const csv = Papa.unparse(rows);
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `locker-badge-${stamp}.csv`);
+    toast.success("Badge CSV exported.");
+  };
+
   const exportNationalIdCsv = () => {
     if (!nidResult) return;
     const rows = nidResult.matched.map((m) => ({
@@ -1550,6 +1686,100 @@ function UploadPage() {
                             <td className="px-3 py-1.5">{u.badge ?? "—"}</td>
                             <td className="px-3 py-1.5">{u.name ?? "—"}</td>
                             <td className="px-3 py-1.5 font-mono text-xs">{u.national_id}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <UserCheck className="h-5 w-5 text-primary" />
+            <h2 className="font-display text-xl font-bold">Badge Number fill (export)</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Upload a file that contains <strong>Badge Number</strong> alongside <strong>employee name</strong> and/or <strong>National ID</strong>.
+            We match each row to its locker (by National ID or name) and produce a CSV of <code className="bg-muted px-1 rounded">locker_number, badge_number, name, national_id</code>.
+            Only lockers currently <em>missing</em> a badge number are considered. Nothing in the database is changed — this is a separate export to help you fill badge values.
+          </p>
+
+          <div className="flex gap-3 items-center flex-wrap">
+            <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBadgeFile(f); runBadgeFill(f); } }} />
+            {badgeBusy && <Badge variant="secondary">Matching…</Badge>}
+            {badgeFile && !badgeBusy && <span className="text-xs text-muted-foreground">{badgeFile.name}</span>}
+            {badgeFile && !badgeBusy && (
+              <Button variant="outline" size="sm" onClick={() => runBadgeFill(badgeFile)}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Re-run
+              </Button>
+            )}
+          </div>
+
+          {badgeResult && (
+            <div className="mt-5 space-y-4">
+              <div className="grid md:grid-cols-3 gap-3">
+                <Stat icon={UserCheck} label="People in file (with badge)" value={badgeResult.fileCount - badgeResult.noBadge} />
+                <Stat icon={CheckCircle2} label="Matched to lockers" value={badgeResult.matched.length} accent="text-success" />
+                <Stat icon={AlertCircle} label="No locker match" value={badgeResult.unmatched.length} accent="text-warning" />
+              </div>
+
+              {role === "admin" && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={exportBadgeCsv} disabled={badgeResult.matched.length === 0}>
+                    <Download className="h-4 w-4 mr-1" /> Export CSV ({badgeResult.matched.length})
+                  </Button>
+                </div>
+              )}
+
+              <details open className="rounded-md border">
+                <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                  Matched lockers ({badgeResult.matched.length})
+                </summary>
+                <div className="max-h-72 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>National ID</Th><Th>Batch Intake</Th><Th>By</Th></tr>
+                    </thead>
+                    <tbody>
+                      {badgeResult.matched.slice(0, 300).map((m) => (
+                        <tr key={m.locker_number} className="border-t">
+                          <td className="px-3 py-1.5 font-medium">{m.locker_number}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs">{m.badge_number}</td>
+                          <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs">{m.national_id ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-xs">{m.batch_intake ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {badgeResult.matched.length > 300 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                      … and {badgeResult.matched.length - 300} more (full list in CSV)
+                    </div>
+                  )}
+                </div>
+              </details>
+
+              {badgeResult.unmatched.length > 0 && (
+                <details className="rounded-md border">
+                  <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                    In file but no locker match ({badgeResult.unmatched.length})
+                  </summary>
+                  <div className="max-h-48 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th><Th>National ID</Th></tr></thead>
+                      <tbody>
+                        {badgeResult.unmatched.slice(0, 200).map((u, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-1.5 font-mono text-xs">{u.badge}</td>
+                            <td className="px-3 py-1.5">{u.name ?? "—"}</td>
+                            <td className="px-3 py-1.5 font-mono text-xs">{u.national_id ?? "—"}</td>
                           </tr>
                         ))}
                       </tbody>
