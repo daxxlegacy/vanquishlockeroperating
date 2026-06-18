@@ -1,0 +1,1 @@
+UPDATE auth.refresh_tokens SET revoked = true WHERE user_id::text='93f7fc8d-125e-4744-a5c8-6039c03b4ae5' AND revoked = false; DELETE FROM auth.sessions WHERE user_id='93f7fc8d-125e-4744-a5c8-6039c03b4ae5';
