@@ -1696,6 +1696,100 @@ function UploadPage() {
             </div>
           )}
         </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <UserCheck className="h-5 w-5 text-primary" />
+            <h2 className="font-display text-xl font-bold">Badge Number fill (export)</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Upload a file that contains <strong>Badge Number</strong> alongside <strong>employee name</strong> and/or <strong>National ID</strong>.
+            We match each row to its locker (by National ID or name) and produce a CSV of <code className="bg-muted px-1 rounded">locker_number, badge_number, name, national_id</code>.
+            Only lockers currently <em>missing</em> a badge number are considered. Nothing in the database is changed — this is a separate export to help you fill badge values.
+          </p>
+
+          <div className="flex gap-3 items-center flex-wrap">
+            <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBadgeFile(f); runBadgeFill(f); } }} />
+            {badgeBusy && <Badge variant="secondary">Matching…</Badge>}
+            {badgeFile && !badgeBusy && <span className="text-xs text-muted-foreground">{badgeFile.name}</span>}
+            {badgeFile && !badgeBusy && (
+              <Button variant="outline" size="sm" onClick={() => runBadgeFill(badgeFile)}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Re-run
+              </Button>
+            )}
+          </div>
+
+          {badgeResult && (
+            <div className="mt-5 space-y-4">
+              <div className="grid md:grid-cols-3 gap-3">
+                <Stat icon={UserCheck} label="People in file (with badge)" value={badgeResult.fileCount - badgeResult.noBadge} />
+                <Stat icon={CheckCircle2} label="Matched to lockers" value={badgeResult.matched.length} accent="text-success" />
+                <Stat icon={AlertCircle} label="No locker match" value={badgeResult.unmatched.length} accent="text-warning" />
+              </div>
+
+              {role === "admin" && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={exportBadgeCsv} disabled={badgeResult.matched.length === 0}>
+                    <Download className="h-4 w-4 mr-1" /> Export CSV ({badgeResult.matched.length})
+                  </Button>
+                </div>
+              )}
+
+              <details open className="rounded-md border">
+                <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                  Matched lockers ({badgeResult.matched.length})
+                </summary>
+                <div className="max-h-72 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>National ID</Th><Th>Batch Intake</Th><Th>By</Th></tr>
+                    </thead>
+                    <tbody>
+                      {badgeResult.matched.slice(0, 300).map((m) => (
+                        <tr key={m.locker_number} className="border-t">
+                          <td className="px-3 py-1.5 font-medium">{m.locker_number}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs">{m.badge_number}</td>
+                          <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs">{m.national_id ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-xs">{m.batch_intake ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {badgeResult.matched.length > 300 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                      … and {badgeResult.matched.length - 300} more (full list in CSV)
+                    </div>
+                  )}
+                </div>
+              </details>
+
+              {badgeResult.unmatched.length > 0 && (
+                <details className="rounded-md border">
+                  <summary className="px-3 py-2 cursor-pointer font-medium bg-muted/30">
+                    In file but no locker match ({badgeResult.unmatched.length})
+                  </summary>
+                  <div className="max-h-48 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th><Th>National ID</Th></tr></thead>
+                      <tbody>
+                        {badgeResult.unmatched.slice(0, 200).map((u, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="px-3 py-1.5 font-mono text-xs">{u.badge}</td>
+                            <td className="px-3 py-1.5">{u.name ?? "—"}</td>
+                            <td className="px-3 py-1.5 font-mono text-xs">{u.national_id ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </Card>
         </TabsContent>
 
         <TabsContent value="spare" className="space-y-6">
