@@ -80,10 +80,9 @@ function aggregateStatus(group: Locker[]): string {
 function MapPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
-  const [lockers, setLockers] = useState<Locker[] | null>(null);
+  const { lockers } = useLockers();
   const [selected, setSelected] = useState<string | null>(null);
   const [compartmentNumber, setCompartmentNumber] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [activeSheet, setActiveSheet] = useState<string | undefined>(undefined);
   const [showValidation, setShowValidation] = useState(false);
   const [LAYOUT, setLAYOUT] = useState<MapLayout>(() => getLayout());
@@ -102,56 +101,6 @@ function MapPage() {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    (async () => {
-      const all: Locker[] = [];
-      let from = 0;
-      const PAGE = 1000;
-      while (true) {
-        const { data, error } = await supabase
-          .from("lockers")
-          .select("*")
-          .is("deleted_at", null)
-          .range(from, from + PAGE - 1);
-        if (error || !data) break;
-        all.push(...data);
-        if (data.length < PAGE) break;
-        from += PAGE;
-      }
-      if (!cancelled) setLockers(all);
-    })();
-
-    // Live sync: any change to a locker (status, employee, etc.) reflects on the map immediately.
-    const channel = supabase
-      .channel("lockers-map-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "lockers" }, (payload) => {
-        setLockers((prev) => {
-          if (!prev) return prev;
-          const next = [...prev];
-          if (payload.eventType === "INSERT") {
-            const row = payload.new as Locker;
-            if (!row.deleted_at) next.push(row);
-          } else if (payload.eventType === "UPDATE") {
-            const row = payload.new as Locker;
-            const idx = next.findIndex((l) => l.id === row.id);
-            if (row.deleted_at) {
-              if (idx >= 0) next.splice(idx, 1);
-            } else if (idx >= 0) next[idx] = row;
-            else next.push(row);
-          } else if (payload.eventType === "DELETE") {
-            const old = payload.old as Partial<Locker>;
-            const idx = next.findIndex((l) => l.id === old.id);
-            if (idx >= 0) next.splice(idx, 1);
-          }
-          return next;
-        });
-      })
-      .subscribe();
-
-    return () => { cancelled = true; supabase.removeChannel(channel); };
-  }, [user, refreshKey]);
 
   // Group lockers by their number prefix so map cell "1" finds 1A..1F
   const byPrefix = useMemo(() => {
