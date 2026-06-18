@@ -947,11 +947,26 @@ function UploadPage() {
       for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
       const detected = detectColumns([...headerSet]);
       const badgeKey = detected.badge_number;
-      const nameKey = detected.employee_name;
       const nidKey = detected.national_id;
 
+      // Match using BOTH Employee Name and Legal Full Name columns from HR listing
+      const nameKeys: string[] = [];
+      const seenNameKeys = new Set<string>();
+      for (const h of headerSet) {
+        const n = norm(h);
+        if (
+          n.includes("employeename") ||
+          n.includes("fullname") ||
+          n.includes("legalname") ||
+          n === "name" ||
+          n.includes("ocname")
+        ) {
+          if (!seenNameKeys.has(h)) { nameKeys.push(h); seenNameKeys.add(h); }
+        }
+      }
+
       if (!badgeKey) { toast.error("No Badge Number column found."); setBadgeBusy(false); return; }
-      if (!nameKey && !nidKey) { toast.error("No name or National ID column found to match against lockers."); setBadgeBusy(false); return; }
+      if (nameKeys.length === 0 && !nidKey) { toast.error("No name (Employee Name / Legal Full Name) or National ID column found to match against lockers."); setBadgeBusy(false); return; }
 
       type FileEntry = { badge: string; name: string | null; national_id: string | null };
       const badgeCfg: NormalizationConfig = { ...normCfg, uppercaseName: false };
@@ -960,13 +975,17 @@ function UploadPage() {
       let noBadge = 0;
       for (const r of allRows) {
         const badge = normalizeBadge(getStr(r, badgeKey), badgeCfg);
-        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, badgeCfg);
+        const names: string[] = [];
+        for (const nk of nameKeys) {
+          const nm = normalizeName(getStr(r, nk), badgeCfg);
+          if (nm) names.push(nm);
+        }
         const nid = nidKey ? getStr(r, nidKey) : null;
-        if (!name && !nid) continue;
+        if (names.length === 0 && !nid) continue;
         if (!badge) { noBadge++; continue; }
-        const entry: FileEntry = { badge, name, national_id: nid };
-        if (name) {
-          const k = nameKeyOf(name, badgeCfg);
+        const entry: FileEntry = { badge, name: names[0] ?? null, national_id: nid };
+        for (const nm of names) {
+          const k = nameKeyOf(nm, badgeCfg);
           if (!fileByName.has(k)) fileByName.set(k, entry);
         }
         if (nid) {
