@@ -327,7 +327,6 @@ function LockersPage() {
     "Locker Number": l.locker_number,
     "Location": l.location,
     "Unit Type": l.unit_type ?? "",
-    "Key Lock": l.key_lock ?? "",
     "Badge Number": l.badge_number ?? "",
     "National ID": l.national_id ?? "",
     "Employee Name": l.employee_name ?? "",
