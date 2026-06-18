@@ -936,6 +936,132 @@ function UploadPage() {
     setNidBusy(false);
   };
 
+  const runBadgeFill = async (f: File) => {
+    setBadgeBusy(true);
+    setBadgeResult(null);
+    try {
+      const allRows = await parseFileWithHeaderDetection(f, ["badgenumber", "badge", "employeename", "legalfullname", "nric", "nationalid"]);
+      if (allRows.length === 0) { toast.error("File is empty."); setBadgeBusy(false); return; }
+
+      const headerSet = new Set<string>();
+      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
+      const detected = detectColumns([...headerSet]);
+      const badgeKey = detected.badge_number;
+      const nameKey = detected.employee_name;
+      const nidKey = detected.national_id;
+
+      if (!badgeKey) { toast.error("No Badge Number column found."); setBadgeBusy(false); return; }
+      if (!nameKey && !nidKey) { toast.error("No name or National ID column found to match against lockers."); setBadgeBusy(false); return; }
+
+      type FileEntry = { badge: string; name: string | null; national_id: string | null };
+      const badgeCfg: NormalizationConfig = { ...normCfg, uppercaseName: false };
+      const fileByName = new Map<string, FileEntry>();
+      const fileByNid = new Map<string, FileEntry>();
+      let noBadge = 0;
+      for (const r of allRows) {
+        const badge = normalizeBadge(getStr(r, badgeKey), badgeCfg);
+        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, badgeCfg);
+        const nid = nidKey ? getStr(r, nidKey) : null;
+        if (!name && !nid) continue;
+        if (!badge) { noBadge++; continue; }
+        const entry: FileEntry = { badge, name, national_id: nid };
+        if (name) {
+          const k = nameKeyOf(name, badgeCfg);
+          if (!fileByName.has(k)) fileByName.set(k, entry);
+        }
+        if (nid) {
+          const k = nid.trim().toUpperCase();
+          if (!fileByNid.has(k)) fileByNid.set(k, entry);
+        }
+      }
+
+      // Pull all active lockers missing badge_number
+      const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null; national_id: string | null; batch_intake: string | null }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("lockers")
+          .select("locker_number, employee_name, badge_number, national_id, batch_intake")
+          .is("deleted_at", null)
+          .is("badge_number", null)
+          .or("employee_name.not.is.null,national_id.not.is.null")
+          .range(from, from + 999);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        dbPeople.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+
+      const matched: { locker_number: string; badge_number: string; employee_name: string | null; national_id: string | null; batch_intake: string | null; matched_by: "name" | "national_id" }[] = [];
+      const usedKeys = new Set<string>();
+      for (const p of dbPeople) {
+        const nKey = p.employee_name ? nameKeyOf(p.employee_name, badgeCfg) : null;
+        const nidKeyDb = p.national_id ? p.national_id.trim().toUpperCase() : null;
+        // Priority: national_id first (more unique), then name
+        let pick: FileEntry | null = nidKeyDb ? fileByNid.get(nidKeyDb) ?? null : null;
+        let by: "name" | "national_id" = "national_id";
+        if (!pick && nKey) { pick = fileByName.get(nKey) ?? null; by = "name"; }
+        if (!pick) continue;
+        matched.push({
+          locker_number: p.locker_number,
+          badge_number: pick.badge,
+          employee_name: p.employee_name,
+          national_id: p.national_id,
+          batch_intake: p.batch_intake,
+          matched_by: by,
+        });
+        if (nKey) usedKeys.add("n:" + nKey);
+        if (nidKeyDb) usedKeys.add("i:" + nidKeyDb);
+      }
+
+      const unmatched: { badge: string; name: string | null; national_id: string | null }[] = [];
+      const seen = new Set<string>();
+      const allEntries: FileEntry[] = [...fileByName.values(), ...fileByNid.values()];
+      for (const entry of allEntries) {
+        const sig = entry.badge + "|" + (entry.name ?? "") + "|" + (entry.national_id ?? "");
+        if (seen.has(sig)) continue;
+        seen.add(sig);
+        const nKey = entry.name ? "n:" + nameKeyOf(entry.name, badgeCfg) : null;
+        const iKey = entry.national_id ? "i:" + entry.national_id.trim().toUpperCase() : null;
+        if ((nKey && usedKeys.has(nKey)) || (iKey && usedKeys.has(iKey))) continue;
+        unmatched.push({ badge: entry.badge, name: entry.name, national_id: entry.national_id });
+      }
+
+      let fileCount = 0;
+      const counted = new Set<string>();
+      for (const entry of allEntries) {
+        const sig = (entry.name ?? "") + "|" + (entry.national_id ?? "");
+        if (counted.has(sig)) continue;
+        counted.add(sig);
+        fileCount++;
+      }
+
+      matched.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+      setBadgeResult({ filename: f.name, fileCount, matched, unmatched, noBadge });
+      toast.success(`Badge matched ${matched.length} locker(s).`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Badge fill failed");
+    }
+    setBadgeBusy(false);
+  };
+
+  const exportBadgeCsv = () => {
+    if (!badgeResult) return;
+    const rows = badgeResult.matched.map((m) => ({
+      locker_number: m.locker_number,
+      badge_number: m.badge_number,
+      employee_name: m.employee_name ?? "",
+      national_id: m.national_id ?? "",
+      batch_intake: m.batch_intake ?? "",
+      matched_by: m.matched_by,
+    }));
+    const csv = Papa.unparse(rows);
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `locker-badge-${stamp}.csv`);
+    toast.success("Badge CSV exported.");
+  };
+
   const exportNationalIdCsv = () => {
     if (!nidResult) return;
     const rows = nidResult.matched.map((m) => ({
