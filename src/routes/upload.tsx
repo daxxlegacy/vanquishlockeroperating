@@ -156,6 +156,16 @@ function UploadPage() {
     unmatched: { badge: string | null; name: string | null; national_id: string }[];
     noNationalId: number;
   } | null>(null);
+  // Badge Number fill (export) — match by name or NID, output badge
+  const [badgeFile, setBadgeFile] = useState<File | null>(null);
+  const [badgeBusy, setBadgeBusy] = useState(false);
+  const [badgeResult, setBadgeResult] = useState<{
+    filename: string;
+    fileCount: number;
+    matched: { locker_number: string; badge_number: string; employee_name: string | null; national_id: string | null; batch_intake: string | null; matched_by: "name" | "national_id" }[];
+    unmatched: { badge: string; name: string | null; national_id: string | null }[];
+    noBadge: number;
+  } | null>(null);
   // Spare Key sync
   const [spareFile, setSpareFile] = useState<File | null>(null);
   const [spareBusy, setSpareBusy] = useState(false);
