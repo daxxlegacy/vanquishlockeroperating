@@ -320,7 +320,7 @@ function MapPage() {
         lockerId={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
-        onUpdated={() => setRefreshKey((k) => k + 1)}
+        onUpdated={() => invalidateLockersCache()}
       />
 
       <ValidationReportDialog
