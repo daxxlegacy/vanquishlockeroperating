@@ -17,8 +17,9 @@ import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, File
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
-import { getLockersSnapshot } from "@/lib/lockers-cache";
+import { getLockersSnapshot, invalidateLockersCache } from "@/lib/lockers-cache";
 import { terminateLocker } from "@/lib/termination-actions";
+import { defaultPostTerminationStatus } from "@/lib/locker-status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
