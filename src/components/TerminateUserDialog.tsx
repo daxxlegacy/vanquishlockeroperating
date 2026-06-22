@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBatchIntake } from "@/lib/locker-utils";
 import { syncTerminationToOccupancy } from "@/lib/occupancy-sync";
-import { LOCKER_STATUSES, STATUS_LABEL } from "@/lib/locker-status";
+import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -27,7 +27,7 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
   const [reason, setReason] = useState("");
-  const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>("empty");
+  const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>(() => defaultPostTerminationStatus(locker.key_lock));
   const [busy, setBusy] = useState(false);
 
   const iso = parseBatchIntake(date);

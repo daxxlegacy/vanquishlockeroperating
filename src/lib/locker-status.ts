@@ -102,3 +102,20 @@ export function normalizeLockerStatus(
 
   return hasBadge ? "active" : "empty";
 }
+
+/**
+ * Default locker status to set after terminating an occupant, based on the
+ * locker's key/lock type. Round-key and pull-key locks lose their primary key
+ * with the occupant, so the locker enters "find spare key". Numeric/numerical
+ * locks just need a code reset, so the locker goes to "reset".
+ * Falls back to "empty" when the lock type is unknown.
+ */
+export function defaultPostTerminationStatus(
+  keyLock: string | null | undefined,
+): LockerStatus {
+  const n = (keyLock ?? "").toLowerCase();
+  if (!n) return "empty";
+  if (n.includes("round") || n.includes("pull")) return "find_spare_key";
+  if (n.includes("numeric") || n.includes("numerical")) return "reset";
+  return "empty";
+}

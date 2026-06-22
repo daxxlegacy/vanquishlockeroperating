@@ -17,8 +17,9 @@ import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, File
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
-import { getLockersSnapshot } from "@/lib/lockers-cache";
+import { getLockersSnapshot, invalidateLockersCache } from "@/lib/lockers-cache";
 import { terminateLocker } from "@/lib/termination-actions";
+import { defaultPostTerminationStatus } from "@/lib/locker-status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -53,6 +54,7 @@ type DbRow = {
   national_id: string | null;
   batch_intake: string | null; // ISO
   work_location: string | null;
+  key_lock: string | null;
 };
 
 type Bucket =
@@ -589,7 +591,8 @@ function ResultsTable({
       const r = targets[i];
       try {
         const date = r.hr?.terminateDate || today;
-        await terminateLocker(r.db, date, r.reason || null, "empty");
+        const postStatus = defaultPostTerminationStatus(r.db.key_lock);
+        await terminateLocker(r.db, date, r.reason || null, postStatus);
         okIds.push(r.db.id);
       } catch (e) {
         failed++;
@@ -601,7 +604,10 @@ function ResultsTable({
     setProgress(null);
     setConfirm(null);
     setSelected(new Set());
-    if (okIds.length > 0) onRowsTerminated(okIds);
+    if (okIds.length > 0) {
+      invalidateLockersCache();
+      onRowsTerminated(okIds);
+    }
     if (failed === 0) toast.success(`Terminated ${okIds.length} locker${okIds.length === 1 ? "" : "s"}.`);
     else toast.warning(`Terminated ${okIds.length}, failed ${failed}. See console for details.`);
   };
@@ -814,6 +820,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
         national_id: l.national_id,
         batch_intake: l.batch_intake,
         work_location: l.work_location,
+        key_lock: l.key_lock,
       });
     }
     return out;
@@ -824,7 +831,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
   while (true) {
     const { data, error } = await supabase
       .from("lockers")
-      .select("id, locker_number, location, row_label, employee_name, badge_number, national_id, batch_intake, work_location")
+      .select("id, locker_number, location, row_label, employee_name, badge_number, national_id, batch_intake, work_location, key_lock")
       .is("deleted_at", null)
       .or("employee_name.not.is.null,badge_number.not.is.null")
       .range(from, from + 999);
