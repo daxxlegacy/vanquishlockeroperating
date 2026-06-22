@@ -590,7 +590,8 @@ function ResultsTable({
       const r = targets[i];
       try {
         const date = r.hr?.terminateDate || today;
-        await terminateLocker(r.db, date, r.reason || null, "empty");
+        const postStatus = defaultPostTerminationStatus(r.db.key_lock);
+        await terminateLocker(r.db, date, r.reason || null, postStatus);
         okIds.push(r.db.id);
       } catch (e) {
         failed++;
@@ -602,7 +603,10 @@ function ResultsTable({
     setProgress(null);
     setConfirm(null);
     setSelected(new Set());
-    if (okIds.length > 0) onRowsTerminated(okIds);
+    if (okIds.length > 0) {
+      invalidateLockersCache();
+      onRowsTerminated(okIds);
+    }
     if (failed === 0) toast.success(`Terminated ${okIds.length} locker${okIds.length === 1 ? "" : "s"}.`);
     else toast.warning(`Terminated ${okIds.length}, failed ${failed}. See console for details.`);
   };
