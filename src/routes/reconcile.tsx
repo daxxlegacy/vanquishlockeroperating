@@ -820,6 +820,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
         national_id: l.national_id,
         batch_intake: l.batch_intake,
         work_location: l.work_location,
+        key_lock: l.key_lock,
       });
     }
     return out;
