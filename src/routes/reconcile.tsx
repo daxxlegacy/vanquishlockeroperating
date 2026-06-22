@@ -831,7 +831,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
   while (true) {
     const { data, error } = await supabase
       .from("lockers")
-      .select("id, locker_number, location, row_label, employee_name, badge_number, national_id, batch_intake, work_location")
+      .select("id, locker_number, location, row_label, employee_name, badge_number, national_id, batch_intake, work_location, key_lock")
       .is("deleted_at", null)
       .or("employee_name.not.is.null,badge_number.not.is.null")
       .range(from, from + 999);
