@@ -27,7 +27,7 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
   const [reason, setReason] = useState("");
-  const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>("empty");
+  const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>(() => defaultPostTerminationStatus(locker.key_lock));
   const [busy, setBusy] = useState(false);
 
   const iso = parseBatchIntake(date);
