@@ -54,6 +54,7 @@ type DbRow = {
   national_id: string | null;
   batch_intake: string | null; // ISO
   work_location: string | null;
+  key_lock: string | null;
 };
 
 type Bucket =
