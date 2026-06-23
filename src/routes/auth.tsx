@@ -67,7 +67,7 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
+    <div className="min-h-[100dvh] grid lg:grid-cols-2 bg-background">
       <div className="hidden lg:flex flex-col justify-between bg-sidebar text-sidebar-foreground p-12">
         <div className="flex items-center gap-2 font-display font-bold text-xl">
           <div className="h-9 w-9 rounded-lg bg-sidebar-primary grid place-items-center">
@@ -87,7 +87,7 @@ function AuthPage() {
         <p className="text-xs text-sidebar-foreground/50">New accounts require admin approval.</p>
       </div>
 
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center px-6 py-[max(env(safe-area-inset-top),3rem)] pb-[max(env(safe-area-inset-bottom),3rem)] lg:p-8">
         <div className="w-full max-w-sm">
           <h2 className="font-display text-2xl font-bold">Welcome to LockerOps</h2>
           <p className="text-muted-foreground text-sm mt-1">Sign in or request access.</p>
