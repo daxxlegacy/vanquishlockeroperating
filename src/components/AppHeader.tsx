@@ -35,7 +35,7 @@ export function AppHeader() {
   });
 
   return (
-    <header className="border-b bg-sidebar text-sidebar-foreground sticky top-0 z-40">
+    <header className="border-b bg-sidebar text-sidebar-foreground sticky top-[env(safe-area-inset-top)] z-40 pt-[env(safe-area-inset-top)]">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center gap-3 xl:gap-8">
         {/* Mobile menu */}
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
