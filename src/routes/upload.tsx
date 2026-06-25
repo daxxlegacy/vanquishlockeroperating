@@ -444,7 +444,14 @@ function UploadPage() {
     try {
       const CHUNK = 200;
       for (let i = 0; i < preview.parsed.length; i += CHUNK) {
-        const slice = preview.parsed.slice(i, i + CHUNK);
+        const slice = preview.parsed.slice(i, i + CHUNK).map((r) => {
+          // Never overwrite spare_key_status from the HR/roster upload —
+          // it is managed exclusively by the dedicated Spare Key sync.
+          // Sending it here would reset every locker to "unknown" daily.
+          const { spare_key_status: _omit, ...rest } = r;
+          void _omit;
+          return rest;
+        });
         const { error } = await supabase
           .from("lockers")
           .upsert(slice, { onConflict: "locker_number" });
