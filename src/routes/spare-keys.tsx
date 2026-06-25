@@ -209,7 +209,7 @@ function SpareKeysPage() {
           )}
         </Card>
       </main>
-      <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
+      <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} mode="spare" />
     </div>
   );
 }

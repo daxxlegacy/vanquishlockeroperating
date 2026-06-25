@@ -15,6 +15,7 @@ import { TerminateUserDialog } from "@/components/TerminateUserDialog";
 import { TransferLockerDialog } from "@/components/TransferLockerDialog";
 import { SwapLockerDialog } from "@/components/SwapLockerDialog";
 import { syncActivationToOccupancy, syncMetadataToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
+import { LOCKER_STATUSES } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -24,13 +25,16 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onUpdated?: () => void;
+  mode?: "full" | "spare";
 }
 
-import { LOCKER_STATUSES } from "@/lib/locker-status";
-const STATUSES = LOCKER_STATUSES;
-const KEYS = ["available", "missing", "with_employee", "damaged", "unknown"] as const;
+const SPARE_DETAIL_OPTIONS = ["missing", "available", "taken", "taken_for_cleaning"] as const;
 
-export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
+const STATUSES = LOCKER_STATUSES;
+
+
+export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full" }: Props) {
+  const isSpare = mode === "spare";
   const { role } = useAuth();
   const [locker, setLocker] = useState<Locker | null>(null);
   const [saving, setSaving] = useState(false);
@@ -106,38 +110,51 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
           <DialogHeader>
             <DialogTitle className="font-display">Locker {locker.locker_number}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
-            <Field label="Location" value={locker.location} onChange={(v) => update("location", v)} disabled={!isAdmin} />
-            <Field label="Unit Type" value={locker.unit_type ?? ""} onChange={(v) => update("unit_type", v)} disabled={!isAdmin} />
-            <Field label="Key Lock" value={locker.key_lock ?? ""} onChange={(v) => update("key_lock", v)} disabled={!isAdmin} />
-            <Field label="Badge Number" value={locker.badge_number ?? ""} onChange={(v) => update("badge_number", v)} disabled={!isAdmin} />
-            <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
-            <Field label="Work Location" value={locker.work_location ?? ""} onChange={(v) => update("work_location", v)} disabled={!isAdmin} />
-            <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
-            <DateField label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
-            <Field label="National ID" value={locker.national_id ?? ""} onChange={(v) => update("national_id", v)} disabled={!isAdmin} />
-            <div className="sm:col-span-2">
-              <Label>Custom Status (free text)</Label>
-              <Input
-                value={locker.custom_status ?? ""}
-                placeholder='e.g. "Blocked", "VIP hold", "Quarantine" — overrides Status when set'
-                onChange={(e) => update("custom_status", e.target.value)}
+          {isSpare ? (
+            <div className="py-4 space-y-3">
+              <p className="text-sm text-muted-foreground">Update the spare key status for this locker.</p>
+              <SelectField
+                label="Spare Key Status"
+                value={locker.spare_key_status ?? "unknown"}
+                options={SPARE_DETAIL_OPTIONS}
+                onChange={(v) => update("spare_key_status", v)}
                 disabled={!isAdmin}
               />
-              <p className="text-xs text-muted-foreground mt-1">Leave blank to use the standard Status above. When set, it shows everywhere across the app.</p>
             </div>
-            <div className="sm:col-span-2">
-              <Label>Remark</Label>
-              <Textarea
-                value={locker.remark ?? ""}
-                onChange={(e) => update("remark", e.target.value)}
-                disabled={!isAdmin}
-                rows={2}
-              />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+              <Field label="Location" value={locker.location} onChange={(v) => update("location", v)} disabled={!isAdmin} />
+              <Field label="Unit Type" value={locker.unit_type ?? ""} onChange={(v) => update("unit_type", v)} disabled={!isAdmin} />
+              <Field label="Key Lock" value={locker.key_lock ?? ""} onChange={(v) => update("key_lock", v)} disabled={!isAdmin} />
+              <Field label="Badge Number" value={locker.badge_number ?? ""} onChange={(v) => update("badge_number", v)} disabled={!isAdmin} />
+              <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
+              <Field label="Work Location" value={locker.work_location ?? ""} onChange={(v) => update("work_location", v)} disabled={!isAdmin} />
+              <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
+              <DateField label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
+              <Field label="National ID" value={locker.national_id ?? ""} onChange={(v) => update("national_id", v)} disabled={!isAdmin} />
+              <div className="sm:col-span-2">
+                <Label>Custom Status (free text)</Label>
+                <Input
+                  value={locker.custom_status ?? ""}
+                  placeholder='e.g. "Blocked", "VIP hold", "Quarantine" — overrides Status when set'
+                  onChange={(e) => update("custom_status", e.target.value)}
+                  disabled={!isAdmin}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave blank to use the standard Status above. When set, it shows everywhere across the app.</p>
+              </div>
+              <div className="sm:col-span-2">
+                <Label>Remark</Label>
+                <Textarea
+                  value={locker.remark ?? ""}
+                  onChange={(e) => update("remark", e.target.value)}
+                  disabled={!isAdmin}
+                  rows={2}
+                />
+              </div>
             </div>
-          </div>
+          )}
           <DialogFooter className="gap-2 sm:justify-between">
-            {isAdmin ? (
+            {!isSpare && isAdmin ? (
               <div className="flex gap-2 flex-wrap">
                 <Button variant="destructive" size="sm" disabled={saving} onClick={() => setDeleteOpen(true)}>
                   <Trash2 className="h-4 w-4 mr-1" /> Delete
