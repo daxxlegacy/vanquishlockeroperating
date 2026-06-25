@@ -9,7 +9,7 @@ import { UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBatchIntake } from "@/lib/locker-utils";
-import { syncTerminationToOccupancy } from "@/lib/occupancy-sync";
+import { terminateLocker } from "@/lib/termination-actions";
 import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
