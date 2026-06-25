@@ -153,12 +153,12 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                       key={l.id}
                       type="button"
                       onClick={() => setTargetId(l.id)}
-                      className={`w-full text-left px-3 py-2 text-sm grid grid-cols-[110px_1fr_1fr_auto] gap-3 items-center hover:bg-muted/50 ${sel ? "bg-primary/10" : ""}`}
+                      className={`w-full text-left px-3 py-2 text-sm grid grid-cols-[70px_1fr_auto] sm:grid-cols-[110px_1fr_1fr_auto] gap-2 sm:gap-3 items-center hover:bg-muted/50 ${sel ? "bg-primary/10" : ""}`}
                     >
                       <span className="font-semibold">{l.locker_number}</span>
-                      <span className="truncate text-muted-foreground">{l.location}{l.row_label ? ` · ${l.row_label}` : ""}</span>
-                      <span className="truncate text-xs text-muted-foreground">{l.key_lock ?? "—"}</span>
-                      <Badge variant="outline" className="gap-1.5 capitalize">
+                      <span className="truncate text-muted-foreground min-w-0">{l.location}{l.row_label ? ` · ${l.row_label}` : ""}</span>
+                      <span className="hidden sm:block truncate text-xs text-muted-foreground min-w-0">{l.key_lock ?? "—"}</span>
+                      <Badge variant="outline" className="gap-1.5 capitalize shrink-0">
                         <span className={`h-2 w-2 rounded-full ${STATUS_SWATCH[l.status as LockerStatus] ?? "bg-muted-foreground"}`} />
                         {STATUS_LABEL[l.status as LockerStatus] ?? l.status}
                       </Badge>
