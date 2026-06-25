@@ -253,11 +253,29 @@ function LockersPage() {
     setSort(null);
   };
 
+  // Distinct non-empty custom_status values across the dataset, used to extend
+  // the status filter dropdown with whatever admins have typed.
+  const customStatuses = useMemo(() => {
+    const s = new Set<string>();
+    for (const l of lockers ?? []) {
+      const c = (l.custom_status ?? "").trim();
+      if (c) s.add(c);
+    }
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
+  }, [lockers]);
+
   const preQuickFiltered = useMemo(() => {
     if (!lockers) return [];
     const q = debouncedSearch.toLowerCase().trim();
     return lockers.filter((l) => {
-      if (statusFilter !== "all" && l.status !== statusFilter) return false;
+      if (statusFilter !== "all") {
+        if (statusFilter.startsWith("custom:")) {
+          if ((l.custom_status ?? "").trim() !== statusFilter.slice("custom:".length)) return false;
+        } else if (l.status !== statusFilter || ((l.custom_status ?? "").trim() !== "")) {
+          // standard status filters exclude rows with a custom override set
+          return false;
+        }
+      }
       if (locFilter !== "all" && l.location !== locFilter) return false;
       if (keyLockFilter !== "all") {
         const k = (l.key_lock ?? "").trim();
