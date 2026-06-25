@@ -581,7 +581,7 @@ function MobileLockerList({
                 </div>
                 <div className="text-xs text-muted-foreground truncate">{l.location}</div>
               </div>
-              <StatusBadge status={l.status} />
+              <StatusBadge status={l.status} customStatus={l.custom_status} />
             </div>
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               <MobileField label="Employee" value={l.employee_name} wide />
