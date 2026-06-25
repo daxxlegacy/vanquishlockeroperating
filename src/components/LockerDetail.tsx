@@ -33,7 +33,8 @@ import { LOCKER_STATUSES } from "@/lib/locker-status";
 const STATUSES = LOCKER_STATUSES;
 const KEYS = ["available", "missing", "with_employee", "damaged", "unknown"] as const;
 
-export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
+export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full" }: Props) {
+  const isSpare = mode === "spare";
   const { role } = useAuth();
   const [locker, setLocker] = useState<Locker | null>(null);
   const [saving, setSaving] = useState(false);
