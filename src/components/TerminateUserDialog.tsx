@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserMinus } from "lucide-react";
 import { toast } from "sonner";
@@ -26,19 +26,19 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
   const today = new Date();
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState<"AWOL" | "RESIGN" | "">("");
   const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>(() => defaultPostTerminationStatus(locker.key_lock));
   const [busy, setBusy] = useState(false);
 
   const iso = parseBatchIntake(date);
   const dateOk = !!iso;
-  const canSubmit = dateOk && !busy && !!locker.employee_name;
+  const canSubmit = dateOk && !busy && !!locker.employee_name && !!reason;
 
   const handleTerminate = async () => {
-    if (!canSubmit || !iso) return;
+    if (!canSubmit || !iso || !reason) return;
     setBusy(true);
     try {
-      await terminateLocker(locker, iso, reason.trim() || null, newStatus);
+      await terminateLocker(locker, iso, reason, newStatus);
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       onOpenChange(false);
       setReason("");
@@ -86,8 +86,14 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
             </Select>
           </div>
           <div>
-            <Label htmlFor="term-reason">Reason (optional)</Label>
-            <Textarea id="term-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value.slice(0, 500))} />
+            <Label htmlFor="term-reason">Reason *</Label>
+            <Select value={reason} onValueChange={(v) => setReason(v as "AWOL" | "RESIGN")}>
+              <SelectTrigger id="term-reason"><SelectValue placeholder="Select a reason" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AWOL">AWOL (Absence Without Leave)</SelectItem>
+                <SelectItem value="RESIGN">RESIGN</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
