@@ -209,13 +209,14 @@ function UploadPage() {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      const all: { locker_number: string; employee_name: string | null; badge_number: string | null; national_id: string | null }[] = [];
+      const all: { locker_number: string; employee_name: string | null; badge_number: string | null; national_id: string | null; status: string | null }[] = [];
       let from = 0;
       while (true) {
         const { data, error } = await supabase
           .from("lockers")
-          .select("locker_number,employee_name,badge_number,national_id")
+          .select("locker_number,employee_name,badge_number,national_id,status")
           .is("deleted_at", null)
+          .eq("status", "active")
           .or("badge_number.is.null,national_id.is.null")
           .range(from, from + 999);
         if (error || !data || data.length === 0) break;
@@ -230,6 +231,7 @@ function UploadPage() {
         const missing: "badge" | "national_id" | "both" = noBadge && noNid ? "both" : noBadge ? "badge" : "national_id";
         return { locker_number: r.locker_number, employee_name: r.employee_name, badge_number: r.badge_number, national_id: r.national_id, missing };
       }).sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+
       setDbQuality({
         rows,
         missingBadge: rows.filter((r) => r.missing === "badge" || r.missing === "both").length,
