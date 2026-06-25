@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,7 +44,7 @@ function TerminatePage() {
     return `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   })();
   const [date, setDate] = useState(initialDateStr);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState<"AWOL" | "RESIGN" | "">("");
   const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "find_spare_key" | "repair" | "on_hold">("empty");
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -96,13 +96,13 @@ function TerminatePage() {
   }
 
   const isAdmin = role === "admin";
-  const canSubmit = !dateError && !busy && !!locker.employee_name && confirmText.trim() === locker.locker_number && isAdmin;
+  const canSubmit = !dateError && !busy && !!locker.employee_name && confirmText.trim() === locker.locker_number && isAdmin && !!reason;
 
   const handleTerminate = async () => {
-    if (!canSubmit || !iso) return;
+    if (!canSubmit || !iso || !reason) return;
     setBusy(true);
     try {
-      await terminateLocker(locker, iso, reason.trim() || null, newStatus);
+      await terminateLocker(locker, iso, reason, newStatus);
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       setDone(true);
     } catch (e) {
@@ -184,8 +184,14 @@ function TerminatePage() {
                 <p className="text-xs text-muted-foreground mt-1">Choose what happens to the locker after the user is released.</p>
               </div>
               <div>
-                <Label htmlFor="tr">Reason (optional)</Label>
-                <Textarea id="tr" rows={3} value={reason} onChange={(e) => setReason(e.target.value.slice(0, 500))} />
+                <Label htmlFor="tr">Reason *</Label>
+                <Select value={reason} onValueChange={(v) => setReason(v as "AWOL" | "RESIGN")}>
+                  <SelectTrigger id="tr"><SelectValue placeholder="Select a reason" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AWOL">AWOL (Absence Without Leave)</SelectItem>
+                    <SelectItem value="RESIGN">RESIGN</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="tc">Type the locker number <span className="font-mono font-semibold">{locker.locker_number}</span> to confirm *</Label>
