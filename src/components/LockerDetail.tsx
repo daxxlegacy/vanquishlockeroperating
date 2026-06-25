@@ -24,7 +24,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onUpdated?: () => void;
+  mode?: "full" | "spare";
 }
+
+const SPARE_DETAIL_OPTIONS = ["missing", "available", "taken", "taken_for_cleaning"] as const;
 
 import { LOCKER_STATUSES } from "@/lib/locker-status";
 const STATUSES = LOCKER_STATUSES;
