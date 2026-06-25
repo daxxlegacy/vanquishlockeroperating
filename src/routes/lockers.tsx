@@ -345,7 +345,7 @@ function LockersPage() {
   const buildExportRows = () => filtered.map((l) => ({
     "Locker Number": l.locker_number,
     "Location": l.location,
-    "Unit Type": l.unit_type ?? "",
+    "Key Lock": l.key_lock ?? "",
     "Badge Number": l.badge_number ?? "",
     "National ID": l.national_id ?? "",
     "Employee Name": l.employee_name ?? "",
@@ -685,7 +685,6 @@ function AddLockerDialog({
     locker_number: "",
     location: existingLocations[0] ?? "",
     row_label: "",
-    unit_type: "",
     key_lock: "",
     badge_number: "",
     employee_name: "",
@@ -713,7 +712,6 @@ function AddLockerDialog({
       locker_number: form.locker_number.trim(),
       location: form.location.trim(),
       row_label: form.row_label.trim() || null,
-      unit_type: form.unit_type.trim() || null,
       key_lock: form.key_lock.trim() || null,
       badge_number: form.badge_number.trim() || null,
       employee_name: form.employee_name.trim() || null,
@@ -754,10 +752,6 @@ function AddLockerDialog({
         <div>
           <Label>Row</Label>
           <Input value={form.row_label} onChange={(e) => set("row_label", e.target.value)} placeholder="e.g. Nine Row" />
-        </div>
-        <div>
-          <Label>Unit Type</Label>
-          <Input value={form.unit_type} onChange={(e) => set("unit_type", e.target.value)} placeholder="e.g. Horizontal" />
         </div>
         <div>
           <Label>Key Lock</Label>

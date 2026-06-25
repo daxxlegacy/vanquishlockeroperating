@@ -171,7 +171,7 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Employee, badge, national ID, batch intake, work location, remark, and status are swapped between the two lockers. Physical attributes (row, unit type, key lock) stay with each locker.
+                Employee, badge, national ID, batch intake, work location, remark, and status are swapped between the two lockers. Physical attributes (row, key lock) stay with each locker.
               </p>
             </div>
           </div>

@@ -201,7 +201,6 @@ function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
       "Employee Name": l.employee_name ?? "",
       "Badge Number": l.badge_number ?? "",
       "Status": l.status,
-      "Unit Type": l.unit_type ?? "",
       "Key Lock": l.key_lock ?? "",
       "Batch Intake": l.batch_intake ?? "",
       "Remark": l.remark ?? "",
