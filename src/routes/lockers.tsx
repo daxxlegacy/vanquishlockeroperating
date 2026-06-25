@@ -283,17 +283,18 @@ function LockersPage() {
     });
   }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters]);
 
-  const missingNidCount = useMemo(() => preQuickFiltered.filter((l) => !l.national_id || l.national_id.trim() === "").length, [preQuickFiltered]);
-  const missingBadgeCount = useMemo(() => preQuickFiltered.filter((l) => !l.badge_number || l.badge_number.trim() === "").length, [preQuickFiltered]);
+  const missingNidCount = useMemo(() => preQuickFiltered.filter((l) => l.status === "active" && (!l.national_id || l.national_id.trim() === "")).length, [preQuickFiltered]);
+  const missingBadgeCount = useMemo(() => preQuickFiltered.filter((l) => l.status === "active" && (!l.badge_number || l.badge_number.trim() === "")).length, [preQuickFiltered]);
 
   const filtered = useMemo(() => {
     let result = preQuickFiltered;
     if (missingNidFilter) {
-      result = result.filter((l) => !l.national_id || l.national_id.trim() === "");
+      result = result.filter((l) => l.status === "active" && (!l.national_id || l.national_id.trim() === ""));
     }
     if (missingBadgeFilter) {
-      result = result.filter((l) => !l.badge_number || l.badge_number.trim() === "");
+      result = result.filter((l) => l.status === "active" && (!l.badge_number || l.badge_number.trim() === ""));
     }
+
     if (!sort) return result;
     const accessors: Record<string, (l: Locker) => string | number | null | undefined> = {
       num: (l) => l.locker_number,
