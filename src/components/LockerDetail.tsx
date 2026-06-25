@@ -15,6 +15,7 @@ import { TerminateUserDialog } from "@/components/TerminateUserDialog";
 import { TransferLockerDialog } from "@/components/TransferLockerDialog";
 import { SwapLockerDialog } from "@/components/SwapLockerDialog";
 import { syncActivationToOccupancy, syncMetadataToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
+import { LOCKER_STATUSES } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
