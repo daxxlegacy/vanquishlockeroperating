@@ -350,7 +350,8 @@ function LockersPage() {
     "National ID": l.national_id ?? "",
     "Employee Name": l.employee_name ?? "",
     "Work Location": l.work_location ?? "",
-    "Status": STATUS_LABEL[l.status as LockerStatus] ?? l.status,
+    "Status": (l.custom_status ?? "").trim() || (STATUS_LABEL[l.status as LockerStatus] ?? l.status),
+    "Custom Status": l.custom_status ?? "",
     "Batch Intake": formatBatchIntake(l.batch_intake),
     "Remark": l.remark ?? "",
   }));
