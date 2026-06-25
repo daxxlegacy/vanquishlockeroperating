@@ -456,6 +456,12 @@ function LockersPage() {
               {LOCKER_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
               ))}
+              {customStatuses.length > 0 && (
+                <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Custom</div>
+              )}
+              {customStatuses.map((c) => (
+                <SelectItem key={`custom:${c}`} value={`custom:${c}`}>{c}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={locFilter} onValueChange={setLocFilter}>
