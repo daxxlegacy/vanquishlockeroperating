@@ -119,3 +119,25 @@ export function defaultPostTerminationStatus(
   if (n.includes("numeric") || n.includes("numerical")) return "reset";
   return "empty";
 }
+
+/**
+ * Resolve the label to display for a locker's status. When a free-form
+ * `custom_status` is set on the locker, that text wins; otherwise we fall
+ * back to the canonical enum label.
+ */
+export function effectiveStatusLabel(
+  status: string | null | undefined,
+  customStatus: string | null | undefined,
+): string {
+  const c = (customStatus ?? "").trim();
+  if (c) return c;
+  if (!status) return "—";
+  return STATUS_LABEL[status as LockerStatus] ?? status;
+}
+
+/**
+ * True when the locker carries a non-empty custom status.
+ */
+export function hasCustomStatus(customStatus: string | null | undefined): boolean {
+  return !!(customStatus && customStatus.trim());
+}

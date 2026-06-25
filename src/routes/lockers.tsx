@@ -253,11 +253,29 @@ function LockersPage() {
     setSort(null);
   };
 
+  // Distinct non-empty custom_status values across the dataset, used to extend
+  // the status filter dropdown with whatever admins have typed.
+  const customStatuses = useMemo(() => {
+    const s = new Set<string>();
+    for (const l of lockers ?? []) {
+      const c = (l.custom_status ?? "").trim();
+      if (c) s.add(c);
+    }
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
+  }, [lockers]);
+
   const preQuickFiltered = useMemo(() => {
     if (!lockers) return [];
     const q = debouncedSearch.toLowerCase().trim();
     return lockers.filter((l) => {
-      if (statusFilter !== "all" && l.status !== statusFilter) return false;
+      if (statusFilter !== "all") {
+        if (statusFilter.startsWith("custom:")) {
+          if ((l.custom_status ?? "").trim() !== statusFilter.slice("custom:".length)) return false;
+        } else if (l.status !== statusFilter || ((l.custom_status ?? "").trim() !== "")) {
+          // standard status filters exclude rows with a custom override set
+          return false;
+        }
+      }
       if (locFilter !== "all" && l.location !== locFilter) return false;
       if (keyLockFilter !== "all") {
         const k = (l.key_lock ?? "").trim();
@@ -332,7 +350,8 @@ function LockersPage() {
     "National ID": l.national_id ?? "",
     "Employee Name": l.employee_name ?? "",
     "Work Location": l.work_location ?? "",
-    "Status": STATUS_LABEL[l.status as LockerStatus] ?? l.status,
+    "Status": (l.custom_status ?? "").trim() || (STATUS_LABEL[l.status as LockerStatus] ?? l.status),
+    "Custom Status": l.custom_status ?? "",
     "Batch Intake": formatBatchIntake(l.batch_intake),
     "Remark": l.remark ?? "",
   }));
@@ -437,6 +456,12 @@ function LockersPage() {
               <SelectItem value="all">All statuses</SelectItem>
               {LOCKER_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+              ))}
+              {customStatuses.length > 0 && (
+                <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Custom</div>
+              )}
+              {customStatuses.map((c) => (
+                <SelectItem key={`custom:${c}`} value={`custom:${c}`}>{c}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -581,7 +606,7 @@ function MobileLockerList({
                 </div>
                 <div className="text-xs text-muted-foreground truncate">{l.location}</div>
               </div>
-              <StatusBadge status={l.status} />
+              <StatusBadge status={l.status} customStatus={l.custom_status} />
             </div>
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               <MobileField label="Employee" value={l.employee_name} wide />
@@ -638,7 +663,7 @@ const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings
       <div className="px-3 truncate text-xs text-muted-foreground" title={l.national_id ?? ""}>{l.national_id ?? "—"}</div>
       <div className="px-3 truncate" title={l.employee_name ?? ""}>{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
       <div className="px-3 truncate text-muted-foreground" title={l.work_location ?? ""}>{l.work_location ?? "—"}</div>
-      <div className="px-3"><StatusBadge status={l.status} /></div>
+      <div className="px-3"><StatusBadge status={l.status} customStatus={l.custom_status} /></div>
       <div className={`px-3 truncate text-xs ${flagged ? "text-warning font-medium" : "text-muted-foreground"}`}>
         {formatBatchIntake(l.batch_intake) || (flagged ? "missing" : "")}
       </div>

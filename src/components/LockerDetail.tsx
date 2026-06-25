@@ -62,6 +62,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
   const handleSave = async () => {
     if (!isAdmin) return;
     setSaving(true);
+    const customClean = (locker.custom_status ?? "").trim();
     const { error } = await supabase
       .from("lockers")
       .update({
@@ -74,6 +75,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
         employee_name: locker.employee_name,
         national_id: locker.national_id,
         status: locker.status,
+        custom_status: customClean ? customClean : null,
         spare_key_status: locker.spare_key_status,
         remark: locker.remark,
         batch_intake: locker.batch_intake,
@@ -114,6 +116,16 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
             <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
             <DateField label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
             <Field label="National ID" value={locker.national_id ?? ""} onChange={(v) => update("national_id", v)} disabled={!isAdmin} />
+            <div className="sm:col-span-2">
+              <Label>Custom Status (free text)</Label>
+              <Input
+                value={locker.custom_status ?? ""}
+                placeholder='e.g. "Blocked", "VIP hold", "Quarantine" — overrides Status when set'
+                onChange={(e) => update("custom_status", e.target.value)}
+                disabled={!isAdmin}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Leave blank to use the standard Status above. When set, it shows everywhere across the app.</p>
+            </div>
             <div className="sm:col-span-2">
               <Label>Remark</Label>
               <Textarea
