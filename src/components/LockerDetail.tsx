@@ -30,9 +30,8 @@ interface Props {
 
 const SPARE_DETAIL_OPTIONS = ["missing", "available", "taken", "taken_for_cleaning"] as const;
 
-import { LOCKER_STATUSES } from "@/lib/locker-status";
 const STATUSES = LOCKER_STATUSES;
-const KEYS = ["available", "missing", "with_employee", "damaged", "unknown"] as const;
+
 
 export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full" }: Props) {
   const isSpare = mode === "spare";
