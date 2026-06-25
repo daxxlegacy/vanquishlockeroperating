@@ -35,22 +35,16 @@ const COLS = [
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
 const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
 const SPARE_OPTIONS = [
+  "missing",
   "available",
   "taken",
   "taken_for_cleaning",
-  "with_employee",
-  "missing",
-  "damaged",
-  "unknown",
 ] as const;
 const SWATCH: Record<string, string> = {
+  missing: "bg-destructive",
   available: "bg-success",
   taken: "bg-primary",
   taken_for_cleaning: "bg-accent",
-  with_employee: "bg-primary",
-  missing: "bg-destructive",
-  damaged: "bg-warning",
-  unknown: "bg-muted-foreground",
 };
 
 export const Route = createFileRoute("/spare-keys")({
