@@ -62,6 +62,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
   const handleSave = async () => {
     if (!isAdmin) return;
     setSaving(true);
+    const customClean = (locker.custom_status ?? "").trim();
     const { error } = await supabase
       .from("lockers")
       .update({
@@ -74,6 +75,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated }: Props) {
         employee_name: locker.employee_name,
         national_id: locker.national_id,
         status: locker.status,
+        custom_status: customClean ? customClean : null,
         spare_key_status: locker.spare_key_status,
         remark: locker.remark,
         batch_intake: locker.batch_intake,
