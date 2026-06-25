@@ -38,31 +38,7 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
     if (!canSubmit || !iso) return;
     setBusy(true);
     try {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) throw new Error("Not signed in");
-
-      const { error: e1 } = await supabase.from("terminations").insert({
-        locker_id: locker.id,
-        locker_number: locker.locker_number,
-        location: locker.location,
-        row_label: locker.row_label,
-        employee_name: locker.employee_name,
-        badge_number: locker.badge_number,
-        termination_date: iso,
-        reason: reason.trim() || null,
-        terminated_by: u.user.id,
-        terminated_by_email: u.user.email ?? null,
-      });
-      if (e1) throw e1;
-
-      const { error: e2 } = await supabase
-        .from("lockers")
-        .update({ employee_name: null, badge_number: null, national_id: null, batch_intake: null, status: newStatus })
-        .eq("id", locker.id);
-      if (e2) throw e2;
-
-      await syncTerminationToOccupancy(locker, iso, reason.trim() || null);
-
+      await terminateLocker(locker, iso, reason.trim() || null, newStatus);
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       onOpenChange(false);
       setReason("");
