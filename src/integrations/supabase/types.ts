@@ -243,6 +243,7 @@ export type Database = {
           badge_number: string | null
           batch_intake: string | null
           created_at: string
+          custom_status: string | null
           deleted_at: string | null
           deleted_by: string | null
           deletion_reason: string | null
@@ -265,6 +266,7 @@ export type Database = {
           badge_number?: string | null
           batch_intake?: string | null
           created_at?: string
+          custom_status?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
@@ -287,6 +289,7 @@ export type Database = {
           badge_number?: string | null
           batch_intake?: string | null
           created_at?: string
+          custom_status?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
