@@ -70,7 +70,6 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     const { error } = await supabase
       .from("lockers")
       .update({
-        unit_type: locker.unit_type,
         key_lock: locker.key_lock,
         location: locker.location,
         row_label: locker.row_label,
@@ -124,7 +123,6 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
               <Field label="Location" value={locker.location} onChange={(v) => update("location", v)} disabled={!isAdmin} />
-              <Field label="Unit Type" value={locker.unit_type ?? ""} onChange={(v) => update("unit_type", v)} disabled={!isAdmin} />
               <Field label="Key Lock" value={locker.key_lock ?? ""} onChange={(v) => update("key_lock", v)} disabled={!isAdmin} />
               <Field label="Badge Number" value={locker.badge_number ?? ""} onChange={(v) => update("badge_number", v)} disabled={!isAdmin} />
               <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
