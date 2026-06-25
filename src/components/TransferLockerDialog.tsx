@@ -109,7 +109,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
 
         {!confirming ? (
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-[1fr_180px_180px] gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px_180px] gap-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
