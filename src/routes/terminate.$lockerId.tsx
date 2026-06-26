@@ -44,7 +44,7 @@ function TerminatePage() {
     return `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   })();
   const [date, setDate] = useState(initialDateStr);
-  const [reason, setReason] = useState<"AWOL" | "RESIGN" | "">("");
+  const [reason, setReason] = useState<"AWOL" | "RESIGN" | "RTV" | "">("");
   const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "find_spare_key" | "repair" | "on_hold">("empty");
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -185,11 +185,12 @@ function TerminatePage() {
               </div>
               <div>
                 <Label htmlFor="tr">Reason *</Label>
-                <Select value={reason} onValueChange={(v) => setReason(v as "AWOL" | "RESIGN")}>
+                <Select value={reason} onValueChange={(v) => setReason(v as "AWOL" | "RESIGN" | "RTV")}>
                   <SelectTrigger id="tr"><SelectValue placeholder="Select a reason" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="AWOL">AWOL (Absence Without Leave)</SelectItem>
                     <SelectItem value="RESIGN">RESIGN</SelectItem>
+                    <SelectItem value="RTV">RTV (Return to Vendor)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
