@@ -30,7 +30,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   const [search, setSearch] = useState("");
   const debounced = useDebounced(search, 180);
   const [locFilter, setLocFilter] = useState<string>(locker.location);
-  const [statusFilter, setStatusFilter] = useState<"all" | "empty" | "cleaning" | "repair">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | LockerStatus>("all");
   const [targetId, setTargetId] = useState<string | null>(null);
   const [oldAction, setOldAction] = useState<LockerStatus>("empty");
   const [busy, setBusy] = useState(false);
@@ -47,7 +47,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
     return lockers
       .filter((l) =>
         l.id !== locker.id &&
-        (l.status === "empty" || l.status === "cleaning" || l.status === "repair") &&
+        l.status !== "active" &&
         !l.badge_number && !l.employee_name &&
         (locFilter === "all" || l.location === locFilter) &&
         (statusFilter === "all" || l.status === statusFilter) &&
@@ -123,9 +123,11 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="empty">Empty only</SelectItem>
-                  <SelectItem value="cleaning">Cleaning</SelectItem>
-                  <SelectItem value="repair">Repair</SelectItem>
+                  {LOCKER_STATUSES.filter((s) => s !== "active").map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABEL[s]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={locFilter} onValueChange={setLocFilter}>
