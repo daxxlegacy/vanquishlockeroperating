@@ -434,12 +434,12 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
       </div>
 
       <Card className="p-4 flex gap-3 flex-wrap items-center">
-        <div className="relative flex-1 min-w-[240px]">
+        <div className="relative flex-1 min-w-0 sm:min-w-[240px] w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search locker, employee, badge, dept…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
@@ -447,19 +447,20 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           </SelectContent>
         </Select>
         <Select value={rowFilter} onValueChange={setRowFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Row" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Row" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All rows</SelectItem>
             {rowOpts.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={locFilter} onValueChange={setLocFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Location" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Location" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All locations</SelectItem>
             {locOpts.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
           </SelectContent>
         </Select>
+
         {isAdmin && (
           <>
             <input

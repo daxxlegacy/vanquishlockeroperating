@@ -152,25 +152,26 @@ function SpareKeysPage() {
         </div>
 
         <Card className="p-4 mt-6 flex gap-3 flex-wrap items-center">
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-0 sm:min-w-[240px] w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search locker number, row, location…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={spareFilter} onValueChange={setSpareFilter}>
-            <SelectTrigger className="w-52"><SelectValue placeholder="Spare key" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Spare key" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All spare statuses</SelectItem>
               {SPARE_OPTIONS.map((s) => <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={locFilter} onValueChange={setLocFilter}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All locations</SelectItem>
               {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
             </SelectContent>
           </Select>
         </Card>
+
 
         <Card className="mt-4 overflow-hidden">
           {!lockers ? (
