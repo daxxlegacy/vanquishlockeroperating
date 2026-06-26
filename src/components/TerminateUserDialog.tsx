@@ -26,7 +26,7 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
   const today = new Date();
   const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   const [date, setDate] = useState(todayStr);
-  const [reason, setReason] = useState<"AWOL" | "RESIGN" | "">("");
+  const [reason, setReason] = useState<"AWOL" | "RESIGN" | "RTV" | "">("");
   const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>(() => defaultPostTerminationStatus(locker.key_lock));
   const [busy, setBusy] = useState(false);
 
@@ -87,11 +87,12 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
           </div>
           <div>
             <Label htmlFor="term-reason">Reason *</Label>
-            <Select value={reason} onValueChange={(v) => setReason(v as "AWOL" | "RESIGN")}>
+            <Select value={reason} onValueChange={(v) => setReason(v as "AWOL" | "RESIGN" | "RTV")}>
               <SelectTrigger id="term-reason"><SelectValue placeholder="Select a reason" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="AWOL">AWOL (Absence Without Leave)</SelectItem>
                 <SelectItem value="RESIGN">RESIGN</SelectItem>
+                <SelectItem value="RTV">RTV (Return to Vendor)</SelectItem>
               </SelectContent>
             </Select>
           </div>
