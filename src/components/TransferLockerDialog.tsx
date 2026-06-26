@@ -47,7 +47,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
     return lockers
       .filter((l) =>
         l.id !== locker.id &&
-        (l.status === "empty" || l.status === "cleaning" || l.status === "repair") &&
+        l.status !== "active" &&
         !l.badge_number && !l.employee_name &&
         (locFilter === "all" || l.location === locFilter) &&
         (statusFilter === "all" || l.status === statusFilter) &&
