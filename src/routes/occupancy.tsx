@@ -505,7 +505,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left">
                   <tr>
@@ -528,6 +528,12 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
                 </tbody>
               </table>
             </div>
+            <div className="sm:hidden divide-y">
+              {visible.map(([lockerNumber, group]) => (
+                <MobileLockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
+              ))}
+            </div>
+
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-muted/20">
               <div className="text-xs text-muted-foreground">
                 Showing lockers {startIdx + 1}–{startIdx + visible.length} of {grouped.length.toLocaleString()} ({filtered.length.toLocaleString()} rows)
