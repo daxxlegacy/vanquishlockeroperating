@@ -123,9 +123,11 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="empty">Empty only</SelectItem>
-                  <SelectItem value="cleaning">Cleaning</SelectItem>
-                  <SelectItem value="repair">Repair</SelectItem>
+                  {LOCKER_STATUSES.filter((s) => s !== "active").map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABEL[s]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={locFilter} onValueChange={setLocFilter}>
