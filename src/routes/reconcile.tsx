@@ -649,7 +649,7 @@ function ResultsTable({
           </div>
         )}
         <div className="max-h-[60vh] overflow-auto">
-          <table className="w-full text-sm">
+          <table className="hidden sm:table w-full text-sm">
             <thead className="bg-muted/50 sticky top-0 z-10">
               <tr className="text-left">
                 {canBulkTerminate && (
@@ -726,7 +726,68 @@ function ResultsTable({
               ))}
             </tbody>
           </table>
+
+          {/* Mobile card list */}
+          <div className="sm:hidden divide-y">
+            {visible.map((r) => {
+              const isActive = canBulkTerminate;
+              return (
+                <div key={r.db.id} className="p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex items-start gap-2">
+                      {canBulkTerminate && (
+                        <Checkbox
+                          className="mt-1"
+                          checked={selected.has(r.db.id)}
+                          onCheckedChange={(v) => toggleOne(r.db.id, v === true)}
+                          aria-label={`Select ${r.db.locker_number}`}
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-mono font-semibold text-base">{r.db.locker_number}</div>
+                        <div className="text-xs text-muted-foreground truncate">{r.db.location}{r.db.row_label ? ` · ${r.db.row_label}` : ""}</div>
+                      </div>
+                    </div>
+                    {isActive ? (
+                      <Button
+                        size="sm"
+                        variant={bucket === "rehire_suspect" ? "outline" : "destructive"}
+                        className="shrink-0"
+                        onClick={() => {
+                          const td = r.hr?.terminateDate;
+                          const url = td ? `/terminate/${r.db.id}?date=${td}` : `/terminate/${r.db.id}`;
+                          window.open(url, "_blank");
+                        }}
+                      >
+                        <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="ghost" className="shrink-0" onClick={() => navigate({ to: "/lockers", search: { q: r.db.locker_number } as never })}>
+                        View
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs rounded-md border bg-muted/20 px-2.5 py-2">
+                    <div><span className="text-muted-foreground">Badge: </span><span className="font-mono font-medium">{r.db.badge_number ?? "—"}</span></div>
+                    <div><span className="text-muted-foreground">Intake: </span><span className="font-mono font-medium">{formatBatchIntake(r.db.batch_intake) || "—"}</span></div>
+                    <div className="col-span-2"><span className="text-muted-foreground">DB Name: </span><span className="font-medium break-words">{r.db.employee_name ?? "—"}</span></div>
+                    <div className="col-span-2"><span className="text-muted-foreground">HR Name: </span><span className="font-medium break-words">{r.hr?.name ?? "—"}</span></div>
+                    {r.hr?.workLocation && (
+                      <div className="col-span-2"><span className="text-muted-foreground">HR Work: </span><span className="font-medium break-words">{r.hr.workLocation}</span></div>
+                    )}
+                    <div><span className="text-muted-foreground">HR Term: </span><span className="font-mono font-medium">{r.hr?.terminateDate ? formatBatchIntake(r.hr.terminateDate) : "—"}</span></div>
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Reason: </span>
+                      <span className="font-medium">{r.reason}</span>
+                      {r.matchedBy === "name" && <Badge variant="outline" className="ml-1 text-[10px]">name match</Badge>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
+
       </Card>
 
       <AlertDialog open={!!confirm} onOpenChange={(v) => { if (!v && !bulkBusy) setConfirm(null); }}>

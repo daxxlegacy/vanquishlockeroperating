@@ -441,7 +441,7 @@ function LockersPage() {
         </div>
 
         <Card className="p-4 mt-6 flex gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-0 sm:min-w-[240px] w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input ref={searchInputRef} placeholder="Search locker, employee, badge, key lock…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             {!search && (
@@ -451,7 +451,7 @@ function LockersPage() {
             )}
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               {LOCKER_STATUSES.map((s) => (
@@ -466,20 +466,21 @@ function LockersPage() {
             </SelectContent>
           </Select>
           <Select value={locFilter} onValueChange={setLocFilter}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All locations</SelectItem>
               {locations.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={keyLockFilter} onValueChange={setKeyLockFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Key lock" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Key lock" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All key locks</SelectItem>
               <SelectItem value="__none__">No key lock</SelectItem>
               {keyLocks.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}
             </SelectContent>
           </Select>
+
           <Button
             variant={missingNidFilter ? "default" : "outline"}
             onClick={() => setMissingNidFilter((v) => !v)}
