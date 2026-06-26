@@ -662,7 +662,7 @@ const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings
       <div className="px-3 truncate text-xs text-muted-foreground" title={l.key_lock ?? ""}>{l.key_lock ?? "—"}</div>
       <div className="px-3 truncate text-muted-foreground" title={l.badge_number ?? ""}>{l.badge_number ?? "—"}</div>
       <div className="px-3 truncate text-xs text-muted-foreground" title={l.national_id ?? ""}>{l.national_id ?? "—"}</div>
-      <div className="px-3 truncate" title={l.employee_name ?? ""}>{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
+      <div className="px-3 truncate text-muted-foreground" title={l.employee_name ?? ""}>{l.employee_name ?? "—"}</div>
       <div className="px-3 truncate text-muted-foreground" title={l.work_location ?? ""}>{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} customStatus={l.custom_status} /></div>
       <div className={`px-3 truncate text-xs ${flagged ? "text-warning font-medium" : "text-muted-foreground"}`}>
