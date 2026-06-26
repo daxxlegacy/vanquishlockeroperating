@@ -534,11 +534,11 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
               ))}
             </div>
 
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-t bg-muted/20">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-4 py-3 border-t bg-muted/20">
               <div className="text-xs text-muted-foreground">
                 Showing lockers {startIdx + 1}–{startIdx + visible.length} of {grouped.length.toLocaleString()} ({filtered.length.toLocaleString()} rows)
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between sm:justify-end gap-2">
                 <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                   <ChevronLeft className="h-4 w-4 mr-1" /> Prev
                 </Button>
@@ -548,6 +548,7 @@ function CategoryView({ category, isAdmin }: { category: Category; isAdmin: bool
                 </Button>
               </div>
             </div>
+
           </>
         )}
       </Card>
@@ -596,6 +597,52 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
     </>
   );
 }
+
+function MobileLockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNumber: string; group: Row[]; reason?: string | null; onViewHistory: () => void }) {
+  const first = group[0];
+  const rest = group.slice(1);
+  return (
+    <div className="p-3 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-mono font-semibold text-base truncate">{lockerNumber}</div>
+          <div className="mt-0.5"><StatusBadge status={first?.status ?? null} /></div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onViewHistory} className="h-7 px-2 shrink-0">
+          <Eye className="h-3.5 w-3.5 mr-1" /> History
+        </Button>
+      </div>
+      {group.map((r, i) => {
+        const isActive = (r.status ?? "").toLowerCase() === "active";
+        return (
+          <div key={r.id} className={`rounded-md border px-2.5 py-2 text-xs space-y-1 ${i === 0 ? "bg-card" : "bg-muted/30"}`}>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+              <MField label="Employee" value={r.employee_name ?? (i === 0 ? "vacant" : "—")} wide />
+              <MField label="Badge" value={r.badge_number} mono />
+              <MField label="National ID" value={r.national_id} mono />
+              <MField label="Intake" value={fmtDate(r.batch_intake_date)} />
+              <MField label="Terminated" value={fmtDate(r.termination_date)} />
+              <MField label="Work" value={r.work_location} wide />
+              {!isActive && <MField label="Reason" value={r.remarks || reason || "—"} wide />}
+            </div>
+          </div>
+        );
+      })}
+      {rest.length === 0 && null}
+    </div>
+  );
+}
+
+function MField({ label, value, wide, mono }: { label: string; value: string | null | undefined; wide?: boolean; mono?: boolean }) {
+  const v = value && String(value).trim() !== "" ? value : "—";
+  return (
+    <div className={wide ? "col-span-2" : ""}>
+      <span className="text-muted-foreground">{label}: </span>
+      <span className={`font-medium break-words ${mono ? "font-mono" : ""}`}>{v}</span>
+    </div>
+  );
+}
+
 
 type HistoryEvent = {
   id: string;
