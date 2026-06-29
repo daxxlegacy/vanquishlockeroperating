@@ -159,7 +159,7 @@ export function RecordIntakeTab() {
           const slice = lockerNums.slice(i, i + CHUNK);
           const { data, error } = await supabase
             .from("lockers")
-            .select("locker_number, employee_name, badge_number, national_id, status")
+            .select("locker_number, employee_name, badge_number, national_id, work_location, status")
             .is("deleted_at", null)
             .in("locker_number", slice);
           if (error) {
