@@ -365,6 +365,7 @@ export function RecordIntakeTab() {
                         <td className="px-2 py-1">{r.employee_name}</td>
                         <td className="px-2 py-1 text-muted-foreground">{r.badge_number || "—"}</td>
                         <td className="px-2 py-1 text-muted-foreground">{r.national_id || "—"}</td>
+                        <td className="px-2 py-1 text-muted-foreground">{r.work_location || "—"}</td>
                         <td className="px-2 py-1 text-muted-foreground">{batchDisplay || "—"}</td>
                         <td className="px-2 py-1">
                           {r.action === "NEW" && (
