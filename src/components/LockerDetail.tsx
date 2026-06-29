@@ -266,6 +266,22 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
         locker={locker}
         onSwapped={() => { onUpdated?.(); onClose(); }}
       />
+      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear locker details?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the employee name, badge number, national ID, work location, batch intake, status, custom status, and remark for locker {locker.locker_number}. Location and Key Lock will be kept. Status will be set to empty.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearDetails} disabled={clearing}>
+              {clearing ? "Clearing…" : "Clear details"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
