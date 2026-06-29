@@ -198,11 +198,6 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
                     <Button
                       size="sm"
                       disabled={saving}
-                      onClick={() => setTermOpen(true)}
-                      className="bg-warning text-warning-foreground hover:bg-warning/90"
-                    >
-                      size="sm"
-                      disabled={saving}
                       onClick={() => setTransferOpen(true)}
                       variant="secondary"
                     >
