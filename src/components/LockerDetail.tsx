@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, UserMinus, ArrowRightLeft, Repeat } from "lucide-react";
+import { Trash2, UserMinus, ArrowRightLeft, Repeat, Eraser } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { getLockerById } from "@/lib/lockers-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -42,6 +43,8 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
   const [termOpen, setTermOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const isAdmin = role === "admin";
 
   useEffect(() => {
@@ -102,6 +105,31 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     }
   };
 
+  const handleClearDetails = async () => {
+    if (!isAdmin) return;
+    setClearing(true);
+    const cleared = {
+      badge_number: null,
+      employee_name: null,
+      national_id: null,
+      work_location: null,
+      batch_intake: null,
+      remark: null,
+      custom_status: null,
+      status: "empty" as const,
+    };
+    const { error } = await supabase.from("lockers").update(cleared).eq("id", locker.id);
+    setClearing(false);
+    setClearOpen(false);
+    if (error) { toast.error(error.message); return; }
+    const updated = { ...locker, ...cleared } as Locker;
+    setLocker(updated);
+    await syncStatusChangeToOccupancy(updated);
+    toast.success("Locker details cleared");
+    onUpdated?.();
+    onClose();
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -156,6 +184,14 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
               <div className="flex gap-2 flex-wrap">
                 <Button variant="destructive" size="sm" disabled={saving} onClick={() => setDeleteOpen(true)}>
                   <Trash2 className="h-4 w-4 mr-1" /> Delete
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving || clearing}
+                  onClick={() => setClearOpen(true)}
+                >
+                  <Eraser className="h-4 w-4 mr-1" /> Clear details
                 </Button>
                 {locker.employee_name && (
                   <>
@@ -230,6 +266,22 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
         locker={locker}
         onSwapped={() => { onUpdated?.(); onClose(); }}
       />
+      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear locker details?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the employee name, badge number, national ID, work location, batch intake, status, custom status, and remark for locker {locker.locker_number}. Location and Key Lock will be kept. Status will be set to empty.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearDetails} disabled={clearing}>
+              {clearing ? "Clearing…" : "Clear details"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
