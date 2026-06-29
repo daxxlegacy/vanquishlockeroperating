@@ -592,8 +592,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
             </div>
 
             <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
-              Showing {visible.length.toLocaleString()} of {grouped.length.toLocaleString()} locker{grouped.length === 1 ? "" : "s"} ({filtered.length.toLocaleString()} rows)
-              {grouped.length > CAP && <> · Narrow the filters to see more.</>}
+              Showing {grouped.length.toLocaleString()} locker{grouped.length === 1 ? "" : "s"} ({filtered.length.toLocaleString()} rows)
             </div>
           </>
         )}
