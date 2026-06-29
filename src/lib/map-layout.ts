@@ -98,7 +98,7 @@ export async function saveLayout(layout: MapLayout): Promise<void> {
   const updated_by = auth.user?.id ?? null;
   const { error } = await supabase
     .from("map_layouts")
-    .upsert({ id: ROW_ID, layout: layout as unknown as object, updated_by }, { onConflict: "id" });
+    .upsert([{ id: ROW_ID, layout: layout as never, updated_by }], { onConflict: "id" });
   if (error) throw new Error(error.message);
   cachedLayout = layout;
   cachedHasOverride = true;
