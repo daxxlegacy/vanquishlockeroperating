@@ -290,7 +290,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       });
     }
     return f;
-  }, [allRows, search, statusFilter, categoryFilter, locFilter, colFilters, sort]);
+  }, [allRows, debouncedSearch, statusFilter, categoryFilter, locFilter, colFilters, sort]);
 
   // Group by locker number — limit to 1 active + 1 most-recent terminate
   const grouped = useMemo(() => {
