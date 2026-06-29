@@ -185,9 +185,22 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
                 <Button variant="destructive" size="sm" disabled={saving} onClick={() => setDeleteOpen(true)}>
                   <Trash2 className="h-4 w-4 mr-1" /> Delete
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving || clearing}
+                  onClick={() => setClearOpen(true)}
+                >
+                  <Eraser className="h-4 w-4 mr-1" /> Clear details
+                </Button>
                 {locker.employee_name && (
                   <>
                     <Button
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => setTermOpen(true)}
+                      className="bg-warning text-warning-foreground hover:bg-warning/90"
+                    >
                       size="sm"
                       disabled={saving}
                       onClick={() => setTransferOpen(true)}
