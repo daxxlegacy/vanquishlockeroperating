@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
 import { parseBatchIntake } from "@/lib/locker-utils";
+import { syncActivationToOccupancy } from "@/lib/occupancy-sync";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -236,13 +237,21 @@ export function RecordIntakeTab() {
             updated_at: new Date().toISOString(),
             ...(batchIso ? { batch_intake: batchIso } : {}),
           };
-          const { error, count } = await supabase
+          const { error, count, data: updatedRows } = await supabase
             .from("lockers")
             .update(payload, { count: "exact" })
-            .eq("locker_number", r.locker_number);
+            .eq("locker_number", r.locker_number)
+            .select()
+            .limit(1);
           if (error) errors++;
           else if (count === 0) skipped++;
-          else updated++;
+          else {
+            updated++;
+            const updatedLocker = updatedRows?.[0];
+            if (updatedLocker) {
+              try { await syncActivationToOccupancy(updatedLocker); } catch { /* non-fatal */ }
+            }
+          }
         }));
         setProgress({ done: Math.min(i + BATCH, toApply.length), total: toApply.length });
       }
