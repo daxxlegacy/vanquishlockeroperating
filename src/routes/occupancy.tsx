@@ -113,7 +113,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter, categoryFilter, locFilter]);
+  
 
   // ---------- Merge data ----------
   // Combine occupancy rows from all three categories, then overlay the lockers
