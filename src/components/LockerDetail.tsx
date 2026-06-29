@@ -116,7 +116,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
       batch_intake: null,
       remark: null,
       custom_status: null,
-      status: "empty",
+      status: "empty" as const,
     };
     const { error } = await supabase.from("lockers").update(cleared).eq("id", locker.id);
     setClearing(false);
