@@ -39,6 +39,7 @@ type DbState = {
   employee_name: string | null;
   badge_number: string | null;
   national_id: string | null;
+  work_location: string | null;
   status: string | null;
 };
 
