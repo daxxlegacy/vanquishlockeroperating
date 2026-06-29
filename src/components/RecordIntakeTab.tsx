@@ -109,6 +109,7 @@ export function RecordIntakeTab() {
       const cBadge = findCol(headers, /employee\s*number/i);
       const cNid = findCol(headers, /national\s*id/i, /ic\s*number/i);
       const cBatch = findCol(headers, /batch\s*intake/i);
+      const cWork = findCol(headers, /work\s*location/i, /work\s*site/i, /location/i);
 
       const intakeRows: IntakeRow[] = [];
       const ignoredRows: IgnoredRow[] = [];
@@ -119,6 +120,7 @@ export function RecordIntakeTab() {
         const name = cName >= 0 ? CLEAN(row[cName]) : "";
         const badge = cBadge >= 0 ? CLEAN(row[cBadge]) : "";
         const nid = cNid >= 0 ? CLEAN(row[cNid]) : "";
+        const work = cWork >= 0 ? CLEAN(row[cWork]) : "";
         const batch = cBatch >= 0 ? row[cBatch] : null;
 
         // Skip blank rows entirely
@@ -141,6 +143,7 @@ export function RecordIntakeTab() {
           employee_name: name,
           badge_number: badge,
           national_id: nid,
+          work_location: work,
           batch_intake: batch,
         });
       }
