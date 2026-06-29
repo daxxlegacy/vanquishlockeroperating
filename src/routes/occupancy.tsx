@@ -318,6 +318,17 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
 
   const visible = grouped;
 
+  const flattened = useMemo(() => {
+    const out: { row: Row; lockerNumber: string; groupIndex: number; groupLength: number; reason: string | null }[] = [];
+    for (const [lockerNumber, group] of visible) {
+      const reason = reasons.get(lockerNumber) ?? null;
+      for (let i = 0; i < group.length; i++) {
+        out.push({ row: group[i], lockerNumber, groupIndex: i, groupLength: group.length, reason });
+      }
+    }
+    return out;
+  }, [visible, reasons]);
+
   const stats = useMemo(() => {
     const lockerNos = new Set<string>();
     let active = 0, terminated = 0;
