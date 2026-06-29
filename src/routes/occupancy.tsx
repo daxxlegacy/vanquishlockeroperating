@@ -43,6 +43,24 @@ const CATEGORY_LABEL: Record<OccCategory, string> = {
   shoe: "Shoe Locker (Occupied + Shoe)",
 };
 
+const ROW_HEIGHT = 44;
+const VIEWPORT_HEIGHT = 640;
+const COLS = [
+  { key: "locker", w: 100 },
+  { key: "cat", w: 110 },
+  { key: "status", w: 110 },
+  { key: "badge", w: 120 },
+  { key: "emp", w: 180 },
+  { key: "nid", w: 140 },
+  { key: "intake", w: 110 },
+  { key: "term", w: 110 },
+  { key: "reason", w: 180 },
+  { key: "work", w: 140 },
+  { key: "history", w: 90 },
+];
+const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
+const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
+
 
 
 export const Route = createFileRoute("/occupancy")({
