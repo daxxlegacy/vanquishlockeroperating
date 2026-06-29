@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import * as XLSX from "xlsx";
+import { List, type RowComponentProps } from "react-window";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
@@ -26,6 +27,7 @@ import {
 } from "@/lib/url-filter-state";
 import { useOccupancy, invalidateOccupancyCache, type OccupancyRow, type OccCategory } from "@/lib/occupancy-cache";
 import { useLockers } from "@/lib/lockers-cache";
+import { useDebounced } from "@/hooks/use-debounced";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -40,6 +42,24 @@ const CATEGORY_LABEL: Record<OccCategory, string> = {
   staff: "Staff Locker (Occupied + Staff)",
   shoe: "Shoe Locker (Occupied + Shoe)",
 };
+
+const ROW_HEIGHT = 44;
+const VIEWPORT_HEIGHT = 640;
+const COLS = [
+  { key: "locker", w: 100 },
+  { key: "cat", w: 110 },
+  { key: "status", w: 110 },
+  { key: "badge", w: 120 },
+  { key: "emp", w: 180 },
+  { key: "nid", w: 140 },
+  { key: "intake", w: 110 },
+  { key: "term", w: 110 },
+  { key: "reason", w: 180 },
+  { key: "work", w: 140 },
+  { key: "history", w: 90 },
+];
+const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
+const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
 
 
 
@@ -85,6 +105,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const { lockers } = useLockers();
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, 180);
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | OccCategory>("all");
   const [locFilter, setLocFilter] = useState("all");
@@ -206,7 +227,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   };
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
     const f = allRows.filter((r) => {
       const st = (r.status ?? "").toLowerCase();
       if (statusFilter === "active" && st !== "active") return false;
@@ -269,7 +290,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       });
     }
     return f;
-  }, [allRows, search, statusFilter, categoryFilter, locFilter, colFilters, sort]);
+  }, [allRows, debouncedSearch, statusFilter, categoryFilter, locFilter, colFilters, sort]);
 
   // Group by locker number — limit to 1 active + 1 most-recent terminate
   const grouped = useMemo(() => {
@@ -296,6 +317,17 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   }, [filtered]);
 
   const visible = grouped;
+
+  const flattened = useMemo(() => {
+    const out: { row: Row; lockerNumber: string; groupIndex: number; groupLength: number; reason: string | null }[] = [];
+    for (const [lockerNumber, group] of visible) {
+      const reason = reasons.get(lockerNumber) ?? null;
+      for (let i = 0; i < group.length; i++) {
+        out.push({ row: group[i], lockerNumber, groupIndex: i, groupLength: group.length, reason });
+      }
+    }
+    return out;
+  }, [visible, reasons]);
 
   const stats = useMemo(() => {
     const lockerNos = new Set<string>();
@@ -560,34 +592,51 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
           </div>
         ) : (
           <>
-            <div className="hidden sm:block overflow-auto max-h-[calc(100vh-280px)]">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left sticky top-0 z-10">
-                  <tr>
-                    <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker" values={columnValues.locker} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
-                    <Th><SortHeader label="Category" col="cat" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Category" values={columnValues.cat} selected={colFilters.cat ?? new Set()} onChange={setColFilter("cat")} /></Th>
-                    <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={columnValues.status} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
-                    <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={columnValues.badge} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
-                    <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={columnValues.emp} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
-                    <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={columnValues.nid} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
-                    <Th><SortHeader label="Intake" col="intake" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Intake" values={columnValues.intake} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
-                    <Th><SortHeader label="Terminated" col="term" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Terminated" values={columnValues.term} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
-                    <Th>Reason</Th>
-                    <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
-                    <Th>History</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map(([lockerNumber, group]) => (
-                    <LockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
-                  ))}
-                </tbody>
-              </table>
+            <div className="hidden sm:block overflow-x-auto">
+              <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
+                <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+                  <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker" values={columnValues.locker} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
+                  <Th><SortHeader label="Category" col="cat" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Category" values={columnValues.cat} selected={colFilters.cat ?? new Set()} onChange={setColFilter("cat")} /></Th>
+                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={columnValues.status} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={columnValues.badge} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
+                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={columnValues.emp} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
+                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={columnValues.nid} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
+                  <Th><SortHeader label="Intake" col="intake" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Intake" values={columnValues.intake} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
+                  <Th><SortHeader label="Terminated" col="term" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Terminated" values={columnValues.term} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
+                  <Th>Reason</Th>
+                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
+                  <Th>History</Th>
+                </div>
+                {flattened.length === 0 ? (
+                  <div className="px-3 py-12 text-center text-muted-foreground text-sm">No rows match these filters.</div>
+                ) : (
+                  <List
+                    rowComponent={OccupancyRow as any}
+                    rowCount={flattened.length}
+                    rowHeight={ROW_HEIGHT}
+                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor }}
+                    style={{ height: Math.min(VIEWPORT_HEIGHT, flattened.length * ROW_HEIGHT + 4) }}
+                  />
+                )}
+              </div>
             </div>
             <div className="sm:hidden divide-y">
-              {visible.map(([lockerNumber, group]) => (
-                <MobileLockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
-              ))}
+              {(() => {
+                const MOBILE_CAP = 150;
+                const shown = visible.slice(0, MOBILE_CAP);
+                return (
+                  <>
+                    {shown.map(([lockerNumber, group]) => (
+                      <MobileLockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
+                    ))}
+                    {visible.length > MOBILE_CAP && (
+                      <div className="p-3 text-center text-xs text-muted-foreground">
+                        Showing first {MOBILE_CAP} of {visible.length.toLocaleString()} lockers. Narrow the filters to see more.
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
@@ -628,6 +677,42 @@ function syntheticRowFromLocker(l: Locker): Row {
     __synthetic: true,
   };
 }
+
+type FlatRow = { row: Row; lockerNumber: string; groupIndex: number; groupLength: number; reason: string | null };
+type OccupancyRowProps = { rows: FlatRow[]; onViewHistory: (lockerNumber: string) => void };
+const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory }: RowComponentProps<OccupancyRowProps>) {
+  const { row, lockerNumber, groupIndex, reason } = rows[index];
+  const isFirst = groupIndex === 0;
+  const isActive = (row.status ?? "").toLowerCase() === "active";
+  return (
+    <div
+      style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
+      className={`grid items-center border-t hover:bg-muted/40 text-sm ${groupIndex > 0 ? "bg-muted/20" : ""}`}
+    >
+      <div className="px-3 truncate font-medium font-mono">
+        {isFirst ? lockerNumber : <span className="text-muted-foreground/60 text-xs pl-3">↳</span>}
+      </div>
+      <div className="px-3 truncate text-xs uppercase text-muted-foreground">{row.category}</div>
+      <div className="px-3"><StatusBadge status={row.status} /></div>
+      <div className="px-3 truncate font-mono text-xs">{row.badge_number ?? "—"}</div>
+      <div className="px-3 truncate">{row.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</div>
+      <div className="px-3 truncate font-mono text-xs text-muted-foreground">{row.national_id ?? "—"}</div>
+      <div className="px-3 truncate text-muted-foreground text-xs">{fmtDate(row.batch_intake_date)}</div>
+      <div className="px-3 truncate text-muted-foreground text-xs">{fmtDate(row.termination_date)}</div>
+      <div className="px-3 truncate text-muted-foreground text-xs" title={(!isActive ? (row.remarks || reason || "") : "") || undefined}>
+        {!isActive ? (row.remarks || reason || "—") : "—"}
+      </div>
+      <div className="px-3 truncate text-muted-foreground text-xs">{row.work_location ?? "—"}</div>
+      <div className="px-3">
+        {isFirst && (
+          <Button variant="ghost" size="sm" onClick={() => onViewHistory(lockerNumber)} className="h-7 px-2">
+            <Eye className="h-3.5 w-3.5 mr-1" /> View
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+});
 
 function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNumber: string; group: Row[]; reason?: string | null; onViewHistory: () => void }) {
   return (
@@ -818,7 +903,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground bg-muted border-b">{children}</th>;
+  return <div className="px-3 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">{children}</div>;
 }
 
 function fmtDate(iso: string | null): string {
