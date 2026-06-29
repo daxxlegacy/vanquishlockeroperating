@@ -227,7 +227,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   };
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
     const f = allRows.filter((r) => {
       const st = (r.status ?? "").toLowerCase();
       if (statusFilter === "active" && st !== "active") return false;
