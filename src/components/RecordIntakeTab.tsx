@@ -337,6 +337,7 @@ export function RecordIntakeTab() {
                     <th className="px-2 py-1.5">Employee Name</th>
                     <th className="px-2 py-1.5">Badge</th>
                     <th className="px-2 py-1.5">National ID</th>
+                    <th className="px-2 py-1.5">Work Location</th>
                     <th className="px-2 py-1.5">Batch Intake</th>
                     <th className="px-2 py-1.5">Action</th>
                   </tr>
