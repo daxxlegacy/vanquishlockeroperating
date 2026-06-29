@@ -269,19 +269,25 @@ function AddSpareKeyLockerDialog({
     if (!form.location.trim()) { toast.error("Location is required"); return; }
     if (duplicate) { toast.error(`Locker "${trimmedNumber}" already exists in the listing`); return; }
     setSaving(true);
-    const { error } = await supabase.from("lockers").insert({
+    const { data: inserted, error } = await supabase.from("lockers").insert({
       locker_number: trimmedNumber,
       location: form.location.trim(),
       row_label: form.row_label.trim() || null,
       status: "empty",
       spare_key_status: form.spare_key_status,
-    });
+    }).select().single();
     setSaving(false);
     if (error) {
       toast.error(error.message.toLowerCase().includes("duplicate")
         ? `Locker "${trimmedNumber}" already exists in the listing`
         : error.message);
       return;
+    }
+    if (inserted) {
+      try {
+        const { syncMetadataToOccupancy } = await import("@/lib/occupancy-sync");
+        await syncMetadataToOccupancy(inserted);
+      } catch { /* non-fatal */ }
     }
     toast.success(`Spare key locker ${trimmedNumber} added`);
     onCreated();

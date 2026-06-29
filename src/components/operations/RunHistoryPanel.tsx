@@ -40,12 +40,18 @@ export function RunHistoryPanel() {
       for (const it of items ?? []) {
         try {
           if (it.locker_id) {
-            const { error: e1 } = await supabase.from("lockers").update({
+            const { data: restoredLocker, error: e1 } = await supabase.from("lockers").update({
               employee_name: it.employee_name,
               badge_number: it.badge_number,
               status: (it.prior_status ?? "active") as "active",
-            }).eq("id", it.locker_id);
+            }).eq("id", it.locker_id).select().single();
             if (e1) throw e1;
+            if (restoredLocker) {
+              try {
+                const { syncActivationToOccupancy } = await import("@/lib/occupancy-sync");
+                await syncActivationToOccupancy(restoredLocker);
+              } catch { /* non-fatal */ }
+            }
           }
           if (it.termination_id) {
             await supabase.from("terminations").update({
