@@ -323,8 +323,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     "Key Lock": r.key_lock_type ?? "",
     "Batch Intake": fmtDate(r.batch_intake_date),
     "Termination Date": fmtDate(r.termination_date),
-    "Department": r.department ?? "",
-    "Gradeset": r.gradeset ?? "",
+    "Terminated Reason": reasons.get(r.locker_number) ?? "",
     "Remarks": r.remarks ?? "",
     "Source File": r.source_filename ?? "",
   }));
