@@ -1,55 +1,49 @@
 ## Goal
 
-1. Let users type any custom status (free-form) on a locker. It propagates everywhere status is shown, filtered, and exported.
-2. Audit every page so terminate clears occupant fields but keeps location + key lock type, and every export matches exactly what's visible on screen.
+Make the Occupancy page look and behave like the Lockers page: one single combined table (no Full/Staff/Shoe tabs), include every locker number, add an Excel export, and ensure all flows that affect lockers also update Occupancy.
 
-## 1. Custom status — data model
+## Changes
 
-Keep the existing `locker_status` enum (active, empty, cleaning, repair, etc.) so DB functions like `transfer_locker` keep working. Add a new free-form field:
+### 1. Combine the 3 category tabs into one view
+- Remove the `Full Lockers / Staff Lockers / Shoe Lockers` tabs.
+- Single header "Occupancy History" with stat cards: Total Rows, Unique Lockers, Active, Terminated.
+- Keep an optional Category filter dropdown (All / Full / Staff / Shoe) so users can still narrow if needed.
+- Import Excel button keeps category-specific imports via a small dropdown (Import Full / Staff / Shoe), preserving existing logic.
 
-- Migration: `ALTER TABLE public.lockers ADD COLUMN custom_status TEXT;`
-- Rule: when `custom_status` is non-empty, the locker's effective status = that text (e.g. "Blocked", "Quarantine", "VIP hold"). When null/empty, fall back to the enum `status`.
-- Underlying enum will be set to `repair` (closest "not available" bucket) whenever a custom status is applied, so transfer/swap guards still treat it as unavailable.
+### 2. Show every locker number (fill the gaps)
+- Source the locker list from the `lockers` table (same source as the Lockers page) so every locker number appears.
+- Overlay occupancy/termination rows from `locker_occupancy` on top of each locker (matched by `locker_number`).
+- Lockers with no occupancy record render as a single row with status from `lockers.status` (vacant/active/etc.) and no history group.
+- Existing rows that have occupancy records continue to render as Active + most-recent Terminate.
 
-## 2. UI changes
+### 3. Excel export (like Lockers page)
+- Add an "Export Excel" button next to "Export CSV", using the same `xlsx` library and styling (bold dark header, auto-width).
+- Both exports respect the current filters/search/sort.
+- Filename: `LockerOps_occupancy{filterTag}_YYYY-MM-DD.xlsx`.
 
-**Status edit control** (locker detail, edit dialogs):
-- Dropdown: Active, Empty, Cleaning, Repair, **+ Custom…**
-- Picking "Custom…" reveals a text input + recent-customs suggestions (pulled live from `SELECT DISTINCT custom_status` so anything you've typed before auto-appears across pages).
-- Saving writes `custom_status` + sets enum to `repair`; clearing it back to a standard status nulls `custom_status`.
+### 4. Fix synchronization into Occupancy
+Audit every place that mutates a locker and confirm it calls the matching `occupancy-sync` helper. Add the missing calls:
+- Lockers page Add Locker → call `syncActivationToOccupancy` when the new locker has an occupant.
+- Lockers page edit (LockerDetail save) → call `syncMetadataToOccupancy` always; `syncActivationToOccupancy` when becoming active; `syncStatusChangeToOccupancy` when leaving active without a formal termination.
+- Swap / Transfer RPCs → after success, sync both source and target lockers.
+- Delete locker → remove the locker's occupancy rows.
+- Record Intake bulk upload → already calls `syncActivationToOccupancy` (verify).
+- Terminate dialog (table + full-page route) → already syncs (verify).
 
-**Display** (`StatusBadge`):
-- If `custom_status` set → render that text in a neutral "custom" badge tone.
-- Otherwise render enum as today.
-- All status filters (Lockers page, Map, Occupancy, Reconcile, Duplicates, Spare Keys) get the union of standard + every distinct custom_status currently in use.
+### 5. Visual parity with Lockers page
+- Same column order/widths where applicable, same SortHeader + ColumnFilter behaviour, same toolbar layout (search left, dropdowns, missing-NID/Badge toggles where meaningful, export buttons right).
+- Keep Reason column and per-locker "View" history dialog (Occupancy-only features).
 
-## 3. Termination audit + fix
+## Technical notes
 
-Verify across every termination entry point that the result is: occupant cleared, **location + key lock type retained**, status set per chosen action, spare-key auto-rules applied.
+- New cache: extend `lib/occupancy-cache.ts` with a combined accessor that returns rows across all 3 categories, plus the `lockers` table merged in. Alternatively, build the merged view in the route via `useOccupancy("main"|"staff"|"shoe")` + `useLockers()` joined client-side.
+- A row's "category" still comes from `locker_occupancy.category` when present; otherwise infer from `lockers.location` / naming convention or leave blank.
+- xlsx styling reuses the helper pattern already in `src/routes/lockers.tsx` `exportXlsx`.
 
-Pages/components checked & fixed if needed:
-- `TerminateUserDialog` (single)
-- `routes/terminate.$lockerId.tsx` (full page)
-- `routes/reconcile.tsx` "Terminate all" bulk action
-- `components/operations/TerminationsPanel.tsx`
-- `lib/termination-actions.ts` (shared writer)
+## Out of scope
+- No data migration. Existing occupancy rows stay as-is.
+- No DB schema changes.
+- No changes to the History dialog logic or the Reason source.
 
-Concrete fields cleared: `employee_name, badge_number, national_id, work_location, batch_intake, remark`. Kept: locker number, location/zone, `key_lock_type`, compartment metadata. Auto-rules kept: round/pull → spare_key=missing; numerical → spare_key=reset.
-
-**Note on `work_location`**: currently cleared on terminate. Confirm — should `work_location` be kept too (since you said "except location and key lock")? Default assumption in this plan: keep `work_location`. Tell me if you want it cleared.
-
-## 4. Export audit + fix
-
-For each page with an Export button, route export through the same filtered/sorted in-memory array the table renders, instead of re-querying. Columns in CSV = columns visible on the page (plus `custom_status`).
-
-Pages checked: Lockers, Spare Keys, Occupancy, Duplicates, Reconcile, Terminations, Audit, Operations history.
-
-Shared helper `src/lib/csv-export.ts` will get a `exportRows(rows, columns)` signature so every page calls it with the exact rendered slice.
-
-## 5. Stability check
-
-After edits I'll run typecheck + a Playwright smoke pass on: set custom status → see it on Lockers list, Map, Occupancy filter, export CSV; terminate one locker → confirm cleared fields + retained location/key; bulk terminate from Reconcile → confirm it hits locker rows.
-
-## Open question (please confirm before I build)
-
-Should `work_location` be **kept** on terminate (matches your "except location and key lock" wording) or **cleared** (current behavior)?
+## Question
+Should the combined Occupancy view also show a small **Category** column (Full / Staff / Shoe), or keep that hidden and just expose it as a filter?
