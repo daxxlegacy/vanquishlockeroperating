@@ -295,10 +295,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     return trimmed;
   }, [filtered]);
 
-  const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const startIdx = (safePage - 1) * PAGE_SIZE;
-  const visible = grouped.slice(startIdx, startIdx + PAGE_SIZE);
+  const CAP = 500;
+  const visible = grouped.slice(0, CAP);
 
   const stats = useMemo(() => {
     const lockerNos = new Set<string>();
