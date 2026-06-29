@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye, Download, FilterX } from "lucide-react";
+import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
@@ -41,7 +41,7 @@ const CATEGORY_LABEL: Record<OccCategory, string> = {
   shoe: "Shoe Locker (Occupied + Shoe)",
 };
 
-const PAGE_SIZE = 50;
+
 
 export const Route = createFileRoute("/occupancy")({
   head: () => ({
@@ -88,7 +88,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | OccCategory>("all");
   const [locFilter, setLocFilter] = useState("all");
-  const [page, setPage] = useState(1);
+  
   const [importing, setImporting] = useState(false);
   const [importCat, setImportCat] = useState<OccCategory | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
@@ -113,7 +113,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter, categoryFilter, locFilter]);
+  
 
   // ---------- Merge data ----------
   // Combine occupancy rows from all three categories, then overlay the lockers
@@ -295,10 +295,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     return trimmed;
   }, [filtered]);
 
-  const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const startIdx = (safePage - 1) * PAGE_SIZE;
-  const visible = grouped.slice(startIdx, startIdx + PAGE_SIZE);
+  const CAP = 500;
+  const visible = grouped.slice(0, CAP);
 
   const stats = useMemo(() => {
     const lockerNos = new Set<string>();
@@ -594,19 +592,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-4 py-3 border-t bg-muted/20">
-              <div className="text-xs text-muted-foreground">
-                Showing lockers {startIdx + 1}–{startIdx + visible.length} of {grouped.length.toLocaleString()} ({filtered.length.toLocaleString()} rows)
-              </div>
-              <div className="flex items-center justify-between sm:justify-end gap-2">
-                <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Prev
-                </Button>
-                <span className="text-sm font-medium px-2">Page {safePage} / {totalPages}</span>
-                <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
+            <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
+              Showing {visible.length.toLocaleString()} of {grouped.length.toLocaleString()} locker{grouped.length === 1 ? "" : "s"} ({filtered.length.toLocaleString()} rows)
+              {grouped.length > CAP && <> · Narrow the filters to see more.</>}
             </div>
           </>
         )}
