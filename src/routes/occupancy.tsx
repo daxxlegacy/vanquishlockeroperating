@@ -350,7 +350,6 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     "Employee Name": r.employee_name ?? "",
     "National ID": r.national_id ?? "",
     "Work Location": r.work_location ?? "",
-    "Locker Row": r.locker_row ?? "",
     "Locker Location": r.locker_location_by_row ?? "",
     "Key Lock": r.key_lock_type ?? "",
     "Batch Intake": fmtDate(r.batch_intake_date),
