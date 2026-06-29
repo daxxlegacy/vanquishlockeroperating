@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Upload as UploadIcon, History, ChevronLeft, ChevronRight, Trash2, Eye, Download, FilterX } from "lucide-react";
+import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
