@@ -819,7 +819,7 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">{children}</th>;
+  return <th className="px-3 py-2.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground bg-muted border-b">{children}</th>;
 }
 
 function fmtDate(iso: string | null): string {
