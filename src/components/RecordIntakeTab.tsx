@@ -23,6 +23,7 @@ type IntakeRow = {
   employee_name: string;
   badge_number: string;
   national_id: string;
+  work_location: string;
   batch_intake: unknown; // raw — parsed at apply time
 };
 
