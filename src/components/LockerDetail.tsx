@@ -43,6 +43,8 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
   const [termOpen, setTermOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const isAdmin = role === "admin";
 
   useEffect(() => {
