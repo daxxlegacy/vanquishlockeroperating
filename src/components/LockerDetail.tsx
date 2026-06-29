@@ -105,6 +105,31 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     }
   };
 
+  const handleClearDetails = async () => {
+    if (!isAdmin) return;
+    setClearing(true);
+    const cleared = {
+      badge_number: null,
+      employee_name: null,
+      national_id: null,
+      work_location: null,
+      batch_intake: null,
+      remark: null,
+      custom_status: null,
+      status: "empty",
+    };
+    const { error } = await supabase.from("lockers").update(cleared).eq("id", locker.id);
+    setClearing(false);
+    setClearOpen(false);
+    if (error) { toast.error(error.message); return; }
+    const updated = { ...locker, ...cleared } as Locker;
+    setLocker(updated);
+    await syncStatusChangeToOccupancy(updated);
+    toast.success("Locker details cleared");
+    onUpdated?.();
+    onClose();
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
