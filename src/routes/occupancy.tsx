@@ -592,19 +592,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-4 py-3 border-t bg-muted/20">
-              <div className="text-xs text-muted-foreground">
-                Showing lockers {startIdx + 1}–{startIdx + visible.length} of {grouped.length.toLocaleString()} ({filtered.length.toLocaleString()} rows)
-              </div>
-              <div className="flex items-center justify-between sm:justify-end gap-2">
-                <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Prev
-                </Button>
-                <span className="text-sm font-medium px-2">Page {safePage} / {totalPages}</span>
-                <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
+            <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
+              Showing {visible.length.toLocaleString()} of {grouped.length.toLocaleString()} locker{grouped.length === 1 ? "" : "s"} ({filtered.length.toLocaleString()} rows)
+              {grouped.length > CAP && <> · Narrow the filters to see more.</>}
             </div>
           </>
         )}
