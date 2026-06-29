@@ -665,6 +665,42 @@ function syntheticRowFromLocker(l: Locker): Row {
   };
 }
 
+type FlatRow = { row: Row; lockerNumber: string; groupIndex: number; groupLength: number; reason: string | null };
+type OccupancyRowProps = { rows: FlatRow[]; onViewHistory: (lockerNumber: string) => void };
+const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory }: RowComponentProps<OccupancyRowProps>) {
+  const { row, lockerNumber, groupIndex, reason } = rows[index];
+  const isFirst = groupIndex === 0;
+  const isActive = (row.status ?? "").toLowerCase() === "active";
+  return (
+    <div
+      style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
+      className={`grid items-center border-t hover:bg-muted/40 text-sm ${groupIndex > 0 ? "bg-muted/20" : ""}`}
+    >
+      <div className="px-3 truncate font-medium font-mono">
+        {isFirst ? lockerNumber : <span className="text-muted-foreground/60 text-xs pl-3">↳</span>}
+      </div>
+      <div className="px-3 truncate text-xs uppercase text-muted-foreground">{row.category}</div>
+      <div className="px-3"><StatusBadge status={row.status} /></div>
+      <div className="px-3 truncate font-mono text-xs">{row.badge_number ?? "—"}</div>
+      <div className="px-3 truncate">{row.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</div>
+      <div className="px-3 truncate font-mono text-xs text-muted-foreground">{row.national_id ?? "—"}</div>
+      <div className="px-3 truncate text-muted-foreground text-xs">{fmtDate(row.batch_intake_date)}</div>
+      <div className="px-3 truncate text-muted-foreground text-xs">{fmtDate(row.termination_date)}</div>
+      <div className="px-3 truncate text-muted-foreground text-xs" title={(!isActive ? (row.remarks || reason || "") : "") || undefined}>
+        {!isActive ? (row.remarks || reason || "—") : "—"}
+      </div>
+      <div className="px-3 truncate text-muted-foreground text-xs">{row.work_location ?? "—"}</div>
+      <div className="px-3">
+        {isFirst && (
+          <Button variant="ghost" size="sm" onClick={() => onViewHistory(lockerNumber)} className="h-7 px-2">
+            <Eye className="h-3.5 w-3.5 mr-1" /> View
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+});
+
 function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNumber: string; group: Row[]; reason?: string | null; onViewHistory: () => void }) {
   return (
     <>
