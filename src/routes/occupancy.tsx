@@ -561,9 +561,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
           </div>
         ) : (
           <>
-            <div className="hidden sm:block overflow-x-auto">
+            <div className="hidden sm:block overflow-auto max-h-[calc(100vh-280px)]">
               <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left">
+                <thead className="bg-muted/50 text-left sticky top-0 z-10">
                   <tr>
                     <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker" values={columnValues.locker} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
                     <Th><SortHeader label="Category" col="cat" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Category" values={columnValues.cat} selected={colFilters.cat ?? new Set()} onChange={setColFilter("cat")} /></Th>
