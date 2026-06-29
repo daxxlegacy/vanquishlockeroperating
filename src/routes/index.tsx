@@ -161,18 +161,22 @@ function MapPage() {
   const handleUploadLayout = async (file: File) => {
     try {
       const layout = await parseLayoutFromFile(file);
-      saveLayout(layout);
+      await saveLayout(layout);
       toast.success(`Map layout updated — ${Object.keys(layout).length} sheet(s) imported.`);
       setActiveSheet(Object.keys(layout)[0]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to read layout file");
+      toast.error(e instanceof Error ? e.message : "Failed to save layout");
     }
   };
 
-  const handleResetLayout = () => {
-    clearLayoutOverride();
-    toast.success("Restored default map layout.");
-    setActiveSheet(undefined);
+  const handleResetLayout = async () => {
+    try {
+      await clearLayoutOverride();
+      toast.success("Restored default map layout.");
+      setActiveSheet(undefined);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to reset layout");
+    }
   };
 
   return (
