@@ -105,6 +105,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const { lockers } = useLockers();
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, 180);
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | OccCategory>("all");
   const [locFilter, setLocFilter] = useState("all");
