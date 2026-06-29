@@ -621,9 +621,22 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
               </div>
             </div>
             <div className="sm:hidden divide-y">
-              {visible.map(([lockerNumber, group]) => (
-                <MobileLockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
-              ))}
+              {(() => {
+                const MOBILE_CAP = 150;
+                const shown = visible.slice(0, MOBILE_CAP);
+                return (
+                  <>
+                    {shown.map(([lockerNumber, group]) => (
+                      <MobileLockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
+                    ))}
+                    {visible.length > MOBILE_CAP && (
+                      <div className="p-3 text-center text-xs text-muted-foreground">
+                        Showing first {MOBILE_CAP} of {visible.length.toLocaleString()} lockers. Narrow the filters to see more.
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
