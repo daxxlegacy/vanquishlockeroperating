@@ -310,6 +310,27 @@ export type Database = {
         }
         Relationships: []
       }
+      map_layouts: {
+        Row: {
+          id: string
+          layout: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id: string
+          layout: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          layout?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
