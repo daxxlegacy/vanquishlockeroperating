@@ -88,7 +88,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | OccCategory>("all");
   const [locFilter, setLocFilter] = useState("all");
-  const [page, setPage] = useState(1);
+  
   const [importing, setImporting] = useState(false);
   const [importCat, setImportCat] = useState<OccCategory | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
