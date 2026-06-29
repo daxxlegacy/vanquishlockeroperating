@@ -23,6 +23,7 @@ type IntakeRow = {
   employee_name: string;
   badge_number: string;
   national_id: string;
+  work_location: string;
   batch_intake: unknown; // raw — parsed at apply time
 };
 
@@ -38,6 +39,7 @@ type DbState = {
   employee_name: string | null;
   badge_number: string | null;
   national_id: string | null;
+  work_location: string | null;
   status: string | null;
 };
 
@@ -108,6 +110,7 @@ export function RecordIntakeTab() {
       const cBadge = findCol(headers, /employee\s*number/i);
       const cNid = findCol(headers, /national\s*id/i, /ic\s*number/i);
       const cBatch = findCol(headers, /batch\s*intake/i);
+      const cWork = findCol(headers, /work\s*location/i, /work\s*site/i, /location/i);
 
       const intakeRows: IntakeRow[] = [];
       const ignoredRows: IgnoredRow[] = [];
@@ -118,6 +121,7 @@ export function RecordIntakeTab() {
         const name = cName >= 0 ? CLEAN(row[cName]) : "";
         const badge = cBadge >= 0 ? CLEAN(row[cBadge]) : "";
         const nid = cNid >= 0 ? CLEAN(row[cNid]) : "";
+        const work = cWork >= 0 ? CLEAN(row[cWork]) : "";
         const batch = cBatch >= 0 ? row[cBatch] : null;
 
         // Skip blank rows entirely
@@ -140,6 +144,7 @@ export function RecordIntakeTab() {
           employee_name: name,
           badge_number: badge,
           national_id: nid,
+          work_location: work,
           batch_intake: batch,
         });
       }
@@ -154,7 +159,7 @@ export function RecordIntakeTab() {
           const slice = lockerNums.slice(i, i + CHUNK);
           const { data, error } = await supabase
             .from("lockers")
-            .select("locker_number, employee_name, badge_number, national_id, status")
+            .select("locker_number, employee_name, badge_number, national_id, work_location, status")
             .is("deleted_at", null)
             .in("locker_number", slice);
           if (error) {
@@ -233,6 +238,7 @@ export function RecordIntakeTab() {
             employee_name: r.employee_name,
             badge_number: r.badge_number || existing?.badge_number || null,
             national_id: r.national_id || existing?.national_id || null,
+            work_location: r.work_location || existing?.work_location || null,
             status: "active" as const,
             updated_at: new Date().toISOString(),
             ...(batchIso ? { batch_intake: batchIso } : {}),
@@ -331,6 +337,7 @@ export function RecordIntakeTab() {
                     <th className="px-2 py-1.5">Employee Name</th>
                     <th className="px-2 py-1.5">Badge</th>
                     <th className="px-2 py-1.5">National ID</th>
+                    <th className="px-2 py-1.5">Work Location</th>
                     <th className="px-2 py-1.5">Batch Intake</th>
                     <th className="px-2 py-1.5">Action</th>
                   </tr>
@@ -358,6 +365,7 @@ export function RecordIntakeTab() {
                         <td className="px-2 py-1">{r.employee_name}</td>
                         <td className="px-2 py-1 text-muted-foreground">{r.badge_number || "—"}</td>
                         <td className="px-2 py-1 text-muted-foreground">{r.national_id || "—"}</td>
+                        <td className="px-2 py-1 text-muted-foreground">{r.work_location || "—"}</td>
                         <td className="px-2 py-1 text-muted-foreground">{batchDisplay || "—"}</td>
                         <td className="px-2 py-1">
                           {r.action === "NEW" && (
