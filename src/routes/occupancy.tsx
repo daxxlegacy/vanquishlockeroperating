@@ -295,8 +295,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     return trimmed;
   }, [filtered]);
 
-  const CAP = 500;
-  const visible = grouped.slice(0, CAP);
+  const visible = grouped;
 
   const stats = useMemo(() => {
     const lockerNos = new Set<string>();
