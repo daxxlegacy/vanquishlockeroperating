@@ -41,7 +41,7 @@ const CATEGORY_LABEL: Record<OccCategory, string> = {
   shoe: "Shoe Locker (Occupied + Shoe)",
 };
 
-const PAGE_SIZE = 50;
+
 
 export const Route = createFileRoute("/occupancy")({
   head: () => ({
