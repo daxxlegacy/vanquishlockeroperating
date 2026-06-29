@@ -238,6 +238,7 @@ export function RecordIntakeTab() {
             employee_name: r.employee_name,
             badge_number: r.badge_number || existing?.badge_number || null,
             national_id: r.national_id || existing?.national_id || null,
+            work_location: r.work_location || existing?.work_location || null,
             status: "active" as const,
             updated_at: new Date().toISOString(),
             ...(batchIso ? { batch_intake: batchIso } : {}),
