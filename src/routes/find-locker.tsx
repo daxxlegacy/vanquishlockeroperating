@@ -9,12 +9,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ShieldCheck, Search } from "lucide-react";
 import { HelpMenu } from "@/components/support/HelpMenu";
 
-
 export const Route = createFileRoute("/find-locker")({
   head: () => ({
     meta: [
       { title: "Find My Locker" },
-      { name: "description", content: "Look up your assigned locker using your badge number and IC last 4 digits." },
+      { name: "description", content: "Look up your assigned locker using your badge number." },
     ],
   }),
   component: FindLockerPage,
@@ -56,36 +55,56 @@ function FindLockerPage() {
 
   const lookupRef = useRef<HTMLDivElement | null>(null);
 
+  const scrollFocusIntoView = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Ensure the focused field is not hidden behind the mobile keyboard.
+    setTimeout(() => {
+      e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 250);
+  };
+
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
-      <div className="w-full max-w-md mx-auto">
+    <div className="min-h-[100dvh] bg-background">
+      <div className="mx-auto w-full max-w-md px-5 pt-8 pb-24 sm:pb-10">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Find My Locker</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Enter your details to look up your assigned locker.
+            Enter your badge number to look up your assigned locker.
           </p>
         </div>
 
         <div ref={lookupRef}>
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Search className="h-4 w-4" /> Locker lookup
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={submit} className="space-y-4">
-                <div>
-                  <Label htmlFor="badge">Badge number</Label>
-                  <Input id="badge" value={badgeNumber} onChange={(e) => setBadgeNumber(e.target.value)} required autoComplete="off" />
+                <div className="space-y-1.5">
+                  <Label htmlFor="badge" className="text-sm">Badge number</Label>
+                  <Input
+                    id="badge"
+                    value={badgeNumber}
+                    onChange={(e) => setBadgeNumber(e.target.value)}
+                    onFocus={scrollFocusIntoView}
+                    required
+                    autoComplete="off"
+                    inputMode="text"
+                    className="h-12 text-base"
+                  />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full h-12 text-base"
+                  disabled={loading}
+                >
                   {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                   Find my locker
                 </Button>
 
                 <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <ShieldCheck className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   Your badge number is used only to look up your assigned locker.
                 </p>
               </form>
@@ -100,9 +119,9 @@ function FindLockerPage() {
                 <div className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Your locker</p>
                   <dl className="space-y-1.5 text-sm">
-                    <div className="flex justify-between"><dt className="text-muted-foreground">Name</dt><dd className="font-medium">{result.employee_name ?? "—"}</dd></div>
-                    <div className="flex justify-between"><dt className="text-muted-foreground">Badge</dt><dd className="font-medium">{result.badge_number ?? "—"}</dd></div>
-                    <div className="flex justify-between"><dt className="text-muted-foreground">Locker</dt><dd className="font-mono font-semibold">{result.locker_number ?? "—"}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Name</dt><dd className="font-medium text-right break-words">{result.employee_name ?? "—"}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Badge</dt><dd className="font-medium text-right break-words">{result.badge_number ?? "—"}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Locker</dt><dd className="font-mono font-semibold text-right">{result.locker_number ?? "—"}</dd></div>
                   </dl>
                 </div>
               )}
@@ -114,5 +133,4 @@ function FindLockerPage() {
       </div>
     </div>
   );
-
 }

@@ -11,9 +11,7 @@ import type { SupportRequestType } from "@/lib/support-requests";
 
 export type SupportFormProps = {
   requestType: SupportRequestType;
-  /** Show/hide "Current locker number" field. Always sent when present. */
   showLockerField?: boolean;
-  /** Optional default message prefill (e.g. "Can't find my locker"). */
   defaultMessage?: string;
   messageLabel?: string;
   messagePlaceholder?: string;
@@ -38,6 +36,14 @@ export function SupportRequestForm({
   const [okId, setOkId] = useState<string | null>(null);
   const [okTicket, setOkTicket] = useState<string | null>(null);
   const [okBadge, setOkBadge] = useState<string>("");
+
+  const scrollFocusIntoView = (
+    e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    setTimeout(() => {
+      e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 250);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,24 +98,24 @@ export function SupportRequestForm({
         <CheckCircle2 className="h-4 w-4" />
         <AlertDescription>
           <div className="font-medium">Your request has been received.</div>
-          <div className="text-sm mt-1">
+          <div className="text-sm mt-1 break-words">
             Ticket number:{" "}
             <span className="font-mono font-semibold">
               {okTicket ?? `#${okId.slice(0, 8).toUpperCase()}`}
             </span>
           </div>
-          <div className="text-xs mt-1">
+          <div className="text-xs mt-1 break-words">
             Save this number. Our team will contact you at{" "}
             <span className="font-mono">{contact}</span>.
           </div>
           {okTicket && (
-            <div className="mt-2">
+            <div className="mt-3">
               <Link
                 to="/ticket"
                 search={{ t: okTicket, b: okBadge }}
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                className="inline-flex items-center justify-center gap-1 h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium w-full"
               >
-                Check ticket status <ExternalLink className="h-3 w-3" />
+                Check ticket status <ExternalLink className="h-3.5 w-3.5" />
               </Link>
             </div>
           )}
@@ -120,48 +126,75 @@ export function SupportRequestForm({
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor="sr-name">Full name</Label>
-          <Input id="sr-name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="sr-name" className="text-sm">Full name</Label>
+          <Input
+            id="sr-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onFocus={scrollFocusIntoView}
+            required
+            autoComplete="name"
+            inputMode="text"
+            className="h-12 text-base"
+          />
         </div>
-        <div>
-          <Label htmlFor="sr-badge">Badge number</Label>
-          <Input id="sr-badge" value={badge} onChange={(e) => setBadge(e.target.value)} required autoComplete="off" />
+        <div className="space-y-1.5">
+          <Label htmlFor="sr-badge" className="text-sm">Badge number</Label>
+          <Input
+            id="sr-badge"
+            value={badge}
+            onChange={(e) => setBadge(e.target.value)}
+            onFocus={scrollFocusIntoView}
+            required
+            autoComplete="off"
+            inputMode="text"
+            className="h-12 text-base"
+          />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor="sr-contact">Contact number</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="sr-contact" className="text-sm">Contact number</Label>
           <Input
             id="sr-contact"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
+            onFocus={scrollFocusIntoView}
             required
             inputMode="tel"
             autoComplete="tel"
             placeholder="e.g. 012-3456789"
+            className="h-12 text-base"
           />
         </div>
         {showLockerField && (
-          <div>
-            <Label htmlFor="sr-locker">Current locker number (optional)</Label>
-            <Input id="sr-locker" value={locker} onChange={(e) => setLocker(e.target.value)} autoComplete="off" />
+          <div className="space-y-1.5">
+            <Label htmlFor="sr-locker" className="text-sm">Current locker number (optional)</Label>
+            <Input
+              id="sr-locker"
+              value={locker}
+              onChange={(e) => setLocker(e.target.value)}
+              onFocus={scrollFocusIntoView}
+              autoComplete="off"
+              inputMode="text"
+              className="h-12 text-base"
+            />
           </div>
         )}
       </div>
 
-      <div>
-        <Label htmlFor="sr-message">{messageLabel}</Label>
+      <div className="space-y-1.5">
+        <Label htmlFor="sr-message" className="text-sm">{messageLabel}</Label>
         <Textarea
           id="sr-message"
-          rows={3}
+          rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          onFocus={scrollFocusIntoView}
           placeholder={messagePlaceholder}
           maxLength={2000}
           required
+          className="text-base min-h-[112px]"
         />
       </div>
 
@@ -171,7 +204,7 @@ export function SupportRequestForm({
         </Alert>
       )}
 
-      <Button type="submit" className="w-full" disabled={busy}>
+      <Button type="submit" className="w-full h-12 text-base" disabled={busy}>
         {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
         {submitLabel}
       </Button>
