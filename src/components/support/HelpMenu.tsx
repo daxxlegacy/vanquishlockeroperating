@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRightLeft, HelpCircle, MessageSquare, Search } from "lucide-react";
 import { SupportRequestForm } from "./SupportRequestForm";
+import { FaqAssistant } from "./FaqAssistant";
+
 
 type Panel = "menu" | "transfer" | "cant_find" | "cant_find_form" | "other";
 
