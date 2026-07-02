@@ -17,9 +17,18 @@ const json = (body: unknown, status = 200) =>
 
 const digitsOnly = (value: unknown) => String(value ?? "").replace(/\D/g, "");
 const clean = (value: unknown) => String(value ?? "").trim();
+const compact = (value: unknown) => clean(value).toLowerCase().replace(/[\s_-]+/g, "");
 const hasNoNationalId = (value: unknown) => {
   const raw = clean(value).toLowerCase();
   return !raw || raw === "-" || raw === "n/a" || raw === "na" || raw === "nil" || digitsOnly(raw).length === 0;
+};
+
+const activeRank = (source: string, status: unknown) => {
+  const s = clean(status).toLowerCase();
+  if (source === "lockers" && s === "active") return 0;
+  if (source === "locker_occupancy" && s === "active") return 1;
+  if (source === "lockers") return 2;
+  return 3;
 };
 
 Deno.serve(async (req) => {
@@ -65,20 +74,31 @@ Deno.serve(async (req) => {
     return json({ error: "No matching record found" }, 404);
   }
 
-  // Check both authoritative tables. Pull the small locker dataset and normalize
+  // Check both authoritative tables. Page through the full dataset and normalize
   // in code so formatted badge/NID values still match (spaces, dashes, etc.).
   const findIn = async (table: "lockers" | "locker_occupancy") => {
-    const { data, error } = await supabase
-      .from(table)
-      .select("employee_name,badge_number,locker_number,national_id")
-      .limit(10000);
-    if (error) {
-      console.error(`locker lookup ${table} query failed`, error.message);
-      return [];
+    const pageSize = 1000;
+    const allRows: any[] = [];
+
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from(table)
+        .select("employee_name,badge_number,locker_number,national_id,status")
+        .range(from, from + pageSize - 1);
+      if (error) {
+        console.error(`locker lookup ${table} query failed`, error.message);
+        return [];
+      }
+      allRows.push(...(data ?? []).map((row: any) => ({ ...row, source: table })));
+      if (!data || data.length < pageSize) break;
     }
-    const rows = (data ?? []).filter((r: any) => {
+
+    const rows = allRows.filter((r: any) => {
       const storedBadge = clean(r.badge_number);
-      return storedBadge === badge_number || (!!badge_digits && digitsOnly(storedBadge) === badge_digits);
+      return (
+        compact(storedBadge) === compact(badge_number) ||
+        (!!badge_digits && digitsOnly(storedBadge) === badge_digits)
+      );
     });
     if (hasNid) {
       // Match by NID when provided.
@@ -92,22 +112,26 @@ Deno.serve(async (req) => {
 
   const all = [...(await findIn("lockers")), ...(await findIn("locker_occupancy"))];
 
-  // De-duplicate across the two tables (same locker/badge pair).
+  // De-duplicate across the two tables (same locker/badge pair) and prefer the
+  // current active assignment when the upload history also contains old rows.
   const seen = new Set<string>();
   const matches: any[] = [];
-  for (const r of all) {
-    const key = `${r.locker_number ?? ""}|${r.badge_number ?? ""}`;
+  for (const r of all.sort((a, b) => activeRank(a.source, a.status) - activeRank(b.source, b.status))) {
+    const key = `${compact(r.locker_number)}|${digitsOnly(r.badge_number) || compact(r.badge_number)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     matches.push(r);
   }
 
-  if (matches.length !== 1) {
-    await logAttempt(false, matches[0]?.locker_number ?? null);
+  const bestRank = matches.length ? activeRank(matches[0].source, matches[0].status) : 99;
+  const bestMatches = matches.filter((r) => activeRank(r.source, r.status) === bestRank);
+
+  if (bestMatches.length !== 1) {
+    await logAttempt(false, bestMatches[0]?.locker_number ?? matches[0]?.locker_number ?? null);
     return json({ error: "No matching record found" }, 404);
   }
 
-  const m = matches[0];
+  const m = bestMatches[0];
   await logAttempt(true, m.locker_number ?? null);
   return json({
     employee_name: m.employee_name ?? null,
