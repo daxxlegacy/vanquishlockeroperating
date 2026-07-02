@@ -17,8 +17,7 @@ export type AppPermission =
   | "page_duplicates"
   | "page_operations"
   | "page_reconcile"
-  | "page_upload"
-  | "page_support_requests";
+  | "page_upload";
 
 export const PERMISSION_LABELS: Record<AppPermission, string> = {
   locker_management: "Locker management (edit, assign, delete lockers)",
@@ -35,8 +34,8 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   page_operations: "View Operations page",
   page_reconcile: "View Reconcile page",
   page_upload: "View Upload page",
-  page_support_requests: "View Support Requests page",
 };
+
 
 
 export const PAGE_PERMISSIONS: AppPermission[] = [
