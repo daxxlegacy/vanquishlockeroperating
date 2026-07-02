@@ -1,0 +1,1 @@
+CREATE POLICY "Support staff can delete requests" ON public.support_requests FOR DELETE USING (has_role(auth.uid(), 'admin'::app_role) OR has_permission(auth.uid(), 'manage_support_requests'::app_permission));
