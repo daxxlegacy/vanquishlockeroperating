@@ -400,6 +400,54 @@ export type Database = {
         }
         Relationships: []
       }
+      support_requests: {
+        Row: {
+          badge_number: string
+          client_ip: unknown
+          contact_number: string
+          created_at: string
+          id: string
+          locker_number: string | null
+          message: string
+          name: string
+          request_type: Database["public"]["Enums"]["support_request_type"]
+          resolved_at: string | null
+          resolved_by: string | null
+          status: Database["public"]["Enums"]["support_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          badge_number: string
+          client_ip?: unknown
+          contact_number: string
+          created_at?: string
+          id?: string
+          locker_number?: string | null
+          message: string
+          name: string
+          request_type: Database["public"]["Enums"]["support_request_type"]
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["support_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          badge_number?: string
+          client_ip?: unknown
+          contact_number?: string
+          created_at?: string
+          id?: string
+          locker_number?: string | null
+          message?: string
+          name?: string
+          request_type?: Database["public"]["Enums"]["support_request_type"]
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["support_request_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       terminations: {
         Row: {
           badge_number: string | null
@@ -701,6 +749,18 @@ export type Database = {
         Args: { _record_id: string; _table_name: string }
         Returns: string
       }
+      submit_support_request: {
+        Args: {
+          _badge_number: string
+          _contact_number: string
+          _ip: string
+          _locker_number: string
+          _message: string
+          _name: string
+          _request_type: Database["public"]["Enums"]["support_request_type"]
+        }
+        Returns: string
+      }
       swap_lockers: { Args: { _a_id: string; _b_id: string }; Returns: Json }
       transfer_locker: {
         Args: { _from_id: string; _old_action: string; _to_id: string }
@@ -745,6 +805,8 @@ export type Database = {
         | "returning_locker"
         | "reset"
         | "done_reset"
+      support_request_status: "new" | "in_progress" | "resolved"
+      support_request_type: "transfer_locker" | "cant_find_locker" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -912,6 +974,8 @@ export const Constants = {
         "reset",
         "done_reset",
       ],
+      support_request_status: ["new", "in_progress", "resolved"],
+      support_request_type: ["transfer_locker", "cant_find_locker", "other"],
     },
   },
 } as const
