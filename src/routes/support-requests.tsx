@@ -247,9 +247,15 @@ const STATUS_STYLE: Record<SupportRequestStatus, string> = {
 function SupportCard({
   row,
   onUpdate,
+  selectable,
+  selected,
+  onSelectedChange,
 }: {
   row: SupportRequest;
   onUpdate: (id: string, status: SupportRequestStatus) => void | Promise<void>;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectedChange?: (on: boolean) => void;
 }) {
   const Icon = TYPE_ICON[row.request_type];
   const created = new Date(row.created_at);
