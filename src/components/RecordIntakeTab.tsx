@@ -6,7 +6,7 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
-import { parseBatchIntake } from "@/lib/locker-utils";
+import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { syncActivationToOccupancy } from "@/lib/occupancy-sync";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -346,9 +346,8 @@ export function RecordIntakeTab() {
                   {previewRows.map((r) => {
                     const checked = r.action === "UPDATE" ? !excluded.has(r.locker_number) : r.action === "NEW";
                     const batchDisplay = (() => {
-                      if (r.batch_intake instanceof Date) return r.batch_intake.toLocaleDateString();
-                      const s = r.batch_intake == null ? "" : String(r.batch_intake);
-                      return s;
+                      const iso = parseBatchIntake(r.batch_intake);
+                      return iso ? formatBatchIntake(iso) : "";
                     })();
                     return (
                       <tr key={`${r.locker_number}-${r.rowIndex}`} className="border-t">
