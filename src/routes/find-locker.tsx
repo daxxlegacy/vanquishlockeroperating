@@ -22,7 +22,6 @@ type Result = { employee_name: string | null; badge_number: string | null; locke
 
 function FindLockerPage() {
   const [badgeNumber, setBadgeNumber] = useState("");
-  const [nidLast4, setNidLast4] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,17 +30,10 @@ function FindLockerPage() {
     e.preventDefault();
     setError(null);
     setResult(null);
-    if (nidLast4 && !/^\d{4}$/.test(nidLast4)) {
-      setError("Please enter all 4 digits of your IC/National ID, or leave it blank.");
-      return;
-    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("locker-lookup", {
-        body: {
-          badge_number: badgeNumber.trim(),
-          national_id_last4: nidLast4.trim(),
-        },
+        body: { badge_number: badgeNumber.trim() },
       });
       if (error || !data || (data as { error?: string }).error) {
         const msg = (data as { error?: string } | null)?.error ?? error?.message ?? "";
