@@ -166,6 +166,30 @@ export type Database = {
         }
         Relationships: []
       }
+      locker_lookup_attempts: {
+        Row: {
+          attempted_at: string
+          id: string
+          ip_address: string | null
+          locker_number: string | null
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          id?: string
+          ip_address?: string | null
+          locker_number?: string | null
+          success?: boolean
+        }
+        Update: {
+          attempted_at?: string
+          id?: string
+          ip_address?: string | null
+          locker_number?: string | null
+          success?: boolean
+        }
+        Relationships: []
+      }
       locker_occupancy: {
         Row: {
           badge_number: string | null
