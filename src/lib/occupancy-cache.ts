@@ -92,6 +92,10 @@ function readStorage(cat: OccCategory): OccupancyRow[] | null {
 async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
   if (fetchPromises[cat]) return fetchPromises[cat];
   if (!silent) { states[cat] = { ...states[cat], loading: true }; emit(cat); }
+  const timerLabel = import.meta.env.DEV
+    ? `[perf] occupancy-cache fetchCat(${cat})${silent ? " (silent)" : ""}`
+    : null;
+  if (timerLabel) console.time(timerLabel);
   fetchPromises[cat] = (async () => {
     try {
       const all: OccupancyRow[] = [];
@@ -131,10 +135,32 @@ async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
       emit(cat);
     } finally {
       delete fetchPromises[cat];
+      if (timerLabel) console.timeEnd(timerLabel);
     }
   })();
   return fetchPromises[cat];
 }
+
+/** Kick off occupancy cache warm-up for one or more categories without
+ *  mounting a component. Reads warm cache from localStorage first, then
+ *  triggers a silent background refresh. */
+export function prefetchOccupancy(cats: OccCategory[] = ["main", "staff", "shoe"]) {
+  if (typeof window === "undefined") return;
+  startAuthRefresh();
+  ensureChannel();
+  for (const cat of cats) {
+    if (states[cat].data || states[cat].loading || fetchPromises[cat]) continue;
+    const warm = readStorage(cat);
+    if (warm && warm.length > 0) {
+      states[cat] = { data: warm, loading: false };
+      emit(cat);
+      fetchCat(cat, true);
+    } else {
+      fetchCat(cat, true);
+    }
+  }
+}
+
 
 async function refetchAfterAuthReady() {
   const cats = ["main", "staff", "shoe"] as OccCategory[];

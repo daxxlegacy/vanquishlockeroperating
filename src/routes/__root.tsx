@@ -1,6 +1,9 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { AuthProvider } from "@/lib/auth";
+import { useEffect } from "react";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
+import { prefetchLockers } from "@/lib/lockers-cache";
+import { prefetchOccupancy } from "@/lib/occupancy-cache";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -84,9 +87,22 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function CachePrewarm() {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    // Warm both major caches as soon as the user is signed in so switching
+    // between /lockers, /occupancy, /spare-keys, /duplicates feels instant.
+    prefetchLockers();
+    prefetchOccupancy();
+  }, [user]);
+  return null;
+}
+
 function RootComponent() {
   return (
     <AuthProvider>
+      <CachePrewarm />
       <Outlet />
       <Toaster richColors position="top-right" />
     </AuthProvider>
