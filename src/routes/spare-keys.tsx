@@ -177,32 +177,69 @@ function SpareKeysPage() {
           {!lockers ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : (
-            <div className="overflow-x-auto">
-              <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
-                <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                  <Th>Locker #</Th>
-                  <Th>Location</Th>
-                  <Th>Row</Th>
-                  <Th>Spare Key Status</Th>
-                </div>
+            <>
+              {/* Mobile: stacked card list */}
+              <div className="sm:hidden divide-y">
                 {filtered.length === 0 ? (
-                  <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
+                  <div className="p-8 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
                 ) : (
-                  <List
-                    rowComponent={SpareRow}
-                    rowCount={filtered.length}
-                    rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: filtered, onPick: setSelected }}
-                    style={{ height: Math.min(VIEWPORT_HEIGHT, filtered.length * ROW_HEIGHT + 4) }}
-                  />
+                  <>
+                    {filtered.slice(0, 200).map((l) => (
+                      <button
+                        type="button"
+                        key={l.id}
+                        onClick={() => setSelected(l.id)}
+                        className="w-full text-left px-4 py-3 active:bg-muted/60 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-base truncate">{l.locker_number}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {l.location}{l.row_label ? ` · ${l.row_label}` : ""}
+                            </div>
+                          </div>
+                          <KeyBadge status={l.spare_key_status} />
+                        </div>
+                      </button>
+                    ))}
+                    {filtered.length > 200 && (
+                      <div className="p-3 text-center text-xs text-muted-foreground">
+                        Showing first 200 of {filtered.length.toLocaleString()}. Narrow the filters to see more.
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-              <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
-                Showing {filtered.length.toLocaleString()} locker{filtered.length === 1 ? "" : "s"}
+
+              {/* Desktop / tablet: virtualized table */}
+              <div className="hidden sm:block overflow-x-auto">
+                <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
+                  <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+                    <Th>Locker #</Th>
+                    <Th>Location</Th>
+                    <Th>Row</Th>
+                    <Th>Spare Key Status</Th>
+                  </div>
+                  {filtered.length === 0 ? (
+                    <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
+                  ) : (
+                    <List
+                      rowComponent={SpareRow}
+                      rowCount={filtered.length}
+                      rowHeight={ROW_HEIGHT}
+                      rowProps={{ rows: filtered, onPick: setSelected }}
+                      style={{ height: Math.min(VIEWPORT_HEIGHT, filtered.length * ROW_HEIGHT + 4) }}
+                    />
+                  )}
+                </div>
+                <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
+                  Showing {filtered.length.toLocaleString()} locker{filtered.length === 1 ? "" : "s"}
+                </div>
               </div>
-            </div>
+            </>
           )}
         </Card>
+
       </main>
       <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} mode="spare" />
     </div>
