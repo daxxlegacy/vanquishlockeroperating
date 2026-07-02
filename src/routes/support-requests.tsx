@@ -237,6 +237,12 @@ function SupportRequestsPage() {
             )}
           </TabsContent>
         </Tabs>
+          </TabsContent>
+
+          <TabsContent value="find-locker-qr" className="mt-4">
+            <FindLockerPanel />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
