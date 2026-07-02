@@ -19,6 +19,7 @@ const subscribers = new Set<(s: State) => void>();
 let channel: ReturnType<typeof supabase.channel> | null = null;
 let fetchPromise: Promise<void> | null = null;
 let realtimePaused = 0; // counter for nested pauses
+let authListenerStarted = false;
 
 const STORAGE_KEY = "lockerops.lockers.cache.v2";
 const MAX_AGE_MS = 5 * 60 * 1000;
@@ -42,6 +43,15 @@ function writeToStorage(data: Locker[]) {
     );
   } catch {
     // quota / serialization errors — ignore
+  }
+}
+
+function clearStorage() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore storage errors
   }
 }
 
@@ -69,16 +79,26 @@ async function fetchAll(silent = false): Promise<void> {
     try {
       const all: Locker[] = [];
       let from = 0;
+      let failed = false;
       while (true) {
         const { data, error } = await supabase
           .from("lockers")
           .select("*")
           .is("deleted_at", null)
           .range(from, from + 999);
-        if (error || !data) break;
+        if (error || !data) {
+          failed = true;
+          if (error) console.error("Failed to load lockers:", error.message);
+          break;
+        }
         all.push(...data);
         if (data.length < 1000) break;
         from += 1000;
+      }
+      if (failed && all.length === 0) {
+        state = { data: null, loading: false };
+        emit();
+        return;
       }
       rebuildIndex(all);
       state = { data: all, loading: false };
@@ -89,6 +109,39 @@ async function fetchAll(silent = false): Promise<void> {
     }
   })();
   return fetchPromise;
+}
+
+async function refetchAfterAuthReady() {
+  if (fetchPromise) {
+    await fetchPromise.catch(() => {});
+  }
+  await fetchAll(true);
+}
+
+function startAuthRefresh() {
+  if (authListenerStarted || typeof window === "undefined") return;
+  authListenerStarted = true;
+
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session?.user) void refetchAfterAuthReady();
+  }).catch(() => {});
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT") {
+      state = { data: null, loading: false };
+      index = new Map();
+      clearStorage();
+      emit();
+      return;
+    }
+
+    if (
+      session?.user
+      && (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED")
+    ) {
+      void refetchAfterAuthReady();
+    }
+  });
 }
 
 function ensureChannel() {
@@ -177,6 +230,7 @@ export function useLockers() {
   const [s, set] = useState<State>(state);
   useEffect(() => {
     subscribers.add(set);
+    startAuthRefresh();
     ensureChannel();
     if (!state.data && !state.loading) {
       const warm = readFromStorage();
