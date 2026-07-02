@@ -4,11 +4,12 @@ import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { UserMinus, Zap, History, Trash2 } from "lucide-react";
+import { UserMinus, Zap, History, Trash2, QrCode } from "lucide-react";
 import { TerminationsPanel } from "@/components/operations/TerminationsPanel";
 import { AutomationPanel } from "@/components/operations/AutomationPanel";
 import { RunHistoryPanel } from "@/components/operations/RunHistoryPanel";
 import { DeletionsPanel } from "@/components/operations/DeletionsPanel";
+import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 
 export const Route = createFileRoute("/operations")({
   head: () => ({
@@ -41,12 +42,14 @@ function OperationsPage() {
             <TabsTrigger value="automation"><Zap className="h-4 w-4 mr-1.5" /> Automation</TabsTrigger>
             <TabsTrigger value="history"><History className="h-4 w-4 mr-1.5" /> Run History</TabsTrigger>
             <TabsTrigger value="deletions"><Trash2 className="h-4 w-4 mr-1.5" /> Deletion Audit</TabsTrigger>
+            <TabsTrigger value="find-locker"><QrCode className="h-4 w-4 mr-1.5" /> Find-My-Locker</TabsTrigger>
           </TabsList>
 
           <TabsContent value="terminations" className="mt-6"><TerminationsPanel /></TabsContent>
           <TabsContent value="automation" className="mt-6"><AutomationPanel /></TabsContent>
           <TabsContent value="history" className="mt-6"><RunHistoryPanel /></TabsContent>
           <TabsContent value="deletions" className="mt-6"><DeletionsPanel /></TabsContent>
+          <TabsContent value="find-locker" className="mt-6"><FindLockerPanel /></TabsContent>
         </Tabs>
       </main>
     </div>
