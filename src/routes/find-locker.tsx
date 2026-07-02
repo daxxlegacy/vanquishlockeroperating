@@ -31,8 +31,8 @@ function FindLockerPage() {
     e.preventDefault();
     setError(null);
     setResult(null);
-    if (!/^\d{4}$/.test(nidLast4)) {
-      setError("Please enter the last 4 digits of your IC/National ID.");
+    if (nidLast4 && !/^\d{4}$/.test(nidLast4)) {
+      setError("Please enter all 4 digits of your IC/National ID, or leave it blank.");
       return;
     }
     setLoading(true);
@@ -83,7 +83,7 @@ function FindLockerPage() {
                 <Input id="badge" value={badgeNumber} onChange={(e) => setBadgeNumber(e.target.value)} required autoComplete="off" />
               </div>
               <div>
-                <Label htmlFor="nid">Last 4 digits of IC / National ID</Label>
+                <Label htmlFor="nid">Last 4 digits of IC / National ID <span className="text-muted-foreground font-normal">(optional)</span></Label>
                 <Input
                   id="nid"
                   inputMode="numeric"
@@ -91,8 +91,8 @@ function FindLockerPage() {
                   maxLength={4}
                   value={nidLast4}
                   onChange={(e) => setNidLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  required
                   autoComplete="off"
+                  placeholder="Leave blank if you don't have one"
                 />
               </div>
 
