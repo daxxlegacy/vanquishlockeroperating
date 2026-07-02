@@ -49,10 +49,18 @@ function emit(cat: OccCategory) {
   for (const fn of subs[cat]) fn(states[cat]);
 }
 
+// Never persist full national_id to browser storage.
+function maskNidRow(r: OccupancyRow): OccupancyRow {
+  const nid = r.national_id;
+  if (!nid || /^\*+/.test(nid)) return r;
+  const masked = nid.length <= 4 ? "*".repeat(nid.length) : "******" + nid.slice(-4);
+  return { ...r, national_id: masked };
+}
+
 function writeStorage(cat: OccCategory, data: OccupancyRow[]) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_PREFIX + cat, JSON.stringify({ ts: Date.now(), data }));
+    localStorage.setItem(STORAGE_PREFIX + cat, JSON.stringify({ ts: Date.now(), data: data.map(maskNidRow) }));
   } catch { /* ignore quota */ }
 }
 
@@ -90,8 +98,17 @@ async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
       let from = 0;
       let failed = false;
       while (true) {
-        const { data, error } = await supabase
-          .from("locker_occupancy")
+        // Query masked view so national_id is masked for non-authorised users.
+        const { data, error } = await (supabase as unknown as {
+          from: (t: string) => {
+            select: (c: string) => {
+              eq: (col: string, v: string) => {
+                range: (a: number, b: number) => Promise<{ data: OccupancyRow[] | null; error: { message: string } | null }>;
+              };
+            };
+          };
+        })
+          .from("locker_occupancy_masked")
           .select("*")
           .eq("category", cat)
           .range(from, from + 999);
