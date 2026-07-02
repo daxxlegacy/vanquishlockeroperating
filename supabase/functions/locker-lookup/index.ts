@@ -44,14 +44,16 @@ Deno.serve(async (req) => {
   const fwd = req.headers.get("x-forwarded-for") ?? "";
   const ip = (fwd.split(",")[0] || req.headers.get("cf-connecting-ip") || "unknown").trim();
 
-  // Rate limit: 5 attempts / 10 min per IP.
+  // Rate limit: 10 failed attempts / 10 min per IP. Successful lookups should
+  // not block users who scan/check again.
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const { count } = await supabase
     .from("locker_lookup_attempts")
     .select("*", { count: "exact", head: true })
     .eq("ip_address", ip)
+    .eq("success", false)
     .gte("attempted_at", since);
-  if ((count ?? 0) >= 5) {
+  if ((count ?? 0) >= 10) {
     return json({ error: "Too many attempts, try again later" }, 429);
   }
 
