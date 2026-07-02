@@ -25,6 +25,7 @@ import {
   type SupportRequestStatus,
   type SupportRequestType,
 } from "@/lib/support-requests";
+import { formatDateTime } from "@/lib/format-date";
 
 export const Route = createFileRoute("/support-requests")({
   head: () => ({
