@@ -228,7 +228,7 @@ function TicketPage() {
                 <Badge variant="outline">{STATUS_LABEL[data.status]}</Badge>
               </div>
               <div className="text-sm text-muted-foreground">
-                {REQUEST_TYPE_LABEL[data.request_type]} · submitted {new Date(data.created_at).toLocaleString()}
+                {REQUEST_TYPE_LABEL[data.request_type]} · submitted {formatDateTime(data.created_at)}
               </div>
               {notifPerm !== "granted" ? (
                 <Button
