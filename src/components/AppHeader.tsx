@@ -78,11 +78,17 @@ export function AppHeader() {
                     }`}
                   >
                     <Icon className="h-4 w-4" />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {item.badgeCount && item.badgeCount > 0 ? (
+                      <span className="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold">
+                        {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                      </span>
+                    ) : null}
                   </Link>
                 );
               })}
             </nav>
+
             <div className="border-t border-sidebar-border px-4 py-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="border-sidebar-border text-sidebar-foreground/90 gap-1">
