@@ -23,7 +23,7 @@ export function AppHeader() {
     { to: "/lockers", label: "Lockers", icon: TableIcon, perm: "page_lockers" },
     { to: "/spare-keys", label: "Spare Keys", icon: Key, perm: "page_spare_keys" },
     { to: "/occupancy", label: "Occupancy", icon: History, perm: "page_occupancy" },
-    { to: "/duplicates", label: "Duplicates", icon: Users, perm: "page_duplicates" },
+    
     { to: "/operations", label: "Operations", icon: Settings, perm: "page_operations" },
     { to: "/support-requests", label: "Support", icon: LifeBuoy, perm: "manage_support_requests", badgeCount: newSupportCount },
     { to: "/reconcile", label: "Reconcile", icon: ShieldAlert, perm: "page_reconcile" },
