@@ -344,19 +344,24 @@ function LockersPage() {
   }, [preQuickFiltered, missingNidFilter, missingBadgeFilter, sort]);
 
 
-  const buildExportRows = () => filtered.map((l) => ({
-    "Locker Number": l.locker_number,
-    "Location": l.location,
-    "Key Lock": l.key_lock ?? "",
-    "Badge Number": l.badge_number ?? "",
-    "National ID": l.national_id ?? "",
-    "Employee Name": l.employee_name ?? "",
-    "Work Location": l.work_location ?? "",
-    "Status": (l.custom_status ?? "").trim() || (STATUS_LABEL[l.status as LockerStatus] ?? l.status),
-    "Custom Status": l.custom_status ?? "",
-    "Batch Intake": formatBatchIntake(l.batch_intake),
-    "Remark": l.remark ?? "",
-  }));
+  const canRevealNid = useCanRevealNationalId();
+
+  const buildExportRows = async () => {
+    const nidMap = canRevealNid ? await fetchFullNationalIds("lockers", filtered.map((l) => l.id)) : new Map<string, string>();
+    return filtered.map((l) => ({
+      "Locker Number": l.locker_number,
+      "Location": l.location,
+      "Key Lock": l.key_lock ?? "",
+      "Badge Number": l.badge_number ?? "",
+      "National ID": canRevealNid ? (nidMap.get(l.id) ?? maskNationalId(l.national_id)) : maskNationalId(l.national_id),
+      "Employee Name": l.employee_name ?? "",
+      "Work Location": l.work_location ?? "",
+      "Status": (l.custom_status ?? "").trim() || (STATUS_LABEL[l.status as LockerStatus] ?? l.status),
+      "Custom Status": l.custom_status ?? "",
+      "Batch Intake": formatBatchIntake(l.batch_intake),
+      "Remark": l.remark ?? "",
+    }));
+  };
 
   const filterTag = () => {
     const parts: string[] = [];
@@ -366,16 +371,18 @@ function LockersPage() {
     return parts.length ? `_${parts.join("-")}` : "";
   };
 
-  const exportCsv = () => {
-    const rows = buildExportRows();
-    if (rows.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+  const exportCsv = async () => {
+    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (!confirmNidExport()) return;
+    const rows = await buildExportRows();
     downloadCsv(`lockers${filterTag()}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
     toast.success(`Exported ${rows.length.toLocaleString()} rows`);
   };
 
-  const exportXlsx = () => {
-    const rows = buildExportRows();
-    if (rows.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+  const exportXlsx = async () => {
+    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (!confirmNidExport()) return;
+    const rows = await buildExportRows();
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Lockers");
