@@ -60,12 +60,16 @@ export function parseBatchIntake(value: unknown): string | null {
   // Excel numeric serial date
   if (typeof value === "number" && isFinite(value)) {
     const epoch = new Date(Date.UTC(1899, 11, 30));
-    const d = new Date(epoch.getTime() + value * 86400000);
-    return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+    const d = new Date(epoch.getTime() + Math.round(value) * 86400000);
+    if (isNaN(d.getTime())) return null;
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
   }
 
   if (value instanceof Date) {
-    return isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+    if (isNaN(value.getTime())) return null;
+    // xlsx with cellDates:true returns dates at local midnight; use local components
+    // so a negative UTC offset doesn't shift the day back by one.
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
   }
 
   const s = String(value).trim();
