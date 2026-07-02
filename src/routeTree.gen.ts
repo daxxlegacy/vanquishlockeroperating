@@ -20,7 +20,6 @@ import { Route as OperationsRouteImport } from './routes/operations'
 import { Route as OccupancyRouteImport } from './routes/occupancy'
 import { Route as LockersRouteImport } from './routes/lockers'
 import { Route as FindLockerRouteImport } from './routes/find-locker'
-import { Route as DuplicatesRouteImport } from './routes/duplicates'
 import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
 import { Route as AutomationRouteImport } from './routes/automation'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -84,11 +83,6 @@ const FindLockerRoute = FindLockerRouteImport.update({
   path: '/find-locker',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DuplicatesRoute = DuplicatesRouteImport.update({
-  id: '/duplicates',
-  path: '/duplicates',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AutomationHistoryRoute = AutomationHistoryRouteImport.update({
   id: '/automation-history',
   path: '/automation-history',
@@ -132,7 +126,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/duplicates': typeof DuplicatesRoute
   '/find-locker': typeof FindLockerRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -153,7 +146,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/duplicates': typeof DuplicatesRoute
   '/find-locker': typeof FindLockerRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -175,7 +167,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/duplicates': typeof DuplicatesRoute
   '/find-locker': typeof FindLockerRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -198,7 +189,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/duplicates'
     | '/find-locker'
     | '/lockers'
     | '/occupancy'
@@ -219,7 +209,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/duplicates'
     | '/find-locker'
     | '/lockers'
     | '/occupancy'
@@ -240,7 +229,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/duplicates'
     | '/find-locker'
     | '/lockers'
     | '/occupancy'
@@ -262,7 +250,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   AutomationRoute: typeof AutomationRoute
   AutomationHistoryRoute: typeof AutomationHistoryRoute
-  DuplicatesRoute: typeof DuplicatesRoute
   FindLockerRoute: typeof FindLockerRoute
   LockersRoute: typeof LockersRoute
   OccupancyRoute: typeof OccupancyRoute
@@ -356,13 +343,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FindLockerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/duplicates': {
-      id: '/duplicates'
-      path: '/duplicates'
-      fullPath: '/duplicates'
-      preLoaderRoute: typeof DuplicatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/automation-history': {
       id: '/automation-history'
       path: '/automation-history'
@@ -422,7 +402,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   AutomationRoute: AutomationRoute,
   AutomationHistoryRoute: AutomationHistoryRoute,
-  DuplicatesRoute: DuplicatesRoute,
   FindLockerRoute: FindLockerRoute,
   LockersRoute: LockersRoute,
   OccupancyRoute: OccupancyRoute,

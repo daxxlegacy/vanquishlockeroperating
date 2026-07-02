@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2, Loader2 } from "lucide-react";
+import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2, Loader2, Users } from "lucide-react";
+import { DuplicatesSection } from "@/components/reconcile/DuplicatesSection";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
@@ -411,10 +412,14 @@ function ReconcilePage() {
         </div>
 
         <Tabs defaultValue="hr" className="mt-6">
-          <TabsList className="grid grid-cols-2 w-full max-w-md">
+          <TabsList className="grid grid-cols-3 w-full max-w-2xl">
             <TabsTrigger value="hr" className="gap-2"><ShieldAlert className="h-4 w-4" /> HR Listing</TabsTrigger>
-            <TabsTrigger value="mednefits" className="gap-2"><FileX2 className="h-4 w-4" /> Termination from Mednefits</TabsTrigger>
+            <TabsTrigger value="mednefits" className="gap-2"><FileX2 className="h-4 w-4" /> Mednefits</TabsTrigger>
+            <TabsTrigger value="duplicates" className="gap-2"><Users className="h-4 w-4" /> Duplicates</TabsTrigger>
           </TabsList>
+
+
+
 
           <TabsContent value="hr" className="mt-4">
             {restored && results && (
@@ -522,6 +527,10 @@ function ReconcilePage() {
 
           <TabsContent value="mednefits" className="mt-4">
             <MednefitsSection navigate={navigate} />
+          </TabsContent>
+
+          <TabsContent value="duplicates" className="mt-4">
+            <DuplicatesSection />
           </TabsContent>
         </Tabs>
       </main>

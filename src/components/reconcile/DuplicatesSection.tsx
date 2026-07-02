@@ -1,9 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { PageGuard } from "@/components/PageGuard";
-import { useEffect, useMemo, useState } from "react";
-// supabase client no longer needed here — data comes from useLockers cache
-import { useAuth } from "@/lib/auth";
-import { AppHeader } from "@/components/AppHeader";
+// Duplicates view — same functionality as the old /duplicates route,
+// now embedded as a tab inside the Reconcile page.
+import { useMemo, useState } from "react";
 import { LockerDetail } from "@/components/LockerDetail";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,33 +10,21 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Users, BadgeAlert, Download } from "lucide-react";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { useAuth } from "@/lib/auth";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
-export const Route = createFileRoute("/duplicates")({
-  head: () => ({
-    meta: [
-      { title: "Duplicate Employees — LockerOps" },
-      { name: "description", content: "Employee names assigned to more than one locker." },
-    ],
-  }),
-  component: () => (<PageGuard permission="page_duplicates"><DuplicatesPage /></PageGuard>),
-});
-
 function normName(s: string | null | undefined) {
   return (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function DuplicatesPage() {
-  const { user, role, loading } = useAuth();
-  const navigate = useNavigate();
+export function DuplicatesSection() {
+  const { role } = useAuth();
   const { lockers } = useLockers();
   const [selected, setSelected] = useState<string | null>(null);
-
-  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
   const nameGroups = useMemo(() => {
     if (!lockers) return [];
@@ -71,72 +56,59 @@ function DuplicatesPage() {
       .sort((a, b) => compareLockerNumbers(a[0].locker_number, b[0].locker_number));
   }, [lockers]);
 
-  if (loading || !user) return <div className="min-h-screen" />;
+  if (!lockers) return <Skeleton className="h-96 w-full" />;
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <div className="flex items-center gap-3 mb-6">
-          <Users className="h-6 w-6" />
-          <div>
-            <h1 className="font-display text-3xl font-bold">Duplicates</h1>
-            <p className="text-muted-foreground text-sm">
-              Same employee or badge number on more than one locker. Click a locker to review or fix.
-            </p>
-          </div>
-        </div>
+    <>
+      <p className="text-muted-foreground text-sm mb-4">
+        Same employee name or badge number on more than one locker. Click a locker to review or fix.
+      </p>
+      <Tabs defaultValue="names">
+        <TabsList>
+          <TabsTrigger value="names" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Names ({nameGroups.length})</TabsTrigger>
+          <TabsTrigger value="badges" className="gap-1.5"><BadgeAlert className="h-3.5 w-3.5" /> Badges ({badgeGroups.length})</TabsTrigger>
+        </TabsList>
 
-        {!lockers ? (
-          <Skeleton className="h-96 w-full" />
-        ) : (
-          <Tabs defaultValue="names">
-            <TabsList>
-              <TabsTrigger value="names" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Names ({nameGroups.length})</TabsTrigger>
-              <TabsTrigger value="badges" className="gap-1.5"><BadgeAlert className="h-3.5 w-3.5" /> Badges ({badgeGroups.length})</TabsTrigger>
-            </TabsList>
+        <TabsContent value="names" className="mt-4">
+          {role === "admin" && (
+            <div className="flex justify-end mb-3">
+              <Button size="sm" variant="outline" disabled={nameGroups.length === 0}
+                onClick={() => exportDuplicates(nameGroups, "name")}>
+                <Download className="h-4 w-4 mr-1.5" /> Export to Excel
+              </Button>
+            </div>
+          )}
+          {nameGroups.length === 0 ? (
+            <Card className="p-12 text-center text-muted-foreground">No duplicate names. 🎉</Card>
+          ) : (
+            <DupList groups={nameGroups} keyLabel="employee_name" onPick={setSelected} />
+          )}
+        </TabsContent>
 
-            <TabsContent value="names" className="mt-4">
-              {role === "admin" && (
-                <div className="flex justify-end mb-3">
-                  <Button size="sm" variant="outline" disabled={nameGroups.length === 0}
-                    onClick={() => exportDuplicates(nameGroups, "name")}>
-                    <Download className="h-4 w-4 mr-1.5" /> Export to Excel
-                  </Button>
-                </div>
-              )}
-              {nameGroups.length === 0 ? (
-                <Card className="p-12 text-center text-muted-foreground">No duplicate names. 🎉</Card>
-              ) : (
-                <DupList groups={nameGroups} keyLabel="employee_name" onPick={setSelected} />
-              )}
-            </TabsContent>
+        <TabsContent value="badges" className="mt-4">
+          {role === "admin" && (
+            <div className="flex justify-end mb-3">
+              <Button size="sm" variant="outline" disabled={badgeGroups.length === 0}
+                onClick={() => exportDuplicates(badgeGroups, "badge")}>
+                <Download className="h-4 w-4 mr-1.5" /> Export to Excel
+              </Button>
+            </div>
+          )}
+          {badgeGroups.length === 0 ? (
+            <Card className="p-12 text-center text-muted-foreground">No duplicate badges. 🎉</Card>
+          ) : (
+            <DupList groups={badgeGroups} keyLabel="badge_number" onPick={setSelected} />
+          )}
+        </TabsContent>
+      </Tabs>
 
-            <TabsContent value="badges" className="mt-4">
-              {role === "admin" && (
-                <div className="flex justify-end mb-3">
-                  <Button size="sm" variant="outline" disabled={badgeGroups.length === 0}
-                    onClick={() => exportDuplicates(badgeGroups, "badge")}>
-                    <Download className="h-4 w-4 mr-1.5" /> Export to Excel
-                  </Button>
-                </div>
-              )}
-              {badgeGroups.length === 0 ? (
-                <Card className="p-12 text-center text-muted-foreground">No duplicate badges. 🎉</Card>
-              ) : (
-                <DupList groups={badgeGroups} keyLabel="badge_number" onPick={setSelected} />
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
-      </main>
       <LockerDetail
         lockerId={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
         onUpdated={() => { invalidateLockersCache(); }}
       />
-    </div>
+    </>
   );
 }
 
@@ -207,7 +179,6 @@ function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
     }));
   });
   const ws = XLSX.utils.json_to_sheet(rows);
-  // Auto-fit column widths
   const headers = Object.keys(rows[0]);
   ws["!cols"] = headers.map((h) => ({
     wch: Math.min(40, Math.max(h.length, ...rows.map((r) => String((r as Record<string, unknown>)[h] ?? "").length))) + 2,
