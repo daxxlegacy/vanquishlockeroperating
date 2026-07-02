@@ -1,15 +1,21 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, HelpCircle, MessageSquare, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowRightLeft, HelpCircle, MessageSquare, Search, Ticket } from "lucide-react";
 import { SupportRequestForm } from "./SupportRequestForm";
 import { FaqAssistant } from "./FaqAssistant";
 
 
-type Panel = "menu" | "transfer" | "cant_find" | "cant_find_form" | "other";
+type Panel = "menu" | "transfer" | "cant_find" | "cant_find_form" | "other" | "ticket";
 
 export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
   const [panel, setPanel] = useState<Panel>("menu");
+  const [tk, setTk] = useState("");
+  const [tb, setTb] = useState("");
+  const navigate = useNavigate();
 
   return (
     <Card className="mt-6">
