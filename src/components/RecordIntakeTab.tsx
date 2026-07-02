@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
 import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
+import { maskNationalId } from "@/lib/national-id";
 import { syncActivationToOccupancy } from "@/lib/occupancy-sync";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -363,7 +364,7 @@ export function RecordIntakeTab() {
                         <td className="px-2 py-1 font-medium">{r.locker_number}</td>
                         <td className="px-2 py-1">{r.employee_name}</td>
                         <td className="px-2 py-1 text-muted-foreground">{r.badge_number || "—"}</td>
-                        <td className="px-2 py-1 text-muted-foreground">{r.national_id || "—"}</td>
+                        <td className="px-2 py-1 text-muted-foreground font-mono text-xs">{maskNationalId(r.national_id) || "—"}</td>
                         <td className="px-2 py-1 text-muted-foreground">{r.work_location || "—"}</td>
                         <td className="px-2 py-1 text-muted-foreground">{batchDisplay || "—"}</td>
                         <td className="px-2 py-1">

@@ -22,6 +22,8 @@ import { terminateLocker } from "@/lib/termination-actions";
 import { defaultPostTerminationStatus } from "@/lib/locker-status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { NationalIdCell } from "@/components/NationalIdCell";
+import { maskNationalId, confirmNidExport } from "@/lib/national-id";
 
 export const Route = createFileRoute("/reconcile")({
   head: () => ({
@@ -361,6 +363,7 @@ function ReconcilePage() {
 
   const exportAll = (fmt: "xlsx" | "csv") => {
     if (!results) return;
+    if (!confirmNidExport()) return;
     const byBucket = (b: Bucket) =>
       results
         .filter((r) => r.bucket === b)
@@ -871,6 +874,7 @@ async function fetchActiveDb(): Promise<DbRow[]> {
     for (const l of snap) {
       if (l.deleted_at) continue;
       if (!l.employee_name && !l.badge_number) continue;
+      // Cached rows carry the already-masked national_id; propagate as-is.
       out.push({
         id: l.id,
         locker_number: l.locker_number,
@@ -890,8 +894,19 @@ async function fetchActiveDb(): Promise<DbRow[]> {
   const out: DbRow[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await supabase
-      .from("lockers")
+    // Query masked view — national_id will be masked unless caller has view_national_id.
+    const { data, error } = await (supabase as unknown as {
+      from: (t: string) => {
+        select: (c: string) => {
+          is: (col: string, v: null) => {
+            or: (expr: string) => {
+              range: (a: number, b: number) => Promise<{ data: DbRow[] | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+    })
+      .from("lockers_masked")
       .select("id, locker_number, location, row_label, employee_name, badge_number, national_id, batch_intake, work_location, key_lock")
       .is("deleted_at", null)
       .or("employee_name.not.is.null,badge_number.not.is.null")
@@ -1102,6 +1117,7 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
 
   const exportXlsx = () => {
     if (!results) return;
+    if (!confirmNidExport()) return;
     const wb = XLSX.utils.book_new();
     const matchedRows = matched.map((r) => ({
       locker_number: r.db.locker_number,
@@ -1207,7 +1223,7 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
                               <div className="text-xs text-muted-foreground">{r.db.row_label ?? "—"}</div>
                             </Td>
                             <Td>{r.db.employee_name ?? "—"}</Td>
-                            <Td mono>{r.db.national_id ?? "—"}</Td>
+                            <Td mono><NationalIdCell value={r.db.national_id} recordId={r.db.id} table="lockers" /></Td>
                             <Td>{r.med.name ?? "—"}</Td>
                             <Td mono>{r.med.nationalId ?? "—"}</Td>
                             <Td>

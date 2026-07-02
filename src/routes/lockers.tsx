@@ -23,6 +23,8 @@ import * as XLSX from "xlsx";
 import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
+import { NationalIdCell } from "@/components/NationalIdCell";
+import { maskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDialog";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
@@ -342,19 +344,24 @@ function LockersPage() {
   }, [preQuickFiltered, missingNidFilter, missingBadgeFilter, sort]);
 
 
-  const buildExportRows = () => filtered.map((l) => ({
-    "Locker Number": l.locker_number,
-    "Location": l.location,
-    "Key Lock": l.key_lock ?? "",
-    "Badge Number": l.badge_number ?? "",
-    "National ID": l.national_id ?? "",
-    "Employee Name": l.employee_name ?? "",
-    "Work Location": l.work_location ?? "",
-    "Status": (l.custom_status ?? "").trim() || (STATUS_LABEL[l.status as LockerStatus] ?? l.status),
-    "Custom Status": l.custom_status ?? "",
-    "Batch Intake": formatBatchIntake(l.batch_intake),
-    "Remark": l.remark ?? "",
-  }));
+  const canRevealNid = useCanRevealNationalId();
+
+  const buildExportRows = async () => {
+    const nidMap = canRevealNid ? await fetchFullNationalIds("lockers", filtered.map((l) => l.id)) : new Map<string, string>();
+    return filtered.map((l) => ({
+      "Locker Number": l.locker_number,
+      "Location": l.location,
+      "Key Lock": l.key_lock ?? "",
+      "Badge Number": l.badge_number ?? "",
+      "National ID": canRevealNid ? (nidMap.get(l.id) ?? maskNationalId(l.national_id)) : maskNationalId(l.national_id),
+      "Employee Name": l.employee_name ?? "",
+      "Work Location": l.work_location ?? "",
+      "Status": (l.custom_status ?? "").trim() || (STATUS_LABEL[l.status as LockerStatus] ?? l.status),
+      "Custom Status": l.custom_status ?? "",
+      "Batch Intake": formatBatchIntake(l.batch_intake),
+      "Remark": l.remark ?? "",
+    }));
+  };
 
   const filterTag = () => {
     const parts: string[] = [];
@@ -364,16 +371,18 @@ function LockersPage() {
     return parts.length ? `_${parts.join("-")}` : "";
   };
 
-  const exportCsv = () => {
-    const rows = buildExportRows();
-    if (rows.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+  const exportCsv = async () => {
+    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (!confirmNidExport()) return;
+    const rows = await buildExportRows();
     downloadCsv(`lockers${filterTag()}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
     toast.success(`Exported ${rows.length.toLocaleString()} rows`);
   };
 
-  const exportXlsx = () => {
-    const rows = buildExportRows();
-    if (rows.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+  const exportXlsx = async () => {
+    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (!confirmNidExport()) return;
+    const rows = await buildExportRows();
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Lockers");
@@ -612,7 +621,7 @@ function MobileLockerList({
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               <MobileField label="Employee" value={l.employee_name} wide />
               <MobileField label="Badge" value={l.badge_number} />
-              <MobileField label="National ID" value={l.national_id} />
+              <MobileField label="National ID" value={maskNationalId(l.national_id) || undefined} />
               <MobileField label="Key Lock" value={l.key_lock} />
               <MobileField label="Work" value={l.work_location} />
               <MobileField label="Batch" value={formatBatchIntake(l.batch_intake)} />
@@ -661,7 +670,7 @@ const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings
       <div className="px-3 truncate" title={l.location}>{l.location}</div>
       <div className="px-3 truncate text-xs text-muted-foreground" title={l.key_lock ?? ""}>{l.key_lock ?? "—"}</div>
       <div className="px-3 truncate text-muted-foreground" title={l.badge_number ?? ""}>{l.badge_number ?? "—"}</div>
-      <div className="px-3 truncate text-xs text-muted-foreground" title={l.national_id ?? ""}>{l.national_id ?? "—"}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}><NationalIdCell value={l.national_id} recordId={l.id} table="lockers" /></div>
       <div className="px-3 truncate text-muted-foreground" title={l.employee_name ?? ""}>{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
       <div className="px-3 truncate text-muted-foreground" title={l.work_location ?? ""}>{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} customStatus={l.custom_status} /></div>

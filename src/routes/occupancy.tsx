@@ -19,6 +19,8 @@ import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX }
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
+import { NationalIdCell } from "@/components/NationalIdCell";
+import { maskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
 import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
 import { SortHeader, type SortState } from "@/components/SortHeader";
 import {
@@ -342,22 +344,28 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   }, [allRows]);
 
   // ---------- Exports ----------
-  const buildExportRows = () => filtered.map((r) => ({
-    "Locker Number": r.locker_number,
-    "Category": r.category,
-    "Status": r.status ?? "",
-    "Badge Number": r.badge_number ?? "",
-    "Employee Name": r.employee_name ?? "",
-    "National ID": r.national_id ?? "",
-    "Work Location": r.work_location ?? "",
-    "Locker Location": r.locker_location_by_row ?? "",
-    "Key Lock": r.key_lock_type ?? "",
-    "Batch Intake": fmtDate(r.batch_intake_date),
-    "Termination Date": fmtDate(r.termination_date),
-    "Terminated Reason": reasons.get(r.locker_number) ?? "",
-    "Remarks": r.remarks ?? "",
-    "Source File": r.source_filename ?? "",
-  }));
+  const canRevealNid = useCanRevealNationalId();
+  const buildExportRows = async () => {
+    // Only rows that map to a real occupancy record (not synthetic locker rows) have valid ids for reveal.
+    const realIds = filtered.filter((r) => !r.__synthetic).map((r) => r.id);
+    const nidMap = canRevealNid ? await fetchFullNationalIds("locker_occupancy", realIds) : new Map<string, string>();
+    return filtered.map((r) => ({
+      "Locker Number": r.locker_number,
+      "Category": r.category,
+      "Status": r.status ?? "",
+      "Badge Number": r.badge_number ?? "",
+      "Employee Name": r.employee_name ?? "",
+      "National ID": canRevealNid ? (nidMap.get(r.id) ?? maskNationalId(r.national_id)) : maskNationalId(r.national_id),
+      "Work Location": r.work_location ?? "",
+      "Locker Location": r.locker_location_by_row ?? "",
+      "Key Lock": r.key_lock_type ?? "",
+      "Batch Intake": fmtDate(r.batch_intake_date),
+      "Termination Date": fmtDate(r.termination_date),
+      "Terminated Reason": reasons.get(r.locker_number) ?? "",
+      "Remarks": r.remarks ?? "",
+      "Source File": r.source_filename ?? "",
+    }));
+  };
 
   const filterTag = () => {
     const parts: string[] = [];
@@ -367,16 +375,18 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     return parts.length ? `_${parts.join("-")}` : "";
   };
 
-  const exportCsv = () => {
-    const rows = buildExportRows();
-    if (rows.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+  const exportCsv = async () => {
+    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (!confirmNidExport()) return;
+    const rows = await buildExportRows();
     downloadCsv(`occupancy${filterTag()}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
     toast.success(`Exported ${rows.length.toLocaleString()} rows`);
   };
 
-  const exportXlsx = () => {
-    const rows = buildExportRows();
-    if (rows.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+  const exportXlsx = async () => {
+    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (!confirmNidExport()) return;
+    const rows = await buildExportRows();
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Occupancy");
@@ -695,7 +705,7 @@ const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHist
       <div className="px-3"><StatusBadge status={row.status} /></div>
       <div className="px-3 truncate font-mono text-xs">{row.badge_number ?? "—"}</div>
       <div className="px-3 truncate">{row.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</div>
-      <div className="px-3 truncate font-mono text-xs text-muted-foreground">{row.national_id ?? "—"}</div>
+      <div className="px-3 truncate font-mono text-xs text-muted-foreground"><NationalIdCell value={row.national_id} recordId={row.__synthetic ? null : row.id} table="locker_occupancy" /></div>
       <div className="px-3 truncate text-muted-foreground text-xs">{fmtDate(row.batch_intake_date)}</div>
       <div className="px-3 truncate text-muted-foreground text-xs">{fmtDate(row.termination_date)}</div>
       <div className="px-3 truncate text-muted-foreground text-xs" title={(!isActive ? (row.remarks || reason || "") : "") || undefined}>
@@ -729,7 +739,7 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
             <td className="px-3 py-2"><StatusBadge status={r.status} /></td>
             <td className="px-3 py-2 font-mono text-xs">{r.badge_number ?? "—"}</td>
             <td className="px-3 py-2">{r.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</td>
-            <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.national_id ?? "—"}</td>
+            <td className="px-3 py-2 font-mono text-xs text-muted-foreground"><NationalIdCell value={r.national_id} recordId={r.__synthetic ? null : r.id} table="locker_occupancy" /></td>
             <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.batch_intake_date)}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(r.termination_date)}</td>
             <td className="px-3 py-2 text-muted-foreground text-xs max-w-[220px] truncate" title={(!isActive ? (r.remarks || reason || "") : "") || undefined}>
@@ -771,7 +781,7 @@ function MobileLockerGroup({ lockerNumber, group, reason, onViewHistory }: { loc
             <div className="grid grid-cols-2 gap-x-2 gap-y-1">
               <MField label="Employee" value={r.employee_name ?? (i === 0 ? "vacant" : "—")} wide />
               <MField label="Badge" value={r.badge_number} mono />
-              <MField label="National ID" value={r.national_id} mono />
+              <MField label="National ID" value={maskNationalId(r.national_id)} mono />
               <MField label="Intake" value={fmtDate(r.batch_intake_date)} />
               <MField label="Terminated" value={fmtDate(r.termination_date)} />
               <MField label="Work" value={r.work_location} wide />

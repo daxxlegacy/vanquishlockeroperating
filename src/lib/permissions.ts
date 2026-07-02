@@ -8,6 +8,7 @@ export type AppPermission =
   | "termination_actions"
   | "upload_roster"
   | "run_automation"
+  | "view_national_id"
   | "page_map"
   | "page_lockers"
   | "page_spare_keys"
@@ -22,6 +23,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   termination_actions: "Termination actions (terminate, undo, bulk)",
   upload_roster: "Upload roster files",
   run_automation: "Run automation tasks",
+  view_national_id: "View full National ID (bypass masking)",
   page_map: "View Map page",
   page_lockers: "View Lockers page",
   page_spare_keys: "View Spare Keys page",
@@ -48,7 +50,9 @@ export const ACTION_PERMISSIONS: AppPermission[] = [
   "termination_actions",
   "upload_roster",
   "run_automation",
+  "view_national_id",
 ];
+
 
 const PERMS_CACHE_KEY = "lockerops.auth.perms.v1";
 
