@@ -67,6 +67,16 @@ function startRealtime() {
       },
     )
     .subscribe();
+
+  // Re-fetch when the auth session becomes available or changes. The very
+  // first getLayout() call can fire before Supabase has attached the user's
+  // access token, in which case RLS filters the row out and we'd otherwise
+  // be stuck showing the default layout until a manual reload.
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
+      void fetchLayoutOnce();
+    }
+  });
 }
 
 export function getDefaultLayout(): MapLayout {
