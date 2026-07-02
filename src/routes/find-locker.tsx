@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,16 +111,6 @@ function FindLockerPage() {
         </div>
 
         <HelpMenu onPickFind={() => lookupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
-
-        <div className="mt-6 text-center">
-          <Link
-            to="/ticket"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <Ticket className="h-4 w-4" />
-            Already submitted a request? Check ticket status
-          </Link>
-        </div>
       </div>
     </div>
   );
