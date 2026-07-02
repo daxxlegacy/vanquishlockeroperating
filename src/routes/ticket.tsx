@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Ticket, Send, ArrowLeft, User, Shield } from "lucide-react";
+import { Loader2, Ticket, Send, ArrowLeft, User, Shield, Bell } from "lucide-react";
+import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
   STATUS_LABEL,
@@ -64,6 +65,10 @@ function TicketPage() {
   const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission>(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "denied"
+  );
+  const lastAdminReplyIdRef = useRef<string | null>(null);
 
   const lookup = async (e?: React.FormEvent, opts?: { message?: string }) => {
     e?.preventDefault();
@@ -100,11 +105,80 @@ function TicketPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Track latest admin reply so we can detect new ones during polling
+  useEffect(() => {
+    if (!data) return;
+    const lastAdmin = [...data.replies].reverse().find((r) => r.author_role === "admin");
+    if (lastAdmin && lastAdminReplyIdRef.current === null) {
+      lastAdminReplyIdRef.current = lastAdmin.id;
+    }
+  }, [data]);
+
+  // Poll every 15s for new admin replies while ticket is open; notify on new ones
+  useEffect(() => {
+    if (!data) return;
+    const tk = ticket.trim();
+    const bd = badge.trim();
+    if (!tk || !bd) return;
+
+    const iv = setInterval(async () => {
+      try {
+        const { data: res } = await supabase.functions.invoke("support-ticket", {
+          body: { action: "lookup", ticket_number: tk, badge_number: bd },
+        });
+        const fresh = (res as { ticket?: TicketData } | null)?.ticket;
+        if (!fresh) return;
+        const lastAdmin = [...fresh.replies].reverse().find((r) => r.author_role === "admin");
+        const prevId = lastAdminReplyIdRef.current;
+        if (lastAdmin && lastAdmin.id !== prevId && prevId !== null) {
+          lastAdminReplyIdRef.current = lastAdmin.id;
+          setData(fresh);
+          const body = lastAdmin.message.slice(0, 140);
+          toast.success("Admin replied to your ticket", { description: body });
+          if ("Notification" in window && Notification.permission === "granted") {
+            try {
+              new Notification(`Ticket ${fresh.ticket_number} — Admin replied`, {
+                body,
+                tag: `ticket-${fresh.id}`,
+                icon: "/favicon.ico",
+              });
+            } catch { /* ignore */ }
+          }
+        } else {
+          setData(fresh);
+          if (lastAdmin && prevId === null) lastAdminReplyIdRef.current = lastAdmin.id;
+        }
+      } catch { /* ignore transient errors */ }
+    }, 15000);
+
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.id]);
+
+  const enableNotifications = async () => {
+    if (!("Notification" in window)) {
+      toast.error("Notifications not supported on this device.");
+      return;
+    }
+    try {
+      const p = await Notification.requestPermission();
+      setNotifPerm(p);
+      if (p === "granted") {
+        toast.success("Notifications enabled. Keep this page open to receive replies.");
+      } else {
+        toast.info("Notifications blocked. You can enable them in your browser settings.");
+      }
+    } catch {
+      toast.error("Couldn't enable notifications.");
+    }
+  };
+
   const sendReply = () => {
     const m = reply.trim();
     if (!m) return;
     lookup(undefined, { message: m });
   };
+
 
   return (
     <div className="min-h-screen bg-background px-4 py-10">
@@ -125,7 +199,7 @@ function TicketPage() {
             <form onSubmit={lookup} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
               <div>
                 <Label htmlFor="tk">Ticket number</Label>
-                <Input id="tk" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="TKT-2026-00001" />
+                <Input id="tk" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="e.g. 00042" inputMode="numeric" />
               </div>
               <div>
                 <Label htmlFor="bd">Badge number</Label>
@@ -155,6 +229,23 @@ function TicketPage() {
               <div className="text-sm text-muted-foreground">
                 {REQUEST_TYPE_LABEL[data.request_type]} · submitted {new Date(data.created_at).toLocaleString()}
               </div>
+              {notifPerm !== "granted" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={enableNotifications}
+                  className="w-full sm:w-auto"
+                >
+                  <Bell className="h-4 w-4 mr-2" />
+                  Get notified when admin replies
+                </Button>
+              ) : (
+                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Bell className="h-3.5 w-3.5 text-primary" />
+                  Notifications on — keep this page open to receive alerts.
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <Bubble

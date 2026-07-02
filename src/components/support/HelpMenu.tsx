@@ -1,15 +1,21 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, HelpCircle, MessageSquare, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowRightLeft, HelpCircle, MessageSquare, Search, Ticket } from "lucide-react";
 import { SupportRequestForm } from "./SupportRequestForm";
 import { FaqAssistant } from "./FaqAssistant";
 
 
-type Panel = "menu" | "transfer" | "cant_find" | "cant_find_form" | "other";
+type Panel = "menu" | "transfer" | "cant_find" | "cant_find_form" | "other" | "ticket";
 
 export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
   const [panel, setPanel] = useState<Panel>("menu");
+  const [tk, setTk] = useState("");
+  const [tb, setTb] = useState("");
+  const navigate = useNavigate();
 
   return (
     <Card className="mt-6">
@@ -48,7 +54,59 @@ export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
             label="Something else"
             sub="Contact support"
           />
+          <MenuButton
+            active={panel === "ticket"}
+            onClick={() => setPanel("ticket")}
+            icon={<Ticket className="h-4 w-4" />}
+            label="Check ticket status"
+            sub="View replies from admin"
+          />
         </div>
+
+        {panel === "ticket" && (
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Enter your ticket number and badge number to view updates or reply.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const t = tk.trim();
+                const b = tb.trim();
+                if (!t || !b) return;
+                navigate({ to: "/ticket", search: { t, b } });
+              }}
+              className="space-y-3"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="tk-num">Ticket number</Label>
+                  <Input
+                    id="tk-num"
+                    value={tk}
+                    onChange={(e) => setTk(e.target.value)}
+                    placeholder="e.g. 00042"
+                    inputMode="numeric"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tk-badge">Badge number</Label>
+                  <Input
+                    id="tk-badge"
+                    value={tb}
+                    onChange={(e) => setTb(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={!tk.trim() || !tb.trim()}>
+                <Ticket className="h-4 w-4 mr-2" /> View my ticket
+              </Button>
+            </form>
+          </div>
+        )}
+
 
         {panel === "transfer" && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
