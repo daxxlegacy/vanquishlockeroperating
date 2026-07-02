@@ -10,7 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
@@ -39,6 +44,10 @@ function SupportRequestsPage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<SupportRequest[] | null>(null);
   const [filter, setFilter] = useState<SupportRequestStatus | "all">("new");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => { setSelected(new Set()); }, [filter]);
 
   useEffect(() => {
     if (!user) return;
@@ -110,6 +119,35 @@ function SupportRequestsPage() {
     else toast.success(`Marked as ${STATUS_LABEL[status].toLowerCase()}`);
   };
 
+  const selectableIds = useMemo(
+    () => filtered.filter((r) => r.status === "resolved").map((r) => r.id),
+    [filtered],
+  );
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+
+  const toggleOne = (id: string, on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAll = (on: boolean) => {
+    setSelected(on ? new Set(selectableIds) : new Set());
+  };
+
+  const deleteSelected = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setDeleting(true);
+    const { error } = await supabase.from("support_requests").delete().in("id", ids);
+    setDeleting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Deleted ${ids.length} ticket${ids.length === 1 ? "" : "s"}`);
+    setSelected(new Set());
+    setRows((prev) => (prev ? prev.filter((r) => !selected.has(r.id)) : prev));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -140,9 +178,52 @@ function SupportRequestsPage() {
                 No {filter === "all" ? "" : STATUS_LABEL[filter as SupportRequestStatus].toLowerCase()} requests.
               </Card>
             ) : (
-              filtered.map((r) => (
-                <SupportCard key={r.id} row={r} onUpdate={updateStatus} />
-              ))
+              <>
+                {selectableIds.length > 0 && (
+                  <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={(v) => toggleAll(v === true)}
+                      />
+                      <span>
+                        Select all resolved ({selectableIds.length})
+                        {selected.size > 0 ? ` · ${selected.size} selected` : ""}
+                      </span>
+                    </label>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="destructive" disabled={selected.size === 0 || deleting}>
+                          {deleting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                          Delete selected
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {selected.size} resolved ticket{selected.size === 1 ? "" : "s"}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This permanently removes the tickets and all their replies. This cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                )}
+                {filtered.map((r) => (
+                  <SupportCard
+                    key={r.id}
+                    row={r}
+                    onUpdate={updateStatus}
+                    selectable={r.status === "resolved"}
+                    selected={selected.has(r.id)}
+                    onSelectedChange={(on) => toggleOne(r.id, on)}
+                  />
+                ))}
+              </>
             )}
           </TabsContent>
         </Tabs>
@@ -166,9 +247,15 @@ const STATUS_STYLE: Record<SupportRequestStatus, string> = {
 function SupportCard({
   row,
   onUpdate,
+  selectable,
+  selected,
+  onSelectedChange,
 }: {
   row: SupportRequest;
   onUpdate: (id: string, status: SupportRequestStatus) => void | Promise<void>;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectedChange?: (on: boolean) => void;
 }) {
   const Icon = TYPE_ICON[row.request_type];
   const created = new Date(row.created_at);
@@ -226,6 +313,13 @@ function SupportCard({
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          {selectable && (
+            <Checkbox
+              checked={!!selected}
+              onCheckedChange={(v) => onSelectedChange?.(v === true)}
+              aria-label="Select ticket for deletion"
+            />
+          )}
           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="font-display font-bold text-lg truncate">
             {REQUEST_TYPE_LABEL[row.request_type]}
