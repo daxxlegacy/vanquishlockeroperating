@@ -346,9 +346,8 @@ export function RecordIntakeTab() {
                   {previewRows.map((r) => {
                     const checked = r.action === "UPDATE" ? !excluded.has(r.locker_number) : r.action === "NEW";
                     const batchDisplay = (() => {
-                      if (r.batch_intake instanceof Date) return r.batch_intake.toLocaleDateString();
-                      const s = r.batch_intake == null ? "" : String(r.batch_intake);
-                      return s;
+                      const iso = parseBatchIntake(r.batch_intake);
+                      return iso ? formatBatchIntake(iso) : "";
                     })();
                     return (
                       <tr key={`${r.locker_number}-${r.rowIndex}`} className="border-t">
