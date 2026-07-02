@@ -414,10 +414,12 @@ function ReconcilePage() {
         </div>
 
         <Tabs defaultValue="hr" className="mt-6">
-          <TabsList className="grid grid-cols-3 w-full max-w-2xl">
+          <TabsList className="flex flex-wrap h-auto w-full max-w-3xl">
             <TabsTrigger value="hr" className="gap-2"><ShieldAlert className="h-4 w-4" /> HR Listing</TabsTrigger>
             <TabsTrigger value="mednefits" className="gap-2"><FileX2 className="h-4 w-4" /> Mednefits</TabsTrigger>
             <TabsTrigger value="duplicates" className="gap-2"><Users className="h-4 w-4" /> Duplicates</TabsTrigger>
+            <TabsTrigger value="terminations" className="gap-2"><UserMinus className="h-4 w-4" /> Terminations</TabsTrigger>
+            <TabsTrigger value="deletions" className="gap-2"><Trash2 className="h-4 w-4" /> Deletion Audit</TabsTrigger>
           </TabsList>
 
 
