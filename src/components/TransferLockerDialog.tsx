@@ -65,34 +65,35 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
 
   const reset = () => { setSearch(""); setTargetId(null); setOldAction("empty"); setConfirming(false); };
 
-  const handleTransfer = async () => {
+  const handleTransfer = () => {
     if (!target) { toast.error("Pick a target locker"); return; }
-    setBusy(true);
-    try {
-      const { data, error } = await supabase.rpc("transfer_locker" as never, {
-        _from_id: locker.id,
-        _to_id: target.id,
-        _old_action: oldAction,
-      } as never);
-      if (error) throw error;
+    const from = locker;
+    const to = target;
+    const action = oldAction;
 
+    // Optimistic: close instantly so admin can move on.
+    toast.success(`Transferring ${from.employee_name ?? from.badge_number} → ${to.locker_number}`);
+    invalidateLockersCache();
+    onOpenChange(false);
+    reset();
+    onTransferred?.();
+
+    void (async () => {
+      const { data, error } = await supabase.rpc("transfer_locker" as never, {
+        _from_id: from.id,
+        _to_id: to.id,
+        _old_action: action,
+      } as never);
+      if (error) { toast.error(`Transfer failed: ${error.message}`); return; }
       const result = data as { from: Locker; to: Locker } | null;
       if (result?.from && result?.to) {
         await syncStatusChangeToOccupancy(result.from);
         await syncActivationToOccupancy(result.to);
       }
-
-      toast.success(`Transferred ${locker.employee_name ?? locker.badge_number} → ${target.locker_number}`);
       invalidateLockersCache();
-      onOpenChange(false);
-      reset();
-      onTransferred?.();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Transfer failed");
-    } finally {
-      setBusy(false);
-    }
+    })();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!busy) { onOpenChange(v); if (!v) reset(); } }}>
