@@ -25,6 +25,7 @@ import {
   type SupportRequestStatus,
   type SupportRequestType,
 } from "@/lib/support-requests";
+import { formatDateTime } from "@/lib/format-date";
 
 export const Route = createFileRoute("/support-requests")({
   head: () => ({
@@ -333,7 +334,7 @@ function SupportCard({
           </Badge>
         </div>
         <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-          <Clock className="h-3 w-3" /> {created.toLocaleString()}
+          <Clock className="h-3 w-3" /> {formatDateTime(created)}
         </span>
       </div>
 
@@ -370,7 +371,7 @@ function SupportCard({
                       {r.author_role === "admin" ? "Admin" : "User"}
                       {r.author_name ? ` · ${r.author_name}` : ""}
                     </span>
-                    <span>· {new Date(r.created_at).toLocaleString()}</span>
+                    <span>· {formatDateTime(r.created_at)}</span>
                   </div>
                   <div className="whitespace-pre-wrap">{r.message}</div>
                 </div>

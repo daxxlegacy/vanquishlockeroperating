@@ -6,8 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ShieldCheck, Search } from "lucide-react";
+import { Loader2, ShieldCheck, Search, Clock } from "lucide-react";
 import { HelpMenu } from "@/components/support/HelpMenu";
+
+function OperatingHoursNotice() {
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-xs sm:text-sm">
+      <div className="flex items-center gap-2 font-medium">
+        <Clock className="h-4 w-4 text-primary" />
+        <span>Admin office hours / Waktu pejabat pentadbir</span>
+      </div>
+      <p className="mt-1 text-muted-foreground">
+        Monday – Friday, 8:00 AM – 5:15 PM
+        <br />
+        Isnin – Jumaat, 8:00 pagi – 5:15 petang
+      </p>
+      <p className="mt-1 text-muted-foreground">
+        Requests outside office hours are handled the next business day.
+        <br />
+        Permintaan di luar waktu pejabat akan diuruskan pada hari bekerja berikutnya.
+      </p>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/find-locker")({
   head: () => ({
@@ -128,6 +149,8 @@ function FindLockerPage() {
             </CardContent>
           </Card>
         </div>
+
+        <OperatingHoursNotice />
 
         <HelpMenu onPickFind={() => lookupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
       </div>

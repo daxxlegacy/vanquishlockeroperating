@@ -66,9 +66,10 @@ LOST OR MISSING KEY / KUNCI HILANG
 - Report as soon as possible via a support request. Repeated losses may incur a replacement charge per company policy.
 
 OFFICE HOURS / WAKTU PEJABAT
-- Monday to Friday, 9:00 AM to 6:00 PM (excluding public holidays).
-- Isnin hingga Jumaat, 9:00 pagi hingga 6:00 petang (kecuali cuti umum).
+- Monday to Friday, 8:00 AM to 5:15 PM (excluding public holidays).
+- Isnin hingga Jumaat, 8:00 pagi hingga 5:15 petang (kecuali cuti umum).
 - Requests outside office hours are handled the next business day.
+- Permintaan di luar waktu pejabat akan diuruskan pada hari bekerja berikutnya.
 
 TICKET TRACKING / MENYEMAK TIKET
 - After you submit a support request, you get a ticket number like TKT-2026-00001.

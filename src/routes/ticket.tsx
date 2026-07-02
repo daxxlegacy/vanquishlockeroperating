@@ -17,6 +17,7 @@ import {
   type SupportRequestStatus,
   type SupportRequestType,
 } from "@/lib/support-requests";
+import { formatDateTime } from "@/lib/format-date";
 
 const searchSchema = z.object({
   t: z.string().optional(),
@@ -227,7 +228,7 @@ function TicketPage() {
                 <Badge variant="outline">{STATUS_LABEL[data.status]}</Badge>
               </div>
               <div className="text-sm text-muted-foreground">
-                {REQUEST_TYPE_LABEL[data.request_type]} · submitted {new Date(data.created_at).toLocaleString()}
+                {REQUEST_TYPE_LABEL[data.request_type]} · submitted {formatDateTime(data.created_at)}
               </div>
               {notifPerm !== "granted" ? (
                 <Button
@@ -330,7 +331,7 @@ function Bubble({
       >
         <div className={`flex items-center gap-1.5 text-xs mb-0.5 ${isAdmin ? "text-muted-foreground" : "opacity-80"}`}>
           {isAdmin ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
-          {name} · {new Date(time).toLocaleString()}
+          {name} · {formatDateTime(time)}
         </div>
         {text}
       </div>
