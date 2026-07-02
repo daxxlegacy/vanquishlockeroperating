@@ -412,11 +412,17 @@ function ReconcilePage() {
           </div>
         </div>
 
-        <Tabs defaultValue="hr" className="mt-6">
-          <TabsList className="grid grid-cols-2 w-full max-w-md">
-            <TabsTrigger value="hr" className="gap-2"><ShieldAlert className="h-4 w-4" /> HR Listing</TabsTrigger>
-            <TabsTrigger value="mednefits" className="gap-2"><FileX2 className="h-4 w-4" /> Termination from Mednefits</TabsTrigger>
-          </TabsList>
+        <ReconcileTabs />
+      </main>
+    </div>
+  );
+}
+
+function ReconcileTabs() {
+  // placeholder never rendered — replaced below by inlined tab list
+  return null;
+}
+
 
           <TabsContent value="hr" className="mt-4">
             {restored && results && (
