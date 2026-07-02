@@ -9,6 +9,7 @@ export type AppPermission =
   | "upload_roster"
   | "run_automation"
   | "view_national_id"
+  | "manage_support_requests"
   | "page_map"
   | "page_lockers"
   | "page_spare_keys"
@@ -16,7 +17,8 @@ export type AppPermission =
   | "page_duplicates"
   | "page_operations"
   | "page_reconcile"
-  | "page_upload";
+  | "page_upload"
+  | "page_support_requests";
 
 export const PERMISSION_LABELS: Record<AppPermission, string> = {
   locker_management: "Locker management (edit, assign, delete lockers)",
@@ -24,6 +26,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   upload_roster: "Upload roster files",
   run_automation: "Run automation tasks",
   view_national_id: "View full National ID (bypass masking)",
+  manage_support_requests: "Manage Support Requests (view & resolve)",
   page_map: "View Map page",
   page_lockers: "View Lockers page",
   page_spare_keys: "View Spare Keys page",
@@ -32,7 +35,9 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   page_operations: "View Operations page",
   page_reconcile: "View Reconcile page",
   page_upload: "View Upload page",
+  page_support_requests: "View Support Requests page",
 };
+
 
 export const PAGE_PERMISSIONS: AppPermission[] = [
   "page_map",
