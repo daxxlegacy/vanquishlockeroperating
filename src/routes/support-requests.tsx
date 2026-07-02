@@ -164,6 +164,14 @@ function SupportRequestsPage() {
           </div>
         </div>
 
+        <Tabs defaultValue="requests" className="mb-6">
+          <TabsList>
+            <TabsTrigger value="requests" className="gap-1.5"><LifeBuoy className="h-4 w-4" /> Requests</TabsTrigger>
+            <TabsTrigger value="find-locker-qr" className="gap-1.5"><QrCode className="h-4 w-4" /> Find-My-Locker QR</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="requests" className="mt-4">
+
         <Tabs value={filter} onValueChange={(v) => setFilter(v as SupportRequestStatus | "all")}>
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="new">New{counts.new > 0 ? ` (${counts.new})` : ""}</TabsTrigger>
