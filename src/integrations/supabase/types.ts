@@ -424,6 +424,44 @@ export type Database = {
         }
         Relationships: []
       }
+      support_request_replies: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          author_role: string
+          created_at: string
+          id: string
+          message: string
+          request_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          author_role: string
+          created_at?: string
+          id?: string
+          message: string
+          request_id: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          author_role?: string
+          created_at?: string
+          id?: string
+          message?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_request_replies_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "support_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_requests: {
         Row: {
           badge_number: string
@@ -438,6 +476,7 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           status: Database["public"]["Enums"]["support_request_status"]
+          ticket_number: string
           updated_at: string
         }
         Insert: {
@@ -453,6 +492,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           status?: Database["public"]["Enums"]["support_request_status"]
+          ticket_number?: string
           updated_at?: string
         }
         Update: {
@@ -468,6 +508,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           status?: Database["public"]["Enums"]["support_request_status"]
+          ticket_number?: string
           updated_at?: string
         }
         Relationships: []
@@ -752,8 +793,17 @@ export type Database = {
       }
     }
     Functions: {
+      add_support_ticket_reply_public: {
+        Args: { _badge: string; _message: string; _ticket: string }
+        Returns: string
+      }
       can_access_lockers: { Args: { _user_id: string }; Returns: boolean }
       can_view_national_id: { Args: { _user_id: string }; Returns: boolean }
+      gen_support_ticket_number: { Args: never; Returns: string }
+      get_support_ticket_public: {
+        Args: { _badge: string; _ticket: string }
+        Returns: Json
+      }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["app_permission"]
@@ -783,7 +833,7 @@ export type Database = {
           _name: string
           _request_type: Database["public"]["Enums"]["support_request_type"]
         }
-        Returns: string
+        Returns: Json
       }
       swap_lockers: { Args: { _a_id: string; _b_id: string }; Returns: Json }
       transfer_locker: {
