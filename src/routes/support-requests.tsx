@@ -313,6 +313,13 @@ function SupportCard({
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          {selectable && (
+            <Checkbox
+              checked={!!selected}
+              onCheckedChange={(v) => onSelectedChange?.(v === true)}
+              aria-label="Select ticket for deletion"
+            />
+          )}
           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="font-display font-bold text-lg truncate">
             {REQUEST_TYPE_LABEL[row.request_type]}
