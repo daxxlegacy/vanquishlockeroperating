@@ -21,7 +21,6 @@ export const Route = createFileRoute("/find-locker")({
 type Result = { employee_name: string | null; badge_number: string | null; locker_number: string | null };
 
 function FindLockerPage() {
-  const [lockerNumber, setLockerNumber] = useState("");
   const [badgeNumber, setBadgeNumber] = useState("");
   const [nidLast4, setNidLast4] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,7 +39,6 @@ function FindLockerPage() {
     try {
       const { data, error } = await supabase.functions.invoke("locker-lookup", {
         body: {
-          locker_number: lockerNumber.trim(),
           badge_number: badgeNumber.trim(),
           national_id_last4: nidLast4.trim(),
         },
@@ -80,10 +78,6 @@ function FindLockerPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
-              <div>
-                <Label htmlFor="locker">Locker number</Label>
-                <Input id="locker" value={lockerNumber} onChange={(e) => setLockerNumber(e.target.value)} required autoComplete="off" />
-              </div>
               <div>
                 <Label htmlFor="badge">Badge number</Label>
                 <Input id="badge" value={badgeNumber} onChange={(e) => setBadgeNumber(e.target.value)} required autoComplete="off" />
