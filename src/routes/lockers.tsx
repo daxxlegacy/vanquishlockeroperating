@@ -23,6 +23,8 @@ import * as XLSX from "xlsx";
 import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
+import { NationalIdCell } from "@/components/NationalIdCell";
+import { maskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDialog";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
@@ -612,7 +614,7 @@ function MobileLockerList({
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               <MobileField label="Employee" value={l.employee_name} wide />
               <MobileField label="Badge" value={l.badge_number} />
-              <MobileField label="National ID" value={l.national_id} />
+              <MobileField label="National ID" value={maskNationalId(l.national_id) || undefined} />
               <MobileField label="Key Lock" value={l.key_lock} />
               <MobileField label="Work" value={l.work_location} />
               <MobileField label="Batch" value={formatBatchIntake(l.batch_intake)} />
@@ -661,7 +663,7 @@ const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings
       <div className="px-3 truncate" title={l.location}>{l.location}</div>
       <div className="px-3 truncate text-xs text-muted-foreground" title={l.key_lock ?? ""}>{l.key_lock ?? "—"}</div>
       <div className="px-3 truncate text-muted-foreground" title={l.badge_number ?? ""}>{l.badge_number ?? "—"}</div>
-      <div className="px-3 truncate text-xs text-muted-foreground" title={l.national_id ?? ""}>{l.national_id ?? "—"}</div>
+      <div className="px-3 truncate text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}><NationalIdCell value={l.national_id} recordId={l.id} table="lockers" /></div>
       <div className="px-3 truncate text-muted-foreground" title={l.employee_name ?? ""}>{l.employee_name ?? <span className="text-muted-foreground italic">{STATUS_LABEL[l.status as LockerStatus] ?? "—"}</span>}</div>
       <div className="px-3 truncate text-muted-foreground" title={l.work_location ?? ""}>{l.work_location ?? "—"}</div>
       <div className="px-3"><StatusBadge status={l.status} customStatus={l.custom_status} /></div>
