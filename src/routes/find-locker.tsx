@@ -74,20 +74,6 @@ function FindLockerPage() {
                 <Label htmlFor="badge">Badge number</Label>
                 <Input id="badge" value={badgeNumber} onChange={(e) => setBadgeNumber(e.target.value)} required autoComplete="off" />
               </div>
-              <div>
-                <Label htmlFor="nid">Last 4 digits of IC / National ID <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Input
-                  id="nid"
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                  maxLength={4}
-                  value={nidLast4}
-                  onChange={(e) => setNidLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  autoComplete="off"
-                  placeholder="Leave blank if you don't have one"
-                />
-              </div>
-
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Find my locker
@@ -95,7 +81,7 @@ function FindLockerPage() {
 
               <p className="flex items-start gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                For your security, we only ask for the last 4 digits of your IC/National ID.
+                Your badge number is used only to look up your assigned locker.
               </p>
             </form>
 
