@@ -371,7 +371,7 @@ function SupportCard({
                       {r.author_role === "admin" ? "Admin" : "User"}
                       {r.author_name ? ` · ${r.author_name}` : ""}
                     </span>
-                    <span>· {new Date(r.created_at).toLocaleString()}</span>
+                    <span>· {formatDateTime(r.created_at)}</span>
                   </div>
                   <div className="whitespace-pre-wrap">{r.message}</div>
                 </div>
