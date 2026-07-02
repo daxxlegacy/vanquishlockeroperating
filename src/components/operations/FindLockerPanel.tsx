@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, RefreshCw, QrCode as QrIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDateTime } from "@/lib/format-date";
 
 type Attempt = {
   id: string;
