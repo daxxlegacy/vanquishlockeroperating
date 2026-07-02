@@ -15,7 +15,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket, Trash2 } from "lucide-react";
+import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket, Trash2, QrCode } from "lucide-react";
+import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
