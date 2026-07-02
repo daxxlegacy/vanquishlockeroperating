@@ -193,7 +193,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 sm:justify-between">
+          <DialogFooter className="gap-2 flex-col sm:flex-row sm:justify-between">
             {!isSpare && isAdmin ? (
               <div className="flex gap-2 flex-wrap">
                 <Button variant="destructive" size="sm" disabled={saving} onClick={() => setDeleteOpen(true)}>
