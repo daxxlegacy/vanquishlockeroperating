@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TerminationsRouteImport } from './routes/terminations'
+import { Route as SupportRequestsRouteImport } from './routes/support-requests'
 import { Route as SpareKeysRouteImport } from './routes/spare-keys'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReconcileRouteImport } from './routes/reconcile'
@@ -35,6 +36,11 @@ const UploadRoute = UploadRouteImport.update({
 const TerminationsRoute = TerminationsRouteImport.update({
   id: '/terminations',
   path: '/terminations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRequestsRoute = SupportRequestsRouteImport.update({
+  id: '/support-requests',
+  path: '/support-requests',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SpareKeysRoute = SpareKeysRouteImport.update({
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/reconcile': typeof ReconcileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/spare-keys': typeof SpareKeysRoute
+  '/support-requests': typeof SupportRequestsRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
   '/terminate/$lockerId': typeof TerminateLockerIdRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/reconcile': typeof ReconcileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/spare-keys': typeof SpareKeysRoute
+  '/support-requests': typeof SupportRequestsRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
   '/terminate/$lockerId': typeof TerminateLockerIdRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/reconcile': typeof ReconcileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/spare-keys': typeof SpareKeysRoute
+  '/support-requests': typeof SupportRequestsRoute
   '/terminations': typeof TerminationsRoute
   '/upload': typeof UploadRoute
   '/terminate/$lockerId': typeof TerminateLockerIdRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/reconcile'
     | '/reset-password'
     | '/spare-keys'
+    | '/support-requests'
     | '/terminations'
     | '/upload'
     | '/terminate/$lockerId'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/reconcile'
     | '/reset-password'
     | '/spare-keys'
+    | '/support-requests'
     | '/terminations'
     | '/upload'
     | '/terminate/$lockerId'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/reconcile'
     | '/reset-password'
     | '/spare-keys'
+    | '/support-requests'
     | '/terminations'
     | '/upload'
     | '/terminate/$lockerId'
@@ -246,6 +258,7 @@ export interface RootRouteChildren {
   ReconcileRoute: typeof ReconcileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SpareKeysRoute: typeof SpareKeysRoute
+  SupportRequestsRoute: typeof SupportRequestsRoute
   TerminationsRoute: typeof TerminationsRoute
   UploadRoute: typeof UploadRoute
   TerminateLockerIdRoute: typeof TerminateLockerIdRoute
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       path: '/terminations'
       fullPath: '/terminations'
       preLoaderRoute: typeof TerminationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support-requests': {
+      id: '/support-requests'
+      path: '/support-requests'
+      fullPath: '/support-requests'
+      preLoaderRoute: typeof SupportRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/spare-keys': {
@@ -390,6 +410,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReconcileRoute: ReconcileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SpareKeysRoute: SpareKeysRoute,
+  SupportRequestsRoute: SupportRequestsRoute,
   TerminationsRoute: TerminationsRoute,
   UploadRoute: UploadRoute,
   TerminateLockerIdRoute: TerminateLockerIdRoute,

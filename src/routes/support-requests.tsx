@@ -95,18 +95,14 @@ function SupportRequestsPage() {
   }, [rows]);
 
   const updateStatus = async (id: string, status: SupportRequestStatus) => {
-    const patch: Record<string, unknown> = { status };
-    if (status === "resolved") {
-      patch.resolved_by = user?.id ?? null;
-      patch.resolved_at = new Date().toISOString();
-    } else {
-      patch.resolved_by = null;
-      patch.resolved_at = null;
-    }
+    const patch = status === "resolved"
+      ? { status, resolved_by: user?.id ?? null, resolved_at: new Date().toISOString() }
+      : { status, resolved_by: null, resolved_at: null };
     const { error } = await supabase.from("support_requests").update(patch).eq("id", id);
     if (error) toast.error(error.message);
     else toast.success(`Marked as ${STATUS_LABEL[status].toLowerCase()}`);
   };
+
 
   return (
     <div className="min-h-screen bg-background">
