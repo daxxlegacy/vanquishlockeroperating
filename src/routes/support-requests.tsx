@@ -44,10 +44,10 @@ function SupportRequestsPage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<SupportRequest[] | null>(null);
   const [filter, setFilter] = useState<SupportRequestStatus | "all">("new");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
+  useEffect(() => { setSelected(new Set()); }, [filter]);
 
     const load = async () => {
       const { data, error } = await (supabase as unknown as {
