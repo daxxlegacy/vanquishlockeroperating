@@ -363,6 +363,7 @@ function ReconcilePage() {
 
   const exportAll = (fmt: "xlsx" | "csv") => {
     if (!results) return;
+    if (!confirmNidExport()) return;
     const byBucket = (b: Bucket) =>
       results
         .filter((r) => r.bucket === b)
@@ -1116,6 +1117,7 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
 
   const exportXlsx = () => {
     if (!results) return;
+    if (!confirmNidExport()) return;
     const wb = XLSX.utils.book_new();
     const matchedRows = matched.map((r) => ({
       locker_number: r.db.locker_number,
@@ -1221,7 +1223,7 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
                               <div className="text-xs text-muted-foreground">{r.db.row_label ?? "—"}</div>
                             </Td>
                             <Td>{r.db.employee_name ?? "—"}</Td>
-                            <Td mono>{r.db.national_id ?? "—"}</Td>
+                            <Td mono><NationalIdCell value={r.db.national_id} recordId={r.db.id} table="lockers" /></Td>
                             <Td>{r.med.name ?? "—"}</Td>
                             <Td mono>{r.med.nationalId ?? "—"}</Td>
                             <Td>
