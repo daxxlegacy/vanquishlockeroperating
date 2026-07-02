@@ -138,7 +138,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] sm:w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display">Locker {locker.locker_number}</DialogTitle>
           </DialogHeader>
