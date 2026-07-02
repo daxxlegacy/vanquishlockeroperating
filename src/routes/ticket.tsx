@@ -331,7 +331,7 @@ function Bubble({
       >
         <div className={`flex items-center gap-1.5 text-xs mb-0.5 ${isAdmin ? "text-muted-foreground" : "opacity-80"}`}>
           {isAdmin ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
-          {name} · {new Date(time).toLocaleString()}
+          {name} · {formatDateTime(time)}
         </div>
         {text}
       </div>
