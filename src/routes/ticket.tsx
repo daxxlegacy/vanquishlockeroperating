@@ -17,6 +17,7 @@ import {
   type SupportRequestStatus,
   type SupportRequestType,
 } from "@/lib/support-requests";
+import { formatDateTime } from "@/lib/format-date";
 
 const searchSchema = z.object({
   t: z.string().optional(),
