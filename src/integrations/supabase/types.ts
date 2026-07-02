@@ -166,6 +166,30 @@ export type Database = {
         }
         Relationships: []
       }
+      faq_assistant_log: {
+        Row: {
+          answer: string | null
+          asked_at: string
+          id: string
+          ip_address: unknown
+          question: string
+        }
+        Insert: {
+          answer?: string | null
+          asked_at?: string
+          id?: string
+          ip_address?: unknown
+          question: string
+        }
+        Update: {
+          answer?: string | null
+          asked_at?: string
+          id?: string
+          ip_address?: unknown
+          question?: string
+        }
+        Relationships: []
+      }
       locker_lookup_attempts: {
         Row: {
           attempted_at: string

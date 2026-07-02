@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRightLeft, HelpCircle, MessageSquare, Search } from "lucide-react";
 import { SupportRequestForm } from "./SupportRequestForm";
+import { FaqAssistant } from "./FaqAssistant";
+
 
 type Panel = "menu" | "transfer" | "cant_find" | "cant_find_form" | "other";
 
@@ -99,17 +101,24 @@ export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
         {panel === "other" && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Describe what you need help with. Our team will follow up at the contact number you provide.
+              Ask our automated assistant, or send your question straight to a human below.
             </p>
-            <SupportRequestForm
-              requestType="other"
-              showLockerField
-              messageLabel="How can we help?"
-              messagePlaceholder="Type your question or request…"
-              submitLabel="Talk to a human"
-            />
+            <FaqAssistant />
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground mb-2">
+                Prefer to talk to our team directly?
+              </p>
+              <SupportRequestForm
+                requestType="other"
+                showLockerField
+                messageLabel="How can we help?"
+                messagePlaceholder="Type your question or request…"
+                submitLabel="Talk to a human"
+              />
+            </div>
           </div>
         )}
+
       </CardContent>
     </Card>
   );
