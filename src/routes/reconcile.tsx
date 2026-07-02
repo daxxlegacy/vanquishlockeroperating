@@ -22,6 +22,8 @@ import { terminateLocker } from "@/lib/termination-actions";
 import { defaultPostTerminationStatus } from "@/lib/locker-status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { NationalIdCell } from "@/components/NationalIdCell";
+import { maskNationalId, confirmNidExport } from "@/lib/national-id";
 
 export const Route = createFileRoute("/reconcile")({
   head: () => ({
