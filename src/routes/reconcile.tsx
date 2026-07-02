@@ -536,6 +536,14 @@ function ReconcilePage() {
           <TabsContent value="duplicates" className="mt-4">
             <DuplicatesSection />
           </TabsContent>
+
+          <TabsContent value="terminations" className="mt-4">
+            <TerminationsPanel />
+          </TabsContent>
+
+          <TabsContent value="deletions" className="mt-4">
+            <DeletionsPanel />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
