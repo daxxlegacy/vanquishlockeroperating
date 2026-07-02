@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Ticket, Send, ArrowLeft, User, Shield, Bell, BellOff } from "lucide-react";
+import { Loader2, Ticket, Send, ArrowLeft, User, Shield, Bell } from "lucide-react";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
