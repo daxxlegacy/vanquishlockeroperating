@@ -40,6 +40,7 @@ const subs: Record<OccCategory, Set<(s: State) => void>> = {
 };
 const fetchPromises: Partial<Record<OccCategory, Promise<void>>> = {};
 let channel: ReturnType<typeof supabase.channel> | null = null;
+let authListenerStarted = false;
 
 const STORAGE_PREFIX = "lockerops.occupancy.cache.v1.";
 const MAX_AGE_MS = 5 * 60 * 1000;
@@ -53,6 +54,19 @@ function writeStorage(cat: OccCategory, data: OccupancyRow[]) {
   try {
     localStorage.setItem(STORAGE_PREFIX + cat, JSON.stringify({ ts: Date.now(), data }));
   } catch { /* ignore quota */ }
+}
+
+function clearStorage(cat?: OccCategory) {
+  if (typeof window === "undefined") return;
+  try {
+    if (cat) {
+      localStorage.removeItem(STORAGE_PREFIX + cat);
+      return;
+    }
+    for (const c of ["main", "staff", "shoe"] as OccCategory[]) {
+      localStorage.removeItem(STORAGE_PREFIX + c);
+    }
+  } catch { /* ignore storage errors */ }
 }
 
 function readStorage(cat: OccCategory): OccupancyRow[] | null {
@@ -74,16 +88,26 @@ async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
     try {
       const all: OccupancyRow[] = [];
       let from = 0;
+      let failed = false;
       while (true) {
         const { data, error } = await supabase
           .from("locker_occupancy")
           .select("*")
           .eq("category", cat)
           .range(from, from + 999);
-        if (error || !data) break;
+        if (error || !data) {
+          failed = true;
+          if (error) console.error(`Failed to load ${cat} occupancy:`, error.message);
+          break;
+        }
         all.push(...(data as OccupancyRow[]));
         if (data.length < 1000) break;
         from += 1000;
+      }
+      if (failed && all.length === 0) {
+        states[cat] = { data: null, loading: false };
+        emit(cat);
+        return;
       }
       states[cat] = { data: all, loading: false };
       writeStorage(cat, all);
@@ -93,6 +117,43 @@ async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
     }
   })();
   return fetchPromises[cat];
+}
+
+async function refetchAfterAuthReady() {
+  const cats = ["main", "staff", "shoe"] as OccCategory[];
+  await Promise.all(cats.map((cat) => fetchPromises[cat]?.catch(() => {})));
+  await Promise.all(
+    cats
+      .filter((cat) => subs[cat].size > 0 || states[cat].data)
+      .map((cat) => fetchCat(cat, true)),
+  );
+}
+
+function startAuthRefresh() {
+  if (authListenerStarted || typeof window === "undefined") return;
+  authListenerStarted = true;
+
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session?.user) void refetchAfterAuthReady();
+  }).catch(() => {});
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT") {
+      for (const cat of ["main", "staff", "shoe"] as OccCategory[]) {
+        states[cat] = { data: null, loading: false };
+        emit(cat);
+      }
+      clearStorage();
+      return;
+    }
+
+    if (
+      session?.user
+      && (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED")
+    ) {
+      void refetchAfterAuthReady();
+    }
+  });
 }
 
 let pendingRefresh: Partial<Record<OccCategory, ReturnType<typeof setTimeout>>> = {};
@@ -127,6 +188,7 @@ export function useOccupancy(cat: OccCategory) {
   useEffect(() => {
     set(states[cat]);
     subs[cat].add(set);
+    startAuthRefresh();
     ensureChannel();
     if (!states[cat].data && !states[cat].loading) {
       const warm = readStorage(cat);
