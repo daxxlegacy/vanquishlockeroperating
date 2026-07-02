@@ -15,7 +15,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket, Trash2 } from "lucide-react";
+import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket, Trash2, QrCode } from "lucide-react";
+import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
@@ -163,6 +164,14 @@ function SupportRequestsPage() {
           </div>
         </div>
 
+        <Tabs defaultValue="requests" className="mb-6">
+          <TabsList>
+            <TabsTrigger value="requests" className="gap-1.5"><LifeBuoy className="h-4 w-4" /> Requests</TabsTrigger>
+            <TabsTrigger value="find-locker-qr" className="gap-1.5"><QrCode className="h-4 w-4" /> Find-My-Locker QR</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="requests" className="mt-4">
+
         <Tabs value={filter} onValueChange={(v) => setFilter(v as SupportRequestStatus | "all")}>
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="new">New{counts.new > 0 ? ` (${counts.new})` : ""}</TabsTrigger>
@@ -226,6 +235,12 @@ function SupportRequestsPage() {
                 ))}
               </>
             )}
+          </TabsContent>
+        </Tabs>
+          </TabsContent>
+
+          <TabsContent value="find-locker-qr" className="mt-4">
+            <FindLockerPanel />
           </TabsContent>
         </Tabs>
       </main>

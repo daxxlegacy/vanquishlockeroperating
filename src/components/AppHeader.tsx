@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Settings, Key, UserCog, History, ShieldAlert, Menu, LifeBuoy } from "lucide-react";
+import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Key, UserCog, History, ShieldAlert, Menu, LifeBuoy } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { usePermissions, type AppPermission } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ export function AppHeader() {
     { to: "/spare-keys", label: "Spare Keys", icon: Key, perm: "page_spare_keys" },
     { to: "/occupancy", label: "Occupancy", icon: History, perm: "page_occupancy" },
     
-    { to: "/operations", label: "Operations", icon: Settings, perm: "page_operations" },
+    
     { to: "/support-requests", label: "Support", icon: LifeBuoy, perm: "manage_support_requests", badgeCount: newSupportCount },
     { to: "/reconcile", label: "Reconcile", icon: ShieldAlert, perm: "page_reconcile" },
     { to: "/upload", label: "Upload", icon: Upload, perm: "page_upload" },

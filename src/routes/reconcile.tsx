@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2, Loader2, Users } from "lucide-react";
+import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2, Loader2, Users, Trash2 } from "lucide-react";
 import { DuplicatesSection } from "@/components/reconcile/DuplicatesSection";
+import { TerminationsPanel } from "@/components/operations/TerminationsPanel";
+import { DeletionsPanel } from "@/components/operations/DeletionsPanel";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
@@ -412,10 +414,12 @@ function ReconcilePage() {
         </div>
 
         <Tabs defaultValue="hr" className="mt-6">
-          <TabsList className="grid grid-cols-3 w-full max-w-2xl">
+          <TabsList className="flex flex-wrap h-auto w-full max-w-3xl">
             <TabsTrigger value="hr" className="gap-2"><ShieldAlert className="h-4 w-4" /> HR Listing</TabsTrigger>
             <TabsTrigger value="mednefits" className="gap-2"><FileX2 className="h-4 w-4" /> Mednefits</TabsTrigger>
             <TabsTrigger value="duplicates" className="gap-2"><Users className="h-4 w-4" /> Duplicates</TabsTrigger>
+            <TabsTrigger value="terminations" className="gap-2"><UserMinus className="h-4 w-4" /> Terminations</TabsTrigger>
+            <TabsTrigger value="deletions" className="gap-2"><Trash2 className="h-4 w-4" /> Deletion Audit</TabsTrigger>
           </TabsList>
 
 
@@ -531,6 +535,14 @@ function ReconcilePage() {
 
           <TabsContent value="duplicates" className="mt-4">
             <DuplicatesSection />
+          </TabsContent>
+
+          <TabsContent value="terminations" className="mt-4">
+            <TerminationsPanel />
+          </TabsContent>
+
+          <TabsContent value="deletions" className="mt-4">
+            <DeletionsPanel />
           </TabsContent>
         </Tabs>
       </main>
