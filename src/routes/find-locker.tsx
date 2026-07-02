@@ -22,7 +22,6 @@ type Result = { employee_name: string | null; badge_number: string | null; locke
 
 function FindLockerPage() {
   const [badgeNumber, setBadgeNumber] = useState("");
-  const [nidLast4, setNidLast4] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,17 +30,10 @@ function FindLockerPage() {
     e.preventDefault();
     setError(null);
     setResult(null);
-    if (nidLast4 && !/^\d{4}$/.test(nidLast4)) {
-      setError("Please enter all 4 digits of your IC/National ID, or leave it blank.");
-      return;
-    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("locker-lookup", {
-        body: {
-          badge_number: badgeNumber.trim(),
-          national_id_last4: nidLast4.trim(),
-        },
+        body: { badge_number: badgeNumber.trim() },
       });
       if (error || !data || (data as { error?: string }).error) {
         const msg = (data as { error?: string } | null)?.error ?? error?.message ?? "";
@@ -82,20 +74,6 @@ function FindLockerPage() {
                 <Label htmlFor="badge">Badge number</Label>
                 <Input id="badge" value={badgeNumber} onChange={(e) => setBadgeNumber(e.target.value)} required autoComplete="off" />
               </div>
-              <div>
-                <Label htmlFor="nid">Last 4 digits of IC / National ID <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Input
-                  id="nid"
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                  maxLength={4}
-                  value={nidLast4}
-                  onChange={(e) => setNidLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  autoComplete="off"
-                  placeholder="Leave blank if you don't have one"
-                />
-              </div>
-
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Find my locker
@@ -103,7 +81,7 @@ function FindLockerPage() {
 
               <p className="flex items-start gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                For your security, we only ask for the last 4 digits of your IC/National ID.
+                Your badge number is used only to look up your assigned locker.
               </p>
             </form>
 
