@@ -10,7 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
