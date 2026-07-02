@@ -34,12 +34,20 @@ function emit() {
   for (const fn of subscribers) fn(state);
 }
 
+// Never persist full national_id to browser storage; keep only a masked form.
+function maskForStorage(row: Locker): Locker {
+  const nid = row.national_id;
+  if (!nid || /^\*+/.test(nid)) return row;
+  const masked = nid.length <= 4 ? "*".repeat(nid.length) : "******" + nid.slice(-4);
+  return { ...row, national_id: masked };
+}
+
 function writeToStorage(data: Locker[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ ts: Date.now(), data }),
+      JSON.stringify({ ts: Date.now(), data: data.map(maskForStorage) }),
     );
   } catch {
     // quota / serialization errors — ignore
@@ -81,8 +89,18 @@ async function fetchAll(silent = false): Promise<void> {
       let from = 0;
       let failed = false;
       while (true) {
-        const { data, error } = await supabase
-          .from("lockers")
+        // Query the masked view so national_id never arrives full for
+        // non-authorised users. Cast because the view isn't in generated types.
+        const { data, error } = await (supabase as unknown as {
+          from: (t: string) => {
+            select: (c: string) => {
+              is: (col: string, v: null) => {
+                range: (a: number, b: number) => Promise<{ data: Locker[] | null; error: { message: string } | null }>;
+              };
+            };
+          };
+        })
+          .from("lockers_masked")
           .select("*")
           .is("deleted_at", null)
           .range(from, from + 999);
