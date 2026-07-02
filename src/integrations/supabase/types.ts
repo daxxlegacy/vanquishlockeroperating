@@ -331,6 +331,30 @@ export type Database = {
         }
         Relationships: []
       }
+      national_id_access_log: {
+        Row: {
+          accessed_at: string
+          id: string
+          record_id: string
+          table_name: string
+          user_id: string
+        }
+        Insert: {
+          accessed_at?: string
+          id?: string
+          record_id: string
+          table_name: string
+          user_id: string
+        }
+        Update: {
+          accessed_at?: string
+          id?: string
+          record_id?: string
+          table_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -486,10 +510,154 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      locker_occupancy_masked: {
+        Row: {
+          badge_number: string | null
+          batch_intake_date: string | null
+          category: string | null
+          contact: string | null
+          created_at: string | null
+          department: string | null
+          employee_name: string | null
+          gradeset: string | null
+          id: string | null
+          key_lock_type: string | null
+          locker_location_by_row: string | null
+          locker_number: string | null
+          locker_row: string | null
+          locker_unit: string | null
+          national_id: string | null
+          remarks: string | null
+          source_filename: string | null
+          status: string | null
+          termination_date: string | null
+          updated_at: string | null
+          work_location: string | null
+        }
+        Insert: {
+          badge_number?: string | null
+          batch_intake_date?: string | null
+          category?: string | null
+          contact?: string | null
+          created_at?: string | null
+          department?: string | null
+          employee_name?: string | null
+          gradeset?: string | null
+          id?: string | null
+          key_lock_type?: string | null
+          locker_location_by_row?: string | null
+          locker_number?: string | null
+          locker_row?: string | null
+          locker_unit?: string | null
+          national_id?: never
+          remarks?: string | null
+          source_filename?: string | null
+          status?: string | null
+          termination_date?: string | null
+          updated_at?: string | null
+          work_location?: string | null
+        }
+        Update: {
+          badge_number?: string | null
+          batch_intake_date?: string | null
+          category?: string | null
+          contact?: string | null
+          created_at?: string | null
+          department?: string | null
+          employee_name?: string | null
+          gradeset?: string | null
+          id?: string | null
+          key_lock_type?: string | null
+          locker_location_by_row?: string | null
+          locker_number?: string | null
+          locker_row?: string | null
+          locker_unit?: string | null
+          national_id?: never
+          remarks?: string | null
+          source_filename?: string | null
+          status?: string | null
+          termination_date?: string | null
+          updated_at?: string | null
+          work_location?: string | null
+        }
+        Relationships: []
+      }
+      lockers_masked: {
+        Row: {
+          badge_number: string | null
+          batch_intake: string | null
+          created_at: string | null
+          custom_status: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
+          employee_name: string | null
+          id: string | null
+          key_lock: string | null
+          location: string | null
+          locker_number: string | null
+          national_id: string | null
+          physical_key_status: Database["public"]["Enums"]["key_status"] | null
+          remark: string | null
+          row_label: string | null
+          spare_key_status: Database["public"]["Enums"]["key_status"] | null
+          status: Database["public"]["Enums"]["locker_status"] | null
+          unit_type: string | null
+          updated_at: string | null
+          work_location: string | null
+        }
+        Insert: {
+          badge_number?: string | null
+          batch_intake?: string | null
+          created_at?: string | null
+          custom_status?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          employee_name?: string | null
+          id?: string | null
+          key_lock?: string | null
+          location?: string | null
+          locker_number?: string | null
+          national_id?: never
+          physical_key_status?: Database["public"]["Enums"]["key_status"] | null
+          remark?: string | null
+          row_label?: string | null
+          spare_key_status?: Database["public"]["Enums"]["key_status"] | null
+          status?: Database["public"]["Enums"]["locker_status"] | null
+          unit_type?: string | null
+          updated_at?: string | null
+          work_location?: string | null
+        }
+        Update: {
+          badge_number?: string | null
+          batch_intake?: string | null
+          created_at?: string | null
+          custom_status?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          employee_name?: string | null
+          id?: string | null
+          key_lock?: string | null
+          location?: string | null
+          locker_number?: string | null
+          national_id?: never
+          physical_key_status?: Database["public"]["Enums"]["key_status"] | null
+          remark?: string | null
+          row_label?: string | null
+          spare_key_status?: Database["public"]["Enums"]["key_status"] | null
+          status?: Database["public"]["Enums"]["locker_status"] | null
+          unit_type?: string | null
+          updated_at?: string | null
+          work_location?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_access_lockers: { Args: { _user_id: string }; Returns: boolean }
+      can_view_national_id: { Args: { _user_id: string }; Returns: boolean }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["app_permission"]
@@ -503,6 +671,11 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      mask_national_id: { Args: { _nid: string }; Returns: string }
+      reveal_national_id: {
+        Args: { _record_id: string; _table_name: string }
+        Returns: string
       }
       swap_lockers: { Args: { _a_id: string; _b_id: string }; Returns: Json }
       transfer_locker: {
