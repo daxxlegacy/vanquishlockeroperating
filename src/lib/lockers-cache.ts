@@ -83,6 +83,10 @@ async function fetchAll(silent = false): Promise<void> {
     state = { ...state, loading: true };
     emit();
   }
+  const timerLabel = import.meta.env.DEV
+    ? `[perf] lockers-cache fetchAll${silent ? " (silent)" : ""}`
+    : null;
+  if (timerLabel) console.time(timerLabel);
   fetchPromise = (async () => {
     try {
       const all: Locker[] = [];
@@ -124,10 +128,31 @@ async function fetchAll(silent = false): Promise<void> {
       emit();
     } finally {
       fetchPromise = null;
+      if (timerLabel) console.timeEnd(timerLabel);
     }
   })();
   return fetchPromise;
 }
+
+/** Kick off cache warm-up without mounting a component. Safe to call
+ *  multiple times — dedupes against in-flight fetches. Reads warm cache
+ *  from localStorage first, then triggers a silent background refresh. */
+export function prefetchLockers() {
+  if (typeof window === "undefined") return;
+  startAuthRefresh();
+  ensureChannel();
+  if (state.data || state.loading || fetchPromise) return;
+  const warm = readFromStorage();
+  if (warm && warm.length > 0) {
+    rebuildIndex(warm);
+    state = { data: warm, loading: false };
+    emit();
+    fetchAll(true);
+  } else {
+    fetchAll(true);
+  }
+}
+
 
 async function refetchAfterAuthReady() {
   if (fetchPromise) {
