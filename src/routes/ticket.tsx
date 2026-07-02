@@ -125,7 +125,7 @@ function TicketPage() {
             <form onSubmit={lookup} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
               <div>
                 <Label htmlFor="tk">Ticket number</Label>
-                <Input id="tk" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="TKT-2026-00001" />
+                <Input id="tk" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="e.g. 00042" inputMode="numeric" />
               </div>
               <div>
                 <Label htmlFor="bd">Badge number</Label>
