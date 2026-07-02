@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Users, Settings, Key, UserCog, History, ShieldAlert, Menu } from "lucide-react";
+import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Users, Settings, Key, UserCog, History, ShieldAlert, Menu, LifeBuoy } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { usePermissions, type AppPermission } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useNewSupportRequestsCount } from "@/lib/support-requests";
 
 export function AppHeader() {
   const { user, role, signOut } = useAuth();
@@ -13,16 +14,18 @@ export function AppHeader() {
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
+  const newSupportCount = useNewSupportRequestsCount();
 
   if (!user) return null;
 
-  const navItems: { to: string; label: string; icon: typeof LayoutGrid; perm?: AppPermission; adminOnly?: boolean }[] = [
+  const navItems: { to: string; label: string; icon: typeof LayoutGrid; perm?: AppPermission; adminOnly?: boolean; badgeCount?: number }[] = [
     { to: "/", label: "Map", icon: LayoutGrid, perm: "page_map" },
     { to: "/lockers", label: "Lockers", icon: TableIcon, perm: "page_lockers" },
     { to: "/spare-keys", label: "Spare Keys", icon: Key, perm: "page_spare_keys" },
     { to: "/occupancy", label: "Occupancy", icon: History, perm: "page_occupancy" },
     { to: "/duplicates", label: "Duplicates", icon: Users, perm: "page_duplicates" },
     { to: "/operations", label: "Operations", icon: Settings, perm: "page_operations" },
+    { to: "/support-requests", label: "Support", icon: LifeBuoy, perm: "manage_support_requests", badgeCount: newSupportCount },
     { to: "/reconcile", label: "Reconcile", icon: ShieldAlert, perm: "page_reconcile" },
     { to: "/upload", label: "Upload", icon: Upload, perm: "page_upload" },
     { to: "/admin", label: "Admin", icon: UserCog, adminOnly: true },
@@ -33,6 +36,7 @@ export function AppHeader() {
     if (item.perm && !has(item.perm)) return false;
     return true;
   });
+
 
   return (
     <header className="border-b bg-sidebar text-sidebar-foreground sticky top-0 z-40">
@@ -74,11 +78,17 @@ export function AppHeader() {
                     }`}
                   >
                     <Icon className="h-4 w-4" />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {item.badgeCount && item.badgeCount > 0 ? (
+                      <span className="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold">
+                        {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                      </span>
+                    ) : null}
                   </Link>
                 );
               })}
             </nav>
+
             <div className="border-t border-sidebar-border px-4 py-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="border-sidebar-border text-sidebar-foreground/90 gap-1">
@@ -127,7 +137,13 @@ export function AppHeader() {
               >
                 <Icon className="h-4 w-4" />
                 {item.label}
+                {item.badgeCount && item.badgeCount > 0 ? (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold">
+                    {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                  </span>
+                ) : null}
               </Link>
+
             );
           })}
         </nav>

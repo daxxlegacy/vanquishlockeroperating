@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ShieldCheck, Search } from "lucide-react";
+import { HelpMenu } from "@/components/support/HelpMenu";
+
 
 export const Route = createFileRoute("/find-locker")({
   head: () => ({
@@ -52,9 +54,11 @@ function FindLockerPage() {
     }
   };
 
+  const lookupRef = useRef<HTMLDivElement | null>(null);
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background px-4 py-10">
+      <div className="w-full max-w-md mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Find My Locker</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -62,48 +66,53 @@ function FindLockerPage() {
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Search className="h-4 w-4" /> Locker lookup
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={submit} className="space-y-4">
-              <div>
-                <Label htmlFor="badge">Badge number</Label>
-                <Input id="badge" value={badgeNumber} onChange={(e) => setBadgeNumber(e.target.value)} required autoComplete="off" />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Find my locker
-              </Button>
+        <div ref={lookupRef}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Search className="h-4 w-4" /> Locker lookup
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={submit} className="space-y-4">
+                <div>
+                  <Label htmlFor="badge">Badge number</Label>
+                  <Input id="badge" value={badgeNumber} onChange={(e) => setBadgeNumber(e.target.value)} required autoComplete="off" />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Find my locker
+                </Button>
 
-              <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                Your badge number is used only to look up your assigned locker.
-              </p>
-            </form>
+                <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  Your badge number is used only to look up your assigned locker.
+                </p>
+              </form>
 
-            {error && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+              {error && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-            {result && (
-              <div className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Your locker</p>
-                <dl className="space-y-1.5 text-sm">
-                  <div className="flex justify-between"><dt className="text-muted-foreground">Name</dt><dd className="font-medium">{result.employee_name ?? "—"}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted-foreground">Badge</dt><dd className="font-medium">{result.badge_number ?? "—"}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted-foreground">Locker</dt><dd className="font-mono font-semibold">{result.locker_number ?? "—"}</dd></div>
-                </dl>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              {result && (
+                <div className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Your locker</p>
+                  <dl className="space-y-1.5 text-sm">
+                    <div className="flex justify-between"><dt className="text-muted-foreground">Name</dt><dd className="font-medium">{result.employee_name ?? "—"}</dd></div>
+                    <div className="flex justify-between"><dt className="text-muted-foreground">Badge</dt><dd className="font-medium">{result.badge_number ?? "—"}</dd></div>
+                    <div className="flex justify-between"><dt className="text-muted-foreground">Locker</dt><dd className="font-mono font-semibold">{result.locker_number ?? "—"}</dd></div>
+                  </dl>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <HelpMenu onPickFind={() => lookupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
       </div>
     </div>
   );
+
 }
