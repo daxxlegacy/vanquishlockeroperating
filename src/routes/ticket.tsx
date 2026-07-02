@@ -229,6 +229,23 @@ function TicketPage() {
               <div className="text-sm text-muted-foreground">
                 {REQUEST_TYPE_LABEL[data.request_type]} · submitted {new Date(data.created_at).toLocaleString()}
               </div>
+              {notifPerm !== "granted" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={enableNotifications}
+                  className="w-full sm:w-auto"
+                >
+                  <Bell className="h-4 w-4 mr-2" />
+                  Get notified when admin replies
+                </Button>
+              ) : (
+                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Bell className="h-3.5 w-3.5 text-primary" />
+                  Notifications on — keep this page open to receive alerts.
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <Bubble
