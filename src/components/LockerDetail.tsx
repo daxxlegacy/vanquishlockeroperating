@@ -18,6 +18,7 @@ import { SwapLockerDialog } from "@/components/SwapLockerDialog";
 import { syncActivationToOccupancy, syncMetadataToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
 import { LOCKER_STATUSES } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
+import { NationalIdCell } from "@/components/NationalIdCell";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
@@ -51,10 +52,14 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     if (!lockerId || !open) return;
     const cached = getLockerById(lockerId);
     if (cached) setLocker(cached);
-    supabase.from("lockers").select("*").eq("id", lockerId).single().then(({ data }) => {
-      if (data) setLocker(data);
-    });
-  }, [lockerId, open]);
+    // Admins can read the full national_id from the base table (RLS allows).
+    // Everyone else reads from the masked view so national_id is never exposed.
+    const source = isAdmin ? "lockers" : "lockers_masked";
+    (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (col: string, v: string) => { single: () => Promise<{ data: Locker | null }> } } } })
+      .from(source).select("*").eq("id", lockerId).single().then(({ data }) => {
+        if (data) setLocker(data);
+      });
+  }, [lockerId, open, isAdmin]);
 
   if (!locker) {
     return (
@@ -157,7 +162,16 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
               <Field label="Work Location" value={locker.work_location ?? ""} onChange={(v) => update("work_location", v)} disabled={!isAdmin} />
               <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
               <DateField label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
-              <Field label="National ID" value={locker.national_id ?? ""} onChange={(v) => update("national_id", v)} disabled={!isAdmin} />
+              {isAdmin ? (
+                <Field label="National ID" value={locker.national_id ?? ""} onChange={(v) => update("national_id", v)} disabled={false} />
+              ) : (
+                <div>
+                  <Label>National ID</Label>
+                  <div className="h-9 flex items-center rounded-md border bg-muted/30 px-3">
+                    <NationalIdCell value={locker.national_id} recordId={locker.id} table="lockers" />
+                  </div>
+                </div>
+              )}
               <div className="sm:col-span-2">
                 <Label>Custom Status (free text)</Label>
                 <Input
