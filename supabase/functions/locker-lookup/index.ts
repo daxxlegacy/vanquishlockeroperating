@@ -50,7 +50,9 @@ Deno.serve(async (req) => {
     });
   };
 
-  if (!badge_number || !/^\d{4}$/.test(nid_last4)) {
+  // Badge is required. NID last-4 is optional (some users don't have one on file).
+  const hasNid = /^\d{4}$/.test(nid_last4);
+  if (!badge_number) {
     await logAttempt(false, null);
     return json({ error: "No matching record found" }, 404);
   }
@@ -62,19 +64,35 @@ Deno.serve(async (req) => {
       .select("employee_name,badge_number,locker_number,national_id")
       .eq("badge_number", badge_number)
       .limit(20);
-    return (data ?? []).filter(
-      (r: any) => r.national_id && String(r.national_id).slice(-4) === nid_last4,
-    );
+    const rows = data ?? [];
+    if (hasNid) {
+      // Match by NID when provided.
+      return rows.filter(
+        (r: any) => r.national_id && String(r.national_id).slice(-4) === nid_last4,
+      );
+    }
+    // No NID provided → only match records that also have no NID on file.
+    return rows.filter((r: any) => !r.national_id || String(r.national_id).trim() === "");
   };
 
-  const matches = [...(await findIn("lockers")), ...(await findIn("locker_occupancy"))];
+  const all = [...(await findIn("lockers")), ...(await findIn("locker_occupancy"))];
+
+  // De-duplicate across the two tables (same locker/badge pair).
+  const seen = new Set<string>();
+  const matches: any[] = [];
+  for (const r of all) {
+    const key = `${r.locker_number ?? ""}|${r.badge_number ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    matches.push(r);
+  }
 
   if (matches.length !== 1) {
-    await logAttempt(false, null);
+    await logAttempt(false, matches[0]?.locker_number ?? null);
     return json({ error: "No matching record found" }, 404);
   }
 
-  const m = matches[0] as any;
+  const m = matches[0];
   await logAttempt(true, m.locker_number ?? null);
   return json({
     employee_name: m.employee_name ?? null,
