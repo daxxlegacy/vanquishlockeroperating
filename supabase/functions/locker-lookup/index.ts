@@ -1,4 +1,4 @@
-// Public "Find My Locker" lookup. Requires badge_number and, when available,
+// Public "Find My Locker" lookup. Requires badge_number and optionally
 // last-4 of national_id. Rate-limited per IP.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -86,8 +86,8 @@ Deno.serve(async (req) => {
         (r: any) => !hasNoNationalId(r.national_id) && digitsOnly(r.national_id).slice(-4) === nid_last4,
       );
     }
-    // No NID provided → only match records that also have no NID on file.
-    return rows.filter((r: any) => hasNoNationalId(r.national_id));
+    // No NID provided → badge-only lookup is allowed when it uniquely matches.
+    return rows;
   };
 
   const all = [...(await findIn("lockers")), ...(await findIn("locker_occupancy"))];
