@@ -41,18 +41,17 @@ Deno.serve(async (req) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { /* ignore */ }
-  const locker_number = String(body.locker_number ?? "").trim();
   const badge_number = String(body.badge_number ?? "").trim();
   const nid_last4 = String(body.national_id_last4 ?? "").trim();
 
-  const logAttempt = async (success: boolean) => {
+  const logAttempt = async (success: boolean, locker_number: string | null) => {
     await supabase.from("locker_lookup_attempts").insert({
-      ip_address: ip, locker_number: locker_number || null, success,
+      ip_address: ip, locker_number, success,
     });
   };
 
-  if (!locker_number || !badge_number || !/^\d{4}$/.test(nid_last4)) {
-    await logAttempt(false);
+  if (!badge_number || !/^\d{4}$/.test(nid_last4)) {
+    await logAttempt(false, null);
     return json({ error: "No matching record found" }, 404);
   }
 
@@ -61,9 +60,8 @@ Deno.serve(async (req) => {
     const { data } = await supabase
       .from(table)
       .select("employee_name,badge_number,locker_number,national_id")
-      .eq("locker_number", locker_number)
       .eq("badge_number", badge_number)
-      .limit(5);
+      .limit(20);
     return (data ?? []).filter(
       (r: any) => r.national_id && String(r.national_id).slice(-4) === nid_last4,
     );
@@ -72,12 +70,12 @@ Deno.serve(async (req) => {
   const matches = [...(await findIn("lockers")), ...(await findIn("locker_occupancy"))];
 
   if (matches.length !== 1) {
-    await logAttempt(false);
+    await logAttempt(false, null);
     return json({ error: "No matching record found" }, 404);
   }
 
   const m = matches[0] as any;
-  await logAttempt(true);
+  await logAttempt(true, m.locker_number ?? null);
   return json({
     employee_name: m.employee_name ?? null,
     badge_number: m.badge_number ?? null,
