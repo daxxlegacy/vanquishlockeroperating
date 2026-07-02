@@ -1,5 +1,5 @@
-// Public "Find My Locker" lookup. Requires locker_number + badge_number
-// + last-4 of national_id to all match. Rate-limited per IP.
+// Public "Find My Locker" lookup. Requires badge_number and, when available,
+// last-4 of national_id. Rate-limited per IP.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -14,6 +14,13 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+const digitsOnly = (value: unknown) => String(value ?? "").replace(/\D/g, "");
+const clean = (value: unknown) => String(value ?? "").trim();
+const hasNoNationalId = (value: unknown) => {
+  const raw = clean(value).toLowerCase();
+  return !raw || raw === "-" || raw === "n/a" || raw === "na" || raw === "nil" || digitsOnly(raw).length === 0;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -41,8 +48,9 @@ Deno.serve(async (req) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { /* ignore */ }
-  const badge_number = String(body.badge_number ?? "").trim();
-  const nid_last4 = String(body.national_id_last4 ?? "").trim();
+  const badge_number = clean(body.badge_number);
+  const badge_digits = digitsOnly(badge_number);
+  const nid_last4 = digitsOnly(body.national_id_last4).slice(-4);
 
   const logAttempt = async (success: boolean, locker_number: string | null) => {
     await supabase.from("locker_lookup_attempts").insert({
@@ -57,22 +65,29 @@ Deno.serve(async (req) => {
     return json({ error: "No matching record found" }, 404);
   }
 
-  // Check both authoritative tables.
+  // Check both authoritative tables. Pull the small locker dataset and normalize
+  // in code so formatted badge/NID values still match (spaces, dashes, etc.).
   const findIn = async (table: "lockers" | "locker_occupancy") => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from(table)
       .select("employee_name,badge_number,locker_number,national_id")
-      .eq("badge_number", badge_number)
-      .limit(20);
-    const rows = data ?? [];
+      .limit(10000);
+    if (error) {
+      console.error(`locker lookup ${table} query failed`, error.message);
+      return [];
+    }
+    const rows = (data ?? []).filter((r: any) => {
+      const storedBadge = clean(r.badge_number);
+      return storedBadge === badge_number || (!!badge_digits && digitsOnly(storedBadge) === badge_digits);
+    });
     if (hasNid) {
       // Match by NID when provided.
       return rows.filter(
-        (r: any) => r.national_id && String(r.national_id).slice(-4) === nid_last4,
+        (r: any) => !hasNoNationalId(r.national_id) && digitsOnly(r.national_id).slice(-4) === nid_last4,
       );
     }
     // No NID provided → only match records that also have no NID on file.
-    return rows.filter((r: any) => !r.national_id || String(r.national_id).trim() === "");
+    return rows.filter((r: any) => hasNoNationalId(r.national_id));
   };
 
   const all = [...(await findIn("lockers")), ...(await findIn("locker_occupancy"))];
