@@ -49,6 +49,10 @@ function SupportRequestsPage() {
 
   useEffect(() => { setSelected(new Set()); }, [filter]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
     const load = async () => {
       const { data, error } = await (supabase as unknown as {
         from: (t: string) => {
