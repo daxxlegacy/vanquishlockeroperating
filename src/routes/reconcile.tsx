@@ -15,7 +15,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2, Loader2, Users } from "lucide-react";
 import { DuplicatesSection } from "@/components/reconcile/DuplicatesSection";
-import { usePermissions } from "@/lib/permissions";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
