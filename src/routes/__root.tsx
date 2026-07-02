@@ -87,9 +87,22 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function CachePrewarm() {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    // Warm both major caches as soon as the user is signed in so switching
+    // between /lockers, /occupancy, /spare-keys, /duplicates feels instant.
+    prefetchLockers();
+    prefetchOccupancy();
+  }, [user]);
+  return null;
+}
+
 function RootComponent() {
   return (
     <AuthProvider>
+      <CachePrewarm />
       <Outlet />
       <Toaster richColors position="top-right" />
     </AuthProvider>
