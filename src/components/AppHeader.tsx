@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Users, Settings, Key, UserCog, History, ShieldAlert, Menu, LifeBuoy } from "lucide-react";
+import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Settings, Key, UserCog, History, ShieldAlert, Menu, LifeBuoy } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { usePermissions, type AppPermission } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
