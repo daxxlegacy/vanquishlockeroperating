@@ -119,6 +119,35 @@ function SupportRequestsPage() {
     else toast.success(`Marked as ${STATUS_LABEL[status].toLowerCase()}`);
   };
 
+  const selectableIds = useMemo(
+    () => filtered.filter((r) => r.status === "resolved").map((r) => r.id),
+    [filtered],
+  );
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+
+  const toggleOne = (id: string, on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAll = (on: boolean) => {
+    setSelected(on ? new Set(selectableIds) : new Set());
+  };
+
+  const deleteSelected = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setDeleting(true);
+    const { error } = await supabase.from("support_requests").delete().in("id", ids);
+    setDeleting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Deleted ${ids.length} ticket${ids.length === 1 ? "" : "s"}`);
+    setSelected(new Set());
+    setRows((prev) => (prev ? prev.filter((r) => !selected.has(r.id)) : prev));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
