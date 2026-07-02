@@ -55,7 +55,9 @@ export const ACTION_PERMISSIONS: AppPermission[] = [
   "upload_roster",
   "run_automation",
   "view_national_id",
+  "manage_support_requests",
 ];
+
 
 
 const PERMS_CACHE_KEY = "lockerops.auth.perms.v1";
