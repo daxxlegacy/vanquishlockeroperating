@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
   STATUS_LABEL,
   type SupportRequest,
+  type SupportRequestReply,
   type SupportRequestStatus,
   type SupportRequestType,
 } from "@/lib/support-requests";
@@ -23,7 +25,7 @@ export const Route = createFileRoute("/support-requests")({
   head: () => ({
     meta: [
       { title: "Support Requests — LockerOps" },
-      { name: "description", content: "Review and resolve support requests from Find-My-Locker." },
+      { name: "description", content: "Review, reply to, and resolve support requests from Find-My-Locker." },
     ],
   }),
   component: () => (
@@ -71,6 +73,11 @@ function SupportRequestsPage() {
         { event: "*", schema: "public", table: "support_requests" },
         () => { load(); },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_request_replies" },
+        () => { load(); },
+      )
       .subscribe();
 
     return () => {
@@ -102,7 +109,6 @@ function SupportRequestsPage() {
     if (error) toast.error(error.message);
     else toast.success(`Marked as ${STATUS_LABEL[status].toLowerCase()}`);
   };
-
 
   return (
     <div className="min-h-screen bg-background">
@@ -166,14 +172,68 @@ function SupportCard({
 }) {
   const Icon = TYPE_ICON[row.request_type];
   const created = new Date(row.created_at);
+  const { user } = useAuth();
+  const [replies, setReplies] = useState<SupportRequestReply[] | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const loadReplies = async () => {
+    const { data, error } = await (supabase as unknown as {
+      from: (t: string) => {
+        select: (c: string) => {
+          eq: (col: string, v: string) => {
+            order: (col: string, o: { ascending: boolean }) => Promise<{ data: SupportRequestReply[] | null; error: { message: string } | null }>;
+          };
+        };
+      };
+    })
+      .from("support_request_replies")
+      .select("*")
+      .eq("request_id", row.id)
+      .order("created_at", { ascending: true });
+    if (!error) setReplies(data ?? []);
+  };
+
+  useEffect(() => {
+    if (expanded && replies === null) loadReplies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
+  const sendReply = async () => {
+    const m = reply.trim();
+    if (!m) return;
+    setSending(true);
+    const { error } = await supabase.from("support_request_replies").insert({
+      request_id: row.id,
+      author_role: "admin",
+      author_id: user?.id ?? null,
+      author_name: user?.email ?? "Admin",
+      message: m,
+    });
+    setSending(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setReply("");
+    toast.success("Reply sent");
+    loadReplies();
+    if (row.status === "new") onUpdate(row.id, "in_progress");
+  };
+
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="font-display font-bold text-lg truncate">
             {REQUEST_TYPE_LABEL[row.request_type]}
           </span>
+          <Badge variant="outline" className="font-mono">
+            <Ticket className="h-3 w-3 mr-1" />
+            {row.ticket_number}
+          </Badge>
           <Badge variant="outline" className={STATUS_STYLE[row.status]}>
             {STATUS_LABEL[row.status]}
           </Badge>
@@ -194,7 +254,59 @@ function SupportCard({
         {row.message}
       </div>
 
+      {expanded && (
+        <div className="mt-3 space-y-3">
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Conversation</div>
+          {replies === null ? (
+            <Skeleton className="h-16 w-full" />
+          ) : replies.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No replies yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {replies.map((r) => (
+                <div
+                  key={r.id}
+                  className={`rounded-lg border p-2.5 text-sm ${
+                    r.author_role === "admin" ? "bg-primary/5 border-primary/20" : "bg-muted/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                    {r.author_role === "admin" ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                    <span className="font-medium">
+                      {r.author_role === "admin" ? "Admin" : "User"}
+                      {r.author_name ? ` · ${r.author_name}` : ""}
+                    </span>
+                    <span>· {new Date(r.created_at).toLocaleString()}</span>
+                  </div>
+                  <div className="whitespace-pre-wrap">{r.message}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Textarea
+              rows={3}
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              placeholder="Write a reply — the user will see this when they check their ticket status."
+              maxLength={4000}
+            />
+            <div className="flex justify-end">
+              <Button size="sm" onClick={sendReply} disabled={sending || !reply.trim()}>
+                {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+                Send reply
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mt-3 flex gap-2 flex-wrap justify-end">
+        <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)}>
+          <MessageSquare className="h-3.5 w-3.5 mr-1" />
+          {expanded ? "Hide replies" : "Replies"}
+        </Button>
         {row.status !== "in_progress" && row.status !== "resolved" && (
           <Button size="sm" variant="secondary" onClick={() => onUpdate(row.id, "in_progress")}>
             Mark in progress
