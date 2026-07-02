@@ -150,6 +150,8 @@ function FindLockerPage() {
           </Card>
         </div>
 
+        <OperatingHoursNotice />
+
         <HelpMenu onPickFind={() => lookupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
       </div>
     </div>
