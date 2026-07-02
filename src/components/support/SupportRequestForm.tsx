@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import type { SupportRequestType } from "@/lib/support-requests";
 
 export type SupportFormProps = {
@@ -35,6 +36,8 @@ export function SupportRequestForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [okId, setOkId] = useState<string | null>(null);
+  const [okTicket, setOkTicket] = useState<string | null>(null);
+  const [okBadge, setOkBadge] = useState<string>("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +75,10 @@ export function SupportRequestForm({
         }
         return;
       }
-      setOkId((data as { id: string }).id);
+      const payload = data as { id: string; ticket_number?: string };
+      setOkId(payload.id);
+      setOkTicket(payload.ticket_number ?? null);
+      setOkBadge(b);
     } catch {
       setError("Couldn't submit right now — please try again or contact the admin office.");
     } finally {
@@ -86,10 +92,27 @@ export function SupportRequestForm({
         <CheckCircle2 className="h-4 w-4" />
         <AlertDescription>
           <div className="font-medium">Your request has been received.</div>
-          <div className="text-xs mt-1">
-            Reference #{okId.slice(0, 8).toUpperCase()}. Our team will contact you at{" "}
-            <span className="font-mono">{contact}</span> shortly.
+          <div className="text-sm mt-1">
+            Ticket number:{" "}
+            <span className="font-mono font-semibold">
+              {okTicket ?? `#${okId.slice(0, 8).toUpperCase()}`}
+            </span>
           </div>
+          <div className="text-xs mt-1">
+            Save this number. Our team will contact you at{" "}
+            <span className="font-mono">{contact}</span>.
+          </div>
+          {okTicket && (
+            <div className="mt-2">
+              <Link
+                to="/ticket"
+                search={{ t: okTicket, b: okBadge }}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                Check ticket status <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
         </AlertDescription>
       </Alert>
     );

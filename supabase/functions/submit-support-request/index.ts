@@ -70,5 +70,6 @@ Deno.serve(async (req) => {
     return json({ error: "Could not submit your request. Please try again shortly." }, 400);
   }
 
-  return json({ id: data as string });
+  const payload = (data ?? {}) as { id?: string; ticket_number?: string };
+  return json({ id: payload.id, ticket_number: payload.ticket_number });
 });

@@ -9,6 +9,7 @@ export type SupportRequestStatus = "new" | "in_progress" | "resolved";
 
 export type SupportRequest = {
   id: string;
+  ticket_number: string;
   created_at: string;
   updated_at: string;
   request_type: SupportRequestType;
@@ -20,6 +21,16 @@ export type SupportRequest = {
   status: SupportRequestStatus;
   resolved_by: string | null;
   resolved_at: string | null;
+};
+
+export type SupportRequestReply = {
+  id: string;
+  request_id: string;
+  author_role: "admin" | "user";
+  author_id: string | null;
+  author_name: string | null;
+  message: string;
+  created_at: string;
 };
 
 export const REQUEST_TYPE_LABEL: Record<SupportRequestType, string> = {
