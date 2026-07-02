@@ -71,43 +71,41 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
 
   const update = (k: keyof Locker, v: string | null) => setLocker({ ...locker, [k]: v });
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!isAdmin) return;
-    setSaving(true);
     const customClean = (locker.custom_status ?? "").trim();
-    const { error } = await supabase
-      .from("lockers")
-      .update({
-        key_lock: locker.key_lock,
-        location: locker.location,
-        row_label: locker.row_label,
-        work_location: locker.work_location,
-        badge_number: locker.badge_number,
-        employee_name: locker.employee_name,
-        national_id: locker.national_id,
-        status: locker.status,
-        custom_status: customClean ? customClean : null,
-        spare_key_status: locker.spare_key_status,
-        remark: locker.remark,
-        batch_intake: locker.batch_intake,
-      })
-      .eq("id", locker.id);
-    setSaving(false);
-    if (error) toast.error(error.message);
-    else {
-      // Sync occupancy history based on the new status
-      if (locker.status === "active" && (locker.employee_name || locker.badge_number)) {
-        await syncActivationToOccupancy(locker);
-        await syncMetadataToOccupancy(locker);
+    const updatePayload = {
+      key_lock: locker.key_lock,
+      location: locker.location,
+      row_label: locker.row_label,
+      work_location: locker.work_location,
+      badge_number: locker.badge_number,
+      employee_name: locker.employee_name,
+      national_id: locker.national_id,
+      status: locker.status,
+      custom_status: customClean ? customClean : null,
+      spare_key_status: locker.spare_key_status,
+      remark: locker.remark,
+      batch_intake: locker.batch_intake,
+    };
+    const snap = locker;
+
+    // Optimistic: close instantly so admin can key in the next locker.
+    toast.success("Locker updated");
+    onUpdated?.();
+    onClose();
+
+    // Persist + sync occupancy in the background.
+    void (async () => {
+      const { error } = await supabase.from("lockers").update(updatePayload).eq("id", snap.id);
+      if (error) { toast.error(`Save failed: ${error.message}`); return; }
+      if (snap.status === "active" && (snap.employee_name || snap.badge_number)) {
+        await syncActivationToOccupancy(snap);
+        await syncMetadataToOccupancy(snap);
       } else {
-        // empty / repair / unknown / etc. → drop stale Active row, keep Terminate
-        // history but propagate metadata edits to it.
-        await syncStatusChangeToOccupancy(locker);
+        await syncStatusChangeToOccupancy(snap);
       }
-      toast.success("Locker updated");
-      onUpdated?.();
-      onClose();
-    }
+    })();
   };
 
   const handleClearDetails = async () => {
