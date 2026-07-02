@@ -334,7 +334,7 @@ function SupportCard({
           </Badge>
         </div>
         <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-          <Clock className="h-3 w-3" /> {created.toLocaleString()}
+          <Clock className="h-3 w-3" /> {formatDateTime(created)}
         </span>
       </div>
 
