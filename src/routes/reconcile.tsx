@@ -529,6 +529,10 @@ function ReconcilePage() {
           <TabsContent value="mednefits" className="mt-4">
             <MednefitsSection navigate={navigate} />
           </TabsContent>
+
+          <TabsContent value="duplicates" className="mt-4">
+            <DuplicatesSection />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
