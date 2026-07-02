@@ -722,6 +722,7 @@ export type Database = {
         | "page_reconcile"
         | "page_upload"
         | "view_national_id"
+        | "manage_support_requests"
       app_role: "admin" | "viewer"
       key_status:
         | "available"
@@ -885,6 +886,7 @@ export const Constants = {
         "page_reconcile",
         "page_upload",
         "view_national_id",
+        "manage_support_requests",
       ],
       app_role: ["admin", "viewer"],
       key_status: [
