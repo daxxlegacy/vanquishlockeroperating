@@ -90,7 +90,7 @@ export function FindLockerPanel() {
               <TableBody>
                 {(attempts ?? []).map((a) => (
                   <TableRow key={a.id}>
-                    <TableCell className="text-xs">{new Date(a.attempted_at).toLocaleString()}</TableCell>
+                    <TableCell className="text-xs">{formatDateTime(a.attempted_at)}</TableCell>
                     <TableCell className="font-mono text-xs">{a.locker_number ?? "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{a.ip_address ?? "—"}</TableCell>
                     <TableCell>
