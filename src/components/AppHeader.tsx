@@ -137,7 +137,13 @@ export function AppHeader() {
               >
                 <Icon className="h-4 w-4" />
                 {item.label}
+                {item.badgeCount && item.badgeCount > 0 ? (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold">
+                    {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                  </span>
+                ) : null}
               </Link>
+
             );
           })}
         </nav>
