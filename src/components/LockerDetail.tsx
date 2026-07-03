@@ -89,8 +89,10 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
       batch_intake: locker.batch_intake,
     };
     const snap = locker;
+    const optimistic = { ...snap, ...updatePayload } as Locker;
 
-    // Optimistic: close instantly so admin can key in the next locker.
+    // Optimistic: patch cache + close instantly so admin can key in the next locker.
+    patchLockersInCache([optimistic]);
     toast.success("Locker updated");
     onUpdated?.();
     onClose();
