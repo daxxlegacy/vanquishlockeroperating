@@ -71,9 +71,30 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
     const to = target;
     const action = oldAction;
 
-    // Optimistic: close instantly so admin can move on.
+    // Optimistic: patch both rows locally + close instantly so admin can move on.
+    const optimisticFrom: Locker = {
+      ...from,
+      badge_number: null,
+      employee_name: null,
+      national_id: null,
+      work_location: null,
+      batch_intake: null,
+      remark: null,
+      custom_status: null,
+      status: action,
+    };
+    const optimisticTo: Locker = {
+      ...to,
+      badge_number: from.badge_number,
+      employee_name: from.employee_name,
+      national_id: from.national_id,
+      work_location: from.work_location,
+      batch_intake: from.batch_intake,
+      remark: from.remark,
+      status: "active",
+    };
+    patchLockersInCache([optimisticFrom, optimisticTo]);
     toast.success(`Transferring ${from.employee_name ?? from.badge_number} → ${to.locker_number}`);
-    invalidateLockersCache();
     onOpenChange(false);
     reset();
     onTransferred?.();
@@ -84,13 +105,17 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
         _to_id: to.id,
         _old_action: action,
       } as never);
-      if (error) { toast.error(`Transfer failed: ${error.message}`); return; }
+      if (error) {
+        toast.error(`Transfer failed: ${error.message}`);
+        invalidateLockersCache();
+        return;
+      }
       const result = data as { from: Locker; to: Locker } | null;
       if (result?.from && result?.to) {
+        patchLockersInCache([result.from, result.to]);
         await syncStatusChangeToOccupancy(result.from);
         await syncActivationToOccupancy(result.to);
       }
-      invalidateLockersCache();
     })();
   };
 
