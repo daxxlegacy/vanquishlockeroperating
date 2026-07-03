@@ -188,7 +188,7 @@ function startAuthRefresh() {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
-      state = { data: null, loading: false };
+      state = { data: null, loading: false, refreshing: false };
       index = new Map();
       clearStorage();
       emit();
