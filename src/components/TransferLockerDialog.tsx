@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRightLeft, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { useLockers, invalidateLockersCache, patchLockersInCache } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
