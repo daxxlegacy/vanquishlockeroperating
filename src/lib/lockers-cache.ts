@@ -289,10 +289,14 @@ export function getLockersSnapshot(): Locker[] | null {
 
 
 export function invalidateLockersCache() {
-  state = { data: null, loading: false };
-  index = new Map();
-  emit();
-  fetchAll();
+  // Silent refresh: keep existing data visible, refetch in background.
+  // Avoids the full loading skeleton flicker that made refreshes feel slow.
+  lastFetchAt = 0;
+  if (state.data) {
+    fetchAll(true);
+  } else {
+    fetchAll();
+  }
 }
 
 /** Pause realtime patches (e.g. during a bulk import) so the table doesn't
