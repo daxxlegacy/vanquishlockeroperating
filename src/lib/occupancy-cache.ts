@@ -228,9 +228,14 @@ function ensureChannel() {
 export function invalidateOccupancyCache(cat?: OccCategory) {
   const cats: OccCategory[] = cat ? [cat] : ["main", "staff", "shoe"];
   for (const c of cats) {
-    states[c] = { data: null, loading: false };
-    emit(c);
-    fetchCat(c);
+    // Silent refresh: keep existing rows visible and refetch in background,
+    // so the tab doesn't flash a loading skeleton after every edit.
+    lastFetchAt[c] = 0;
+    if (states[c].data) {
+      fetchCat(c, true);
+    } else {
+      fetchCat(c);
+    }
   }
 }
 
