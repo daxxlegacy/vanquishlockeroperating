@@ -22,7 +22,14 @@ let realtimePaused = 0; // counter for nested pauses
 let authListenerStarted = false;
 
 const STORAGE_KEY = "lockerops.lockers.cache.v2";
-const MAX_AGE_MS = 5 * 60 * 1000;
+// Warm cache validity — realtime keeps memory in sync, so we can safely
+// trust localStorage for much longer than the original 5 minutes.
+const MAX_AGE_MS = 30 * 60 * 1000;
+// Skip silent background refetch when data was fetched this recently.
+// Realtime patches keep it live; this avoids redundant network calls
+// every time a route/tab remounts.
+const FRESH_WINDOW_MS = 60 * 1000;
+let lastFetchAt = 0;
 
 function rebuildIndex(data: Locker[]) {
   const m = new Map<string, number>();
