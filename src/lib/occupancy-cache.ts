@@ -194,7 +194,7 @@ function startAuthRefresh() {
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
       for (const cat of ["main", "staff", "shoe"] as OccCategory[]) {
-        states[cat] = { data: null, loading: false };
+        states[cat] = { data: null, loading: false, refreshing: false };
         emit(cat);
       }
       clearStorage();
