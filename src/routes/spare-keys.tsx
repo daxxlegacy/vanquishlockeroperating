@@ -224,7 +224,7 @@ function SpareKeysPage() {
                     <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
                   ) : (
                     <List
-                      rowComponent={SpareRow}
+                      rowComponent={SpareRow as any}
                       rowCount={filtered.length}
                       rowHeight={ROW_HEIGHT}
                       rowProps={{ rows: filtered, onPick: setSelected }}
