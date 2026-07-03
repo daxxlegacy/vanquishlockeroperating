@@ -237,6 +237,30 @@ function ensureChannel() {
     .subscribe();
 }
 
+/** Optimistically patch one or more locker rows into the in-memory cache
+ *  without refetching. Emits to subscribers so the UI updates instantly. */
+export function patchLockersInCache(rows: Locker[]) {
+  const cur = state.data;
+  if (!cur || rows.length === 0) return;
+  const next = cur.slice();
+  for (const row of rows) {
+    const i = index.get(row.id);
+    if (row.deleted_at) {
+      if (i != null) {
+        next.splice(i, 1);
+      }
+    } else if (i != null && next[i]?.id === row.id) {
+      next[i] = { ...next[i], ...row };
+    } else {
+      next.push(row);
+    }
+  }
+  rebuildIndex(next);
+  state = { ...state, data: next };
+  writeToStorage(next);
+  emit();
+}
+
 export function getLockerById(id: string): Locker | null {
   const data = state.data;
   if (!data) return null;
