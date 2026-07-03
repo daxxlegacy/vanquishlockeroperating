@@ -252,7 +252,7 @@ export function useOccupancy(cat: OccCategory) {
     if (!states[cat].data && !states[cat].loading) {
       const warm = readStorage(cat);
       if (warm && warm.length > 0) {
-        states[cat] = { data: warm, loading: false };
+        states[cat] = { data: warm, loading: false, refreshing: false };
         emit(cat);
         if (!isFresh(cat)) fetchCat(cat, true);
       } else {
@@ -261,5 +261,6 @@ export function useOccupancy(cat: OccCategory) {
     }
     return () => { subs[cat].delete(set); };
   }, [cat]);
-  return { rows: s.data, loading: s.loading, refresh: () => invalidateOccupancyCache(cat) };
+  return { rows: s.data, loading: s.loading, refreshing: s.refreshing, refresh: () => invalidateOccupancyCache(cat) };
+
 }
