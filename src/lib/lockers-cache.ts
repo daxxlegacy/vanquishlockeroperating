@@ -317,8 +317,8 @@ export function useLockers() {
         rebuildIndex(warm);
         state = { data: warm, loading: false };
         emit();
-        // silent background refresh
-        fetchAll(true);
+        // silent background refresh (skip if fetched very recently — realtime keeps it live)
+        if (!isFresh()) fetchAll(true);
       } else {
         fetchAll();
       }
