@@ -129,6 +129,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     if (error) { toast.error(error.message); return; }
     const updated = { ...locker, ...cleared } as Locker;
     setLocker(updated);
+    patchLockersInCache([updated]);
     await syncStatusChangeToOccupancy(updated);
     toast.success("Locker details cleared");
     onUpdated?.();
