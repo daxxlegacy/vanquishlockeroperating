@@ -43,7 +43,14 @@ let channel: ReturnType<typeof supabase.channel> | null = null;
 let authListenerStarted = false;
 
 const STORAGE_PREFIX = "lockerops.occupancy.cache.v1.";
-const MAX_AGE_MS = 5 * 60 * 1000;
+// Warm cache validity — realtime patches keep state live, so trust storage longer.
+const MAX_AGE_MS = 30 * 60 * 1000;
+// Skip silent background refetch when a category was fetched within this window.
+const FRESH_WINDOW_MS = 60 * 1000;
+const lastFetchAt: Record<OccCategory, number> = { main: 0, staff: 0, shoe: 0 };
+function isFresh(cat: OccCategory) {
+  return lastFetchAt[cat] > 0 && Date.now() - lastFetchAt[cat] < FRESH_WINDOW_MS;
+}
 
 function emit(cat: OccCategory) {
   for (const fn of subs[cat]) fn(states[cat]);
