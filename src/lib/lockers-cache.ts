@@ -161,7 +161,8 @@ export function prefetchLockers() {
   const warm = readFromStorage();
   if (warm && warm.length > 0) {
     rebuildIndex(warm);
-    state = { data: warm, loading: false };
+    state = { data: warm, loading: false, refreshing: false };
+
     emit();
     if (!isFresh()) fetchAll(true);
   } else {
