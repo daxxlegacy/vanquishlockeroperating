@@ -138,6 +138,7 @@ async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
         return;
       }
       states[cat] = { data: all, loading: false };
+      lastFetchAt[cat] = Date.now();
       writeStorage(cat, all);
       emit(cat);
     } finally {
