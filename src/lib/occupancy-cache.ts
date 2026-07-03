@@ -99,7 +99,7 @@ function readStorage(cat: OccCategory): OccupancyRow[] | null {
 
 async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
   if (fetchPromises[cat]) return fetchPromises[cat];
-  if (!silent) { states[cat] = { ...states[cat], loading: true }; emit(cat); }
+  states[cat] = { ...states[cat], loading: !silent, refreshing: true }; emit(cat);
   const timerLabel = import.meta.env.DEV
     ? `[perf] occupancy-cache fetchCat(${cat})${silent ? " (silent)" : ""}`
     : null;
