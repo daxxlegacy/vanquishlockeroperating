@@ -324,7 +324,7 @@ export function useLockers() {
       const warm = readFromStorage();
       if (warm && warm.length > 0) {
         rebuildIndex(warm);
-        state = { data: warm, loading: false };
+        state = { data: warm, loading: false, refreshing: false };
         emit();
         // silent background refresh (skip if fetched very recently — realtime keeps it live)
         if (!isFresh()) fetchAll(true);
@@ -336,5 +336,6 @@ export function useLockers() {
     }
     return () => { subscribers.delete(set); };
   }, []);
-  return { lockers: s.data, loading: s.loading, refresh: invalidateLockersCache };
+  return { lockers: s.data, loading: s.loading, refreshing: s.refreshing, refresh: invalidateLockersCache };
+
 }
