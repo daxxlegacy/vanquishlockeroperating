@@ -251,7 +251,7 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 
 type SpareRowProps = { rows: Locker[]; onPick: (id: string) => void };
-function SpareRow({ index, style, rows, onPick }: RowComponentProps<SpareRowProps>) {
+const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowComponentProps<SpareRowProps>) {
   const l = rows[index];
   return (
     <div
@@ -265,7 +265,8 @@ function SpareRow({ index, style, rows, onPick }: RowComponentProps<SpareRowProp
       <div className="px-3"><KeyBadge status={l.spare_key_status} /></div>
     </div>
   );
-}
+});
+
 
 function KeyBadge({ status }: { status: string | null }) {
   const s = status ?? "unknown";
