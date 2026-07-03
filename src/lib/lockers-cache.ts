@@ -292,6 +292,19 @@ export function getLockersSnapshot(): Locker[] | null {
   return state.data;
 }
 
+/** Lightweight hook that only tracks whether a background refresh is in
+ *  flight. Cheap for header/status indicators — does not subscribe to data. */
+export function useLockersRefreshing() {
+  const [r, set] = useState(state.refreshing);
+  useEffect(() => {
+    const fn = (s: State) => set(s.refreshing);
+    subscribers.add(fn);
+    set(state.refreshing);
+    return () => { subscribers.delete(fn); };
+  }, []);
+  return r;
+}
+
 
 export function invalidateLockersCache() {
   // Silent refresh: keep existing data visible, refetch in background.
