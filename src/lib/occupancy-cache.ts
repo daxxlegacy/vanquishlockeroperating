@@ -162,7 +162,7 @@ export function prefetchOccupancy(cats: OccCategory[] = ["main", "staff", "shoe"
     if (warm && warm.length > 0) {
       states[cat] = { data: warm, loading: false };
       emit(cat);
-      fetchCat(cat, true);
+      if (!isFresh(cat)) fetchCat(cat, true);
     } else {
       fetchCat(cat, true);
     }
