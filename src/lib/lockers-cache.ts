@@ -131,6 +131,7 @@ async function fetchAll(silent = false): Promise<void> {
       }
       rebuildIndex(all);
       state = { data: all, loading: false };
+      lastFetchAt = Date.now();
       writeToStorage(all);
       emit();
     } finally {
@@ -139,6 +140,10 @@ async function fetchAll(silent = false): Promise<void> {
     }
   })();
   return fetchPromise;
+}
+
+function isFresh() {
+  return lastFetchAt > 0 && Date.now() - lastFetchAt < FRESH_WINDOW_MS;
 }
 
 /** Kick off cache warm-up without mounting a component. Safe to call
