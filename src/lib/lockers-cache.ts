@@ -159,7 +159,7 @@ export function prefetchLockers() {
     rebuildIndex(warm);
     state = { data: warm, loading: false };
     emit();
-    fetchAll(true);
+    if (!isFresh()) fetchAll(true);
   } else {
     fetchAll(true);
   }
