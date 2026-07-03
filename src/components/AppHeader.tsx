@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useNewSupportRequestsCount } from "@/lib/support-requests";
+import { BackgroundRefreshIndicator } from "@/components/BackgroundRefreshIndicator";
+
 
 export function AppHeader() {
   const { user, role, signOut } = useAuth();
