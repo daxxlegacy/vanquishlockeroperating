@@ -151,6 +151,8 @@ export function AppHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3 min-w-0">
+          <BackgroundRefreshIndicator />
+
           <Badge variant="outline" className="border-sidebar-border text-sidebar-foreground/90 gap-1 shrink-0">
             <Shield className="h-3 w-3" />
             {role ?? "..."}
