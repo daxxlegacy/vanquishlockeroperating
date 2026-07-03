@@ -264,3 +264,18 @@ export function useOccupancy(cat: OccCategory) {
   return { rows: s.data, loading: s.loading, refreshing: s.refreshing, refresh: () => invalidateOccupancyCache(cat) };
 
 }
+
+/** Returns true when any occupancy category is doing a silent background
+ *  refresh. Cheap subscription for header/status indicators. */
+export function useOccupancyRefreshing() {
+  const compute = () => (["main", "staff", "shoe"] as OccCategory[]).some((c) => states[c].refreshing);
+  const [r, set] = useState(compute);
+  useEffect(() => {
+    const fn = () => set(compute());
+    for (const c of ["main", "staff", "shoe"] as OccCategory[]) subs[c].add(fn);
+    fn();
+    return () => { for (const c of ["main", "staff", "shoe"] as OccCategory[]) subs[c].delete(fn); };
+  }, []);
+  return r;
+}
+
