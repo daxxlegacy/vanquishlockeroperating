@@ -162,7 +162,8 @@ export function prefetchOccupancy(cats: OccCategory[] = ["main", "staff", "shoe"
     if (states[cat].data || states[cat].loading || fetchPromises[cat]) continue;
     const warm = readStorage(cat);
     if (warm && warm.length > 0) {
-      states[cat] = { data: warm, loading: false };
+      states[cat] = { data: warm, loading: false, refreshing: false };
+
       emit(cat);
       if (!isFresh(cat)) fetchCat(cat, true);
     } else {
