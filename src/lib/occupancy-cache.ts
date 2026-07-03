@@ -28,13 +28,14 @@ export type OccupancyRow = {
   source_filename: string | null;
 };
 
-type State = { data: OccupancyRow[] | null; loading: boolean };
+type State = { data: OccupancyRow[] | null; loading: boolean; refreshing: boolean };
 
 const states: Record<OccCategory, State> = {
-  main: { data: null, loading: false },
-  staff: { data: null, loading: false },
-  shoe: { data: null, loading: false },
+  main: { data: null, loading: false, refreshing: false },
+  staff: { data: null, loading: false, refreshing: false },
+  shoe: { data: null, loading: false, refreshing: false },
 };
+
 const subs: Record<OccCategory, Set<(s: State) => void>> = {
   main: new Set(), staff: new Set(), shoe: new Set(),
 };
@@ -98,7 +99,7 @@ function readStorage(cat: OccCategory): OccupancyRow[] | null {
 
 async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
   if (fetchPromises[cat]) return fetchPromises[cat];
-  if (!silent) { states[cat] = { ...states[cat], loading: true }; emit(cat); }
+  states[cat] = { ...states[cat], loading: !silent, refreshing: true }; emit(cat);
   const timerLabel = import.meta.env.DEV
     ? `[perf] occupancy-cache fetchCat(${cat})${silent ? " (silent)" : ""}`
     : null;
@@ -133,11 +134,12 @@ async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
         from += 1000;
       }
       if (failed && all.length === 0) {
-        states[cat] = { data: null, loading: false };
+        states[cat] = { data: null, loading: false, refreshing: false };
         emit(cat);
         return;
       }
-      states[cat] = { data: all, loading: false };
+      states[cat] = { data: all, loading: false, refreshing: false };
+
       lastFetchAt[cat] = Date.now();
       writeStorage(cat, all);
       emit(cat);
@@ -160,7 +162,8 @@ export function prefetchOccupancy(cats: OccCategory[] = ["main", "staff", "shoe"
     if (states[cat].data || states[cat].loading || fetchPromises[cat]) continue;
     const warm = readStorage(cat);
     if (warm && warm.length > 0) {
-      states[cat] = { data: warm, loading: false };
+      states[cat] = { data: warm, loading: false, refreshing: false };
+
       emit(cat);
       if (!isFresh(cat)) fetchCat(cat, true);
     } else {
@@ -191,7 +194,7 @@ function startAuthRefresh() {
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
       for (const cat of ["main", "staff", "shoe"] as OccCategory[]) {
-        states[cat] = { data: null, loading: false };
+        states[cat] = { data: null, loading: false, refreshing: false };
         emit(cat);
       }
       clearStorage();
@@ -249,7 +252,7 @@ export function useOccupancy(cat: OccCategory) {
     if (!states[cat].data && !states[cat].loading) {
       const warm = readStorage(cat);
       if (warm && warm.length > 0) {
-        states[cat] = { data: warm, loading: false };
+        states[cat] = { data: warm, loading: false, refreshing: false };
         emit(cat);
         if (!isFresh(cat)) fetchCat(cat, true);
       } else {
@@ -258,5 +261,21 @@ export function useOccupancy(cat: OccCategory) {
     }
     return () => { subs[cat].delete(set); };
   }, [cat]);
-  return { rows: s.data, loading: s.loading, refresh: () => invalidateOccupancyCache(cat) };
+  return { rows: s.data, loading: s.loading, refreshing: s.refreshing, refresh: () => invalidateOccupancyCache(cat) };
+
 }
+
+/** Returns true when any occupancy category is doing a silent background
+ *  refresh. Cheap subscription for header/status indicators. */
+export function useOccupancyRefreshing() {
+  const compute = () => (["main", "staff", "shoe"] as OccCategory[]).some((c) => states[c].refreshing);
+  const [r, set] = useState(compute);
+  useEffect(() => {
+    const fn = () => set(compute());
+    for (const c of ["main", "staff", "shoe"] as OccCategory[]) subs[c].add(fn);
+    fn();
+    return () => { for (const c of ["main", "staff", "shoe"] as OccCategory[]) subs[c].delete(fn); };
+  }, []);
+  return r;
+}
+

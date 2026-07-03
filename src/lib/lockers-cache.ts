@@ -12,8 +12,9 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
-type State = { data: Locker[] | null; loading: boolean };
-let state: State = { data: null, loading: false };
+type State = { data: Locker[] | null; loading: boolean; refreshing: boolean };
+let state: State = { data: null, loading: false, refreshing: false };
+
 let index: Map<string, number> = new Map();
 const subscribers = new Set<(s: State) => void>();
 let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -86,10 +87,12 @@ function readFromStorage(): Locker[] | null {
 
 async function fetchAll(silent = false): Promise<void> {
   if (fetchPromise) return fetchPromise;
-  if (!silent) {
-    state = { ...state, loading: true };
-    emit();
+  if (silent) {
+    state = { ...state, refreshing: true };
+  } else {
+    state = { ...state, loading: true, refreshing: true };
   }
+  emit();
   const timerLabel = import.meta.env.DEV
     ? `[perf] lockers-cache fetchAll${silent ? " (silent)" : ""}`
     : null;
@@ -125,12 +128,12 @@ async function fetchAll(silent = false): Promise<void> {
         from += 1000;
       }
       if (failed && all.length === 0) {
-        state = { data: null, loading: false };
+        state = { data: null, loading: false, refreshing: false };
         emit();
         return;
       }
       rebuildIndex(all);
-      state = { data: all, loading: false };
+      state = { data: all, loading: false, refreshing: false };
       lastFetchAt = Date.now();
       writeToStorage(all);
       emit();
@@ -141,6 +144,7 @@ async function fetchAll(silent = false): Promise<void> {
   })();
   return fetchPromise;
 }
+
 
 function isFresh() {
   return lastFetchAt > 0 && Date.now() - lastFetchAt < FRESH_WINDOW_MS;
@@ -157,7 +161,8 @@ export function prefetchLockers() {
   const warm = readFromStorage();
   if (warm && warm.length > 0) {
     rebuildIndex(warm);
-    state = { data: warm, loading: false };
+    state = { data: warm, loading: false, refreshing: false };
+
     emit();
     if (!isFresh()) fetchAll(true);
   } else {
@@ -183,7 +188,7 @@ function startAuthRefresh() {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
-      state = { data: null, loading: false };
+      state = { data: null, loading: false, refreshing: false };
       index = new Map();
       clearStorage();
       emit();
@@ -287,6 +292,19 @@ export function getLockersSnapshot(): Locker[] | null {
   return state.data;
 }
 
+/** Lightweight hook that only tracks whether a background refresh is in
+ *  flight. Cheap for header/status indicators — does not subscribe to data. */
+export function useLockersRefreshing() {
+  const [r, set] = useState(state.refreshing);
+  useEffect(() => {
+    const fn = (s: State) => set(s.refreshing);
+    subscribers.add(fn);
+    set(state.refreshing);
+    return () => { subscribers.delete(fn); };
+  }, []);
+  return r;
+}
+
 
 export function invalidateLockersCache() {
   // Silent refresh: keep existing data visible, refetch in background.
@@ -319,7 +337,7 @@ export function useLockers() {
       const warm = readFromStorage();
       if (warm && warm.length > 0) {
         rebuildIndex(warm);
-        state = { data: warm, loading: false };
+        state = { data: warm, loading: false, refreshing: false };
         emit();
         // silent background refresh (skip if fetched very recently — realtime keeps it live)
         if (!isFresh()) fetchAll(true);
@@ -331,5 +349,6 @@ export function useLockers() {
     }
     return () => { subscribers.delete(set); };
   }, []);
-  return { lockers: s.data, loading: s.loading, refresh: invalidateLockersCache };
+  return { lockers: s.data, loading: s.loading, refreshing: s.refreshing, refresh: invalidateLockersCache };
+
 }
