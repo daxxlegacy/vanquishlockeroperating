@@ -28,13 +28,14 @@ export type OccupancyRow = {
   source_filename: string | null;
 };
 
-type State = { data: OccupancyRow[] | null; loading: boolean };
+type State = { data: OccupancyRow[] | null; loading: boolean; refreshing: boolean };
 
 const states: Record<OccCategory, State> = {
-  main: { data: null, loading: false },
-  staff: { data: null, loading: false },
-  shoe: { data: null, loading: false },
+  main: { data: null, loading: false, refreshing: false },
+  staff: { data: null, loading: false, refreshing: false },
+  shoe: { data: null, loading: false, refreshing: false },
 };
+
 const subs: Record<OccCategory, Set<(s: State) => void>> = {
   main: new Set(), staff: new Set(), shoe: new Set(),
 };
