@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, UserMinus, ArrowRightLeft, Repeat, Eraser } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { getLockerById } from "@/lib/lockers-cache";
+import { getLockerById, patchLockersInCache } from "@/lib/lockers-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -89,8 +89,10 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
       batch_intake: locker.batch_intake,
     };
     const snap = locker;
+    const optimistic = { ...snap, ...updatePayload } as Locker;
 
-    // Optimistic: close instantly so admin can key in the next locker.
+    // Optimistic: patch cache + close instantly so admin can key in the next locker.
+    patchLockersInCache([optimistic]);
     toast.success("Locker updated");
     onUpdated?.();
     onClose();
@@ -127,6 +129,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     if (error) { toast.error(error.message); return; }
     const updated = { ...locker, ...cleared } as Locker;
     setLocker(updated);
+    patchLockersInCache([updated]);
     await syncStatusChangeToOccupancy(updated);
     toast.success("Locker details cleared");
     onUpdated?.();
