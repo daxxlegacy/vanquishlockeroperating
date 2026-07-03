@@ -246,7 +246,7 @@ export function useOccupancy(cat: OccCategory) {
       if (warm && warm.length > 0) {
         states[cat] = { data: warm, loading: false };
         emit(cat);
-        fetchCat(cat, true);
+        if (!isFresh(cat)) fetchCat(cat, true);
       } else {
         fetchCat(cat);
       }
