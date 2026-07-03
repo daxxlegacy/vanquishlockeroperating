@@ -12,8 +12,9 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
-type State = { data: Locker[] | null; loading: boolean };
-let state: State = { data: null, loading: false };
+type State = { data: Locker[] | null; loading: boolean; refreshing: boolean };
+let state: State = { data: null, loading: false, refreshing: false };
+
 let index: Map<string, number> = new Map();
 const subscribers = new Set<(s: State) => void>();
 let channel: ReturnType<typeof supabase.channel> | null = null;
