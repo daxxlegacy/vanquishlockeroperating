@@ -87,10 +87,12 @@ function readFromStorage(): Locker[] | null {
 
 async function fetchAll(silent = false): Promise<void> {
   if (fetchPromise) return fetchPromise;
-  if (!silent) {
-    state = { ...state, loading: true };
-    emit();
+  if (silent) {
+    state = { ...state, refreshing: true };
+  } else {
+    state = { ...state, loading: true, refreshing: true };
   }
+  emit();
   const timerLabel = import.meta.env.DEV
     ? `[perf] lockers-cache fetchAll${silent ? " (silent)" : ""}`
     : null;
@@ -126,12 +128,12 @@ async function fetchAll(silent = false): Promise<void> {
         from += 1000;
       }
       if (failed && all.length === 0) {
-        state = { data: null, loading: false };
+        state = { data: null, loading: false, refreshing: false };
         emit();
         return;
       }
       rebuildIndex(all);
-      state = { data: all, loading: false };
+      state = { data: all, loading: false, refreshing: false };
       lastFetchAt = Date.now();
       writeToStorage(all);
       emit();
@@ -142,6 +144,7 @@ async function fetchAll(silent = false): Promise<void> {
   })();
   return fetchPromise;
 }
+
 
 function isFresh() {
   return lastFetchAt > 0 && Date.now() - lastFetchAt < FRESH_WINDOW_MS;
