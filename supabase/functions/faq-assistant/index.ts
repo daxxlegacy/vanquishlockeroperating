@@ -28,13 +28,13 @@ LOCKER ASSIGNMENT / PEMBERIAN LOKER
 - If you have never been assigned a locker, contact the admin office or your supervisor.
 
 FINDING YOUR LOCKER NUMBER / MENCARI NOMBOR LOKER
-- Use the "Find my locker" tool above and enter your badge number.
-- Guna alat "Find my locker" di atas dan masukkan nombor badge anda.
+- Use the "Locker Inquiry" tool at the top of the page and enter your badge number (locker number and last 4 digits of your National ID are optional and help disambiguate).
+- Guna alat "Pertanyaan Loker" di bahagian atas halaman dan masukkan nombor badge anda (nombor loker dan 4 digit akhir Kad Pengenalan adalah pilihan untuk padanan yang tepat).
 - If it can't find you, submit a support request.
 
 LOCKER TRANSFERS / PERTUKARAN LOKER  (common question)
-- To transfer, tap "I want to transfer my locker" on this page, fill in your details and the reason (e.g. moved to a different work location, medical/accessibility need, or the current locker is damaged).
-- Untuk pertukaran, tekan butang "I want to transfer my locker", isi maklumat dan sebab (contoh: bertukar lokasi kerja, sebab kesihatan, atau loker rosak).
+- To transfer, first use "Locker Inquiry" to look up your locker. On the result screen, tap "Request locker transfer" and fill in the reason (e.g. moved to a different work location, medical/accessibility need, or the current locker is damaged).
+- Untuk pertukaran, guna "Pertanyaan Loker" untuk cari loker anda dahulu. Pada skrin keputusan, tekan "Mohon tukar loker" dan isi sebab (contoh: bertukar lokasi kerja, sebab kesihatan, atau loker rosak).
 - The admin office reviews and usually approves within 1 business day.
 - Pejabat pentadbir akan semak dan biasanya lulus dalam 1 hari bekerja.
 - You will receive a ticket number to track the status.
