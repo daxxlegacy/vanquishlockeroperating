@@ -63,7 +63,7 @@ function LockerInquiryPage() {
 
   const [lockerNumber, setLockerNumber] = useState("");
   const [badgeNumber, setBadgeNumber] = useState("");
-  const [nidLast4, setNidLast4] = useState("");
+  
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
