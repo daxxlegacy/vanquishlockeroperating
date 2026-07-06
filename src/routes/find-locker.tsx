@@ -82,7 +82,6 @@ function LockerInquiryPage() {
         body: {
           badge_number: badgeNumber.trim(),
           locker_number: lockerNumber.trim() || undefined,
-          national_id_last4: nidLast4.trim() || undefined,
         },
       });
       if (error || !data || (data as { error?: string }).error) {
