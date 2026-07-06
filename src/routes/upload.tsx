@@ -15,8 +15,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge, ChevronDown, ChevronRight, ClipboardList } from "lucide-react";
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Key, Settings2, Layers, GitMerge, ChevronDown, ChevronRight, ClipboardList, ListChecks } from "lucide-react";
 import { RecordIntakeTab } from "@/components/RecordIntakeTab";
+import { BulkStatusUpdateTab } from "@/components/BulkStatusUpdateTab";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers, NATIONAL_ID_KEYS } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
@@ -1170,12 +1171,18 @@ function UploadPage() {
             <TabsTrigger value="check"><Search className="h-4 w-4 mr-1.5" /> Roster Check</TabsTrigger>
             <TabsTrigger value="spare"><Key className="h-4 w-4 mr-1.5" /> Spare Key</TabsTrigger>
             <TabsTrigger value="intake"><ClipboardList className="h-4 w-4 mr-1.5" /> Record Intake</TabsTrigger>
+            <TabsTrigger value="bulk-status"><ListChecks className="h-4 w-4 mr-1.5" /> Bulk Status Update</TabsTrigger>
             <TabsTrigger value="history"><FileSpreadsheet className="h-4 w-4 mr-1.5" /> History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="intake" className="space-y-6">
             <RecordIntakeTab />
           </TabsContent>
+
+          <TabsContent value="bulk-status" className="space-y-6">
+            <BulkStatusUpdateTab />
+          </TabsContent>
+
 
 
           <TabsContent value="roster" className="space-y-6">
