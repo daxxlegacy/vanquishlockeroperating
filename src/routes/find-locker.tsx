@@ -157,22 +157,6 @@ function LockerInquiryPage() {
                     className="h-12 text-base"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="nid4" className="text-sm">{tr.lookup.nidLast4}</Label>
-                  <Input
-                    id="nid4"
-                    value={nidLast4}
-                    onChange={(e) => setNidLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    onFocus={scrollFocusIntoView}
-                    autoComplete="off"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={4}
-                    placeholder="••••"
-                    className="h-12 text-base tracking-widest"
-                  />
-                  <p className="text-xs text-muted-foreground">{tr.lookup.nidLast4Hint}</p>
-                </div>
                 <Button
                   type="submit"
                   className="w-full h-12 text-base"
