@@ -24,7 +24,7 @@ import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
 import { NationalIdCell } from "@/components/NationalIdCell";
-import { maskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
+import { maskNationalId, fullyMaskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDialog";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
