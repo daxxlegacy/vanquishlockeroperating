@@ -24,7 +24,7 @@ import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
 import { NationalIdCell } from "@/components/NationalIdCell";
-import { maskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
+import { maskNationalId, fullyMaskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDialog";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
@@ -353,7 +353,7 @@ function LockersPage() {
       "Location": l.location,
       "Key Lock": l.key_lock ?? "",
       "Badge Number": l.badge_number ?? "",
-      "National ID": canRevealNid ? (nidMap.get(l.id) ?? maskNationalId(l.national_id)) : maskNationalId(l.national_id),
+      "National ID": canRevealNid ? (nidMap.get(l.id) ?? maskNationalId(l.national_id)) : fullyMaskNationalId(l.national_id),
       "Employee Name": l.employee_name ?? "",
       "Work Location": l.work_location ?? "",
       "Status": (l.custom_status ?? "").trim() || (STATUS_LABEL[l.status as LockerStatus] ?? l.status),
@@ -592,6 +592,7 @@ function MobileLockerList({
   onPick: (id: string) => void;
   warnings: Set<string>;
 }) {
+  const canRevealNid = useCanRevealNationalId();
   if (rows.length === 0) {
     return <div className="p-8 text-center text-muted-foreground text-sm">No lockers match these filters.</div>;
   }
@@ -621,7 +622,7 @@ function MobileLockerList({
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               <MobileField label="Employee" value={l.employee_name} wide />
               <MobileField label="Badge" value={l.badge_number} />
-              <MobileField label="National ID" value={maskNationalId(l.national_id) || undefined} />
+              <MobileField label="National ID" value={(canRevealNid ? maskNationalId(l.national_id) : fullyMaskNationalId(l.national_id)) || undefined} />
               <MobileField label="Key Lock" value={l.key_lock} />
               <MobileField label="Work" value={l.work_location} />
               <MobileField label="Batch" value={formatBatchIntake(l.batch_intake)} />

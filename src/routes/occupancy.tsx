@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
 import { NationalIdCell } from "@/components/NationalIdCell";
-import { maskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
+import { maskNationalId, fullyMaskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
 import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
 import { SortHeader, type SortState } from "@/components/SortHeader";
 import {
@@ -355,7 +355,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       "Status": r.status ?? "",
       "Badge Number": r.badge_number ?? "",
       "Employee Name": r.employee_name ?? "",
-      "National ID": canRevealNid ? (nidMap.get(r.id) ?? maskNationalId(r.national_id)) : maskNationalId(r.national_id),
+      "National ID": canRevealNid ? (nidMap.get(r.id) ?? maskNationalId(r.national_id)) : fullyMaskNationalId(r.national_id),
       "Work Location": r.work_location ?? "",
       "Locker Location": r.locker_location_by_row ?? "",
       "Key Lock": r.key_lock_type ?? "",
@@ -762,6 +762,7 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
 
 function MobileLockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNumber: string; group: Row[]; reason?: string | null; onViewHistory: () => void }) {
   const first = group[0];
+  const canRevealNid = useCanRevealNationalId();
   return (
     <div className="p-3 space-y-2">
       <div className="flex items-start justify-between gap-2">
@@ -781,7 +782,7 @@ function MobileLockerGroup({ lockerNumber, group, reason, onViewHistory }: { loc
             <div className="grid grid-cols-2 gap-x-2 gap-y-1">
               <MField label="Employee" value={r.employee_name ?? (i === 0 ? "vacant" : "—")} wide />
               <MField label="Badge" value={r.badge_number} mono />
-              <MField label="National ID" value={maskNationalId(r.national_id)} mono />
+              <MField label="National ID" value={canRevealNid ? maskNationalId(r.national_id) : fullyMaskNationalId(r.national_id)} mono />
               <MField label="Intake" value={fmtDate(r.batch_intake_date)} />
               <MField label="Terminated" value={fmtDate(r.termination_date)} />
               <MField label="Work" value={r.work_location} wide />

@@ -35,7 +35,10 @@ export function NationalIdCell({ value, recordId, table, className, emptyLabel =
     return <span className={className}>{emptyLabel}</span>;
   }
 
-  const displayed = revealed ?? (isMaskedNationalId(value) ? value : maskNationalId(value));
+  // Non-privileged viewers see fully starred output (no last-4 digits).
+  const baseMasked = isMaskedNationalId(value) ? value : maskNationalId(value);
+  const fullyStarred = "*".repeat(Math.max(baseMasked.length, 10));
+  const displayed = revealed ?? (canReveal ? baseMasked : fullyStarred);
 
   const handleReveal = async () => {
     if (!recordId) return;

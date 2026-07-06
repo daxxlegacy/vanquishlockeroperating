@@ -14,6 +14,16 @@ export function maskNationalId(nid: string | null | undefined): string {
   return "******" + s.slice(-4);
 }
 
+/** Convert any national_id string to a fully starred form (hides last-4). */
+export function fullyMaskNationalId(nid: string | null | undefined): string {
+  if (!nid) return "";
+  const s = String(nid).trim();
+  if (s === "") return "";
+  // If already masked from server (******LAST4), replace last-4 with stars too.
+  if (/^\*+/.test(s)) return "*".repeat(s.length);
+  return "*".repeat(Math.max(s.length, 10));
+}
+
 /** Detect a value that has already been server-side masked. */
 export function isMaskedNationalId(nid: string | null | undefined): boolean {
   if (!nid) return false;
