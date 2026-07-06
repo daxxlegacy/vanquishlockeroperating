@@ -1171,12 +1171,18 @@ function UploadPage() {
             <TabsTrigger value="check"><Search className="h-4 w-4 mr-1.5" /> Roster Check</TabsTrigger>
             <TabsTrigger value="spare"><Key className="h-4 w-4 mr-1.5" /> Spare Key</TabsTrigger>
             <TabsTrigger value="intake"><ClipboardList className="h-4 w-4 mr-1.5" /> Record Intake</TabsTrigger>
+            <TabsTrigger value="bulk-status"><ListChecks className="h-4 w-4 mr-1.5" /> Bulk Status Update</TabsTrigger>
             <TabsTrigger value="history"><FileSpreadsheet className="h-4 w-4 mr-1.5" /> History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="intake" className="space-y-6">
             <RecordIntakeTab />
           </TabsContent>
+
+          <TabsContent value="bulk-status" className="space-y-6">
+            <BulkStatusUpdateTab />
+          </TabsContent>
+
 
 
           <TabsContent value="roster" className="space-y-6">
