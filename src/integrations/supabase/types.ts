@@ -424,6 +424,42 @@ export type Database = {
         }
         Relationships: []
       }
+      status_change_log: {
+        Row: {
+          changed_by: string
+          changed_by_email: string | null
+          created_at: string
+          id: string
+          locker_id: string | null
+          locker_number: string
+          new_status: string
+          previous_status: string | null
+          source: string
+        }
+        Insert: {
+          changed_by: string
+          changed_by_email?: string | null
+          created_at?: string
+          id?: string
+          locker_id?: string | null
+          locker_number: string
+          new_status: string
+          previous_status?: string | null
+          source?: string
+        }
+        Update: {
+          changed_by?: string
+          changed_by_email?: string | null
+          created_at?: string
+          id?: string
+          locker_id?: string | null
+          locker_number?: string
+          new_status?: string
+          previous_status?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       support_request_replies: {
         Row: {
           author_id: string | null
