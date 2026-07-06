@@ -762,6 +762,7 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
 
 function MobileLockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNumber: string; group: Row[]; reason?: string | null; onViewHistory: () => void }) {
   const first = group[0];
+  const canRevealNid = useCanRevealNationalId();
   return (
     <div className="p-3 space-y-2">
       <div className="flex items-start justify-between gap-2">
