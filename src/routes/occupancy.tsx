@@ -782,7 +782,7 @@ function MobileLockerGroup({ lockerNumber, group, reason, onViewHistory }: { loc
             <div className="grid grid-cols-2 gap-x-2 gap-y-1">
               <MField label="Employee" value={r.employee_name ?? (i === 0 ? "vacant" : "—")} wide />
               <MField label="Badge" value={r.badge_number} mono />
-              <MField label="National ID" value={maskNationalId(r.national_id)} mono />
+              <MField label="National ID" value={canRevealNid ? maskNationalId(r.national_id) : fullyMaskNationalId(r.national_id)} mono />
               <MField label="Intake" value={fmtDate(r.batch_intake_date)} />
               <MField label="Terminated" value={fmtDate(r.termination_date)} />
               <MField label="Work" value={r.work_location} wide />
