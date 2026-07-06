@@ -355,7 +355,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       "Status": r.status ?? "",
       "Badge Number": r.badge_number ?? "",
       "Employee Name": r.employee_name ?? "",
-      "National ID": canRevealNid ? (nidMap.get(r.id) ?? maskNationalId(r.national_id)) : maskNationalId(r.national_id),
+      "National ID": canRevealNid ? (nidMap.get(r.id) ?? maskNationalId(r.national_id)) : fullyMaskNationalId(r.national_id),
       "Work Location": r.work_location ?? "",
       "Locker Location": r.locker_location_by_row ?? "",
       "Key Lock": r.key_lock_type ?? "",
