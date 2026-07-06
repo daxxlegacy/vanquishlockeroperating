@@ -4,13 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRightLeft, HelpCircle, MessageSquare, Search, Ticket, ChevronLeft } from "lucide-react";
+import { HelpCircle, MessageSquare, Ticket, ChevronLeft, Search } from "lucide-react";
 import { SupportRequestForm } from "./SupportRequestForm";
 import { FaqAssistant } from "./FaqAssistant";
+import { t, type Lang } from "@/lib/i18n-find-locker";
 
-type Panel = "menu" | "transfer" | "cant_find" | "cant_find_form" | "other" | "ticket";
+type Panel = "menu" | "inquiry" | "cant_find" | "cant_find_form" | "other" | "ticket";
 
-export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
+export function HelpMenu({
+  onPickInquiry,
+  lang = "en",
+}: {
+  onPickInquiry: () => void;
+  lang?: Lang;
+}) {
+  const tr = t[lang];
   const [panel, setPanel] = useState<Panel>("menu");
   const [tk, setTk] = useState("");
   const [tb, setTb] = useState("");
@@ -28,46 +36,38 @@ export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
     <Card className="mt-6">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <HelpCircle className="h-4 w-4" /> How can we help you?
+          <HelpCircle className="h-4 w-4" /> {tr.helpMenu.heading}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Menu — full-width stacked buttons, min 48px tap height */}
         <div className="flex flex-col gap-2">
           <MenuButton
-            active={panel === "menu"}
-            onClick={() => { setPanel("menu"); onPickFind(); }}
+            active={panel === "inquiry"}
+            onClick={() => { setPanel("inquiry"); onPickInquiry(); }}
             icon={<Search className="h-5 w-5" />}
-            label="Find my locker"
-            sub="Use the form above"
-          />
-          <MenuButton
-            active={panel === "transfer"}
-            onClick={() => setPanel("transfer")}
-            icon={<ArrowRightLeft className="h-5 w-5" />}
-            label="I want to transfer my locker"
-            sub="Request a transfer"
+            label={tr.helpMenu.lockerInquiry.label}
+            sub={tr.helpMenu.lockerInquiry.sub}
           />
           <MenuButton
             active={panel === "cant_find" || panel === "cant_find_form"}
             onClick={() => setPanel("cant_find")}
             icon={<HelpCircle className="h-5 w-5" />}
-            label="I can't find my locker number"
-            sub="Get help locating it"
+            label={tr.helpMenu.cantFind.label}
+            sub={tr.helpMenu.cantFind.sub}
           />
           <MenuButton
             active={panel === "other"}
             onClick={() => setPanel("other")}
             icon={<MessageSquare className="h-5 w-5" />}
-            label="Something else"
-            sub="Ask assistant or contact support"
+            label={tr.helpMenu.other.label}
+            sub={tr.helpMenu.other.sub}
           />
           <MenuButton
             active={panel === "ticket"}
             onClick={() => setPanel("ticket")}
             icon={<Ticket className="h-5 w-5" />}
-            label="Check ticket status"
-            sub="View replies from admin"
+            label={tr.helpMenu.ticket.label}
+            sub={tr.helpMenu.ticket.sub}
           />
         </div>
 
@@ -77,34 +77,32 @@ export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
             onClick={back}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground active:text-foreground"
           >
-            <ChevronLeft className="h-4 w-4" /> Back to menu
+            <ChevronLeft className="h-4 w-4" /> {tr.helpMenu.back}
           </button>
         )}
 
         {panel === "ticket" && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Enter your ticket number and badge number to view updates or reply.
-            </p>
+            <p className="text-sm text-muted-foreground">{tr.ticket.intro}</p>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const t = tk.trim();
+                const val = tk.trim();
                 const b = tb.trim();
-                if (!t || !b) return;
-                navigate({ to: "/ticket", search: { t, b } });
+                if (!val || !b) return;
+                navigate({ to: "/ticket", search: { t: val, b } });
               }}
               className="space-y-3"
             >
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="tk-num" className="text-sm">Ticket number</Label>
+                  <Label htmlFor="tk-num" className="text-sm">{tr.ticket.ticketNumber}</Label>
                   <Input
                     id="tk-num"
                     value={tk}
                     onChange={(e) => setTk(e.target.value)}
                     onFocus={scrollFocusIntoView}
-                    placeholder="e.g. 00042"
+                    placeholder={tr.ticket.ticketPlaceholder}
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={5}
@@ -113,7 +111,7 @@ export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="tk-badge" className="text-sm">Badge number</Label>
+                  <Label htmlFor="tk-badge" className="text-sm">{tr.ticket.badge}</Label>
                   <Input
                     id="tk-badge"
                     value={tb}
@@ -130,36 +128,20 @@ export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
                 className="w-full h-12 text-base"
                 disabled={!tk.trim() || !tb.trim()}
               >
-                <Ticket className="h-4 w-4 mr-2" /> View my ticket
+                <Ticket className="h-4 w-4 mr-2" /> {tr.ticket.submit}
               </Button>
             </form>
-          </div>
-        )}
-
-        {panel === "transfer" && (
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <p className="text-sm">
-              Locker transfers must be approved by the admin office. Please submit your details
-              below and we'll process it within <strong>1 business day</strong>.
-            </p>
-            <SupportRequestForm
-              requestType="transfer_locker"
-              showLockerField
-              messageLabel="Reason for transfer"
-              messagePlaceholder="e.g. moved to a different work location, current locker too far…"
-              submitLabel="Submit transfer request"
-            />
           </div>
         )}
 
         {panel === "cant_find" && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
             <div className="space-y-2 text-sm">
-              <p className="font-medium">Try these first:</p>
+              <p className="font-medium">{tr.cantFindPanel.tryFirst}</p>
               <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                <li>Check your intake confirmation email or paper slip.</li>
-                <li>Ask your supervisor or HR — they usually have the assignment list.</li>
-                <li>Use the badge lookup at the top of this page.</li>
+                <li>{tr.cantFindPanel.tip1}</li>
+                <li>{tr.cantFindPanel.tip2}</li>
+                <li>{tr.cantFindPanel.tip3}</li>
               </ul>
             </div>
             <Button
@@ -167,43 +149,39 @@ export function HelpMenu({ onPickFind }: { onPickFind: () => void }) {
               className="w-full h-12 text-base"
               onClick={() => setPanel("cant_find_form")}
             >
-              Still can't find it — contact us
+              {tr.cantFindPanel.contactCta}
             </Button>
           </div>
         )}
 
         {panel === "cant_find_form" && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              We'll help you locate your locker. Please share your details so we can get back to you.
-            </p>
+            <p className="text-sm text-muted-foreground">{tr.cantFindPanel.formIntro}</p>
             <SupportRequestForm
+              lang={lang}
               requestType="cant_find_locker"
               showLockerField={false}
-              defaultMessage="I can't find my locker number."
-              messageLabel="Extra details (optional)"
-              messagePlaceholder="Anything that would help us find your assignment…"
-              submitLabel="Send to support"
+              defaultMessage={tr.cantFindPanel.defaultMessage}
+              messageLabel={tr.cantFindPanel.messageLabel}
+              messagePlaceholder={tr.cantFindPanel.messagePlaceholder}
+              submitLabel={tr.cantFindPanel.submitLabel}
             />
           </div>
         )}
 
         {panel === "other" && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Ask our automated assistant, or send your question straight to a human below.
-            </p>
-            <FaqAssistant />
+            <p className="text-sm text-muted-foreground">{tr.otherPanel.intro}</p>
+            <FaqAssistant lang={lang} />
             <div className="pt-3 border-t">
-              <p className="text-xs text-muted-foreground mb-2">
-                Prefer to talk to our team directly?
-              </p>
+              <p className="text-xs text-muted-foreground mb-2">{tr.otherPanel.orHuman}</p>
               <SupportRequestForm
+                lang={lang}
                 requestType="other"
                 showLockerField
-                messageLabel="How can we help?"
-                messagePlaceholder="Type your question or request…"
-                submitLabel="Talk to a human"
+                messageLabel={tr.otherPanel.messageLabel}
+                messagePlaceholder={tr.otherPanel.messagePlaceholder}
+                submitLabel={tr.otherPanel.submitLabel}
               />
             </div>
           </div>
