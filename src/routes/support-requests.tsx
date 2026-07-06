@@ -185,7 +185,7 @@ function SupportRequestsPage() {
           <LifeBuoy className="h-6 w-6 text-primary" />
           <div>
             <h1 className="font-display text-3xl font-bold">Support Requests</h1>
-            <p className="text-muted-foreground text-sm">Requests submitted from the Find-My-Locker page.</p>
+            <p className="text-muted-foreground text-sm">Requests submitted from the Locker Inquiry page.</p>
           </div>
         </div>
 
@@ -195,7 +195,7 @@ function SupportRequestsPage() {
               <LifeBuoy className="h-4 w-4" /> Requests
             </TabsTrigger>
             <TabsTrigger value="find-locker-qr" className="gap-1.5">
-              <QrCode className="h-4 w-4" /> Find-My-Locker QR
+              <QrCode className="h-4 w-4" /> Locker Inquiry QR
             </TabsTrigger>
           </TabsList>
 
