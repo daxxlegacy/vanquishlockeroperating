@@ -54,7 +54,7 @@ export const Route = createFileRoute("/support-requests")({
   head: () => ({
     meta: [
       { title: "Support Requests — LockerOps" },
-      { name: "description", content: "Review, reply to, and resolve support requests from Find-My-Locker." },
+      { name: "description", content: "Review, reply to, and resolve support requests from Locker Inquiry." },
     ],
   }),
   component: () => (
