@@ -12,10 +12,32 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { LifeBuoy, ArrowRightLeft, HelpCircle, MessageSquare, Phone, User, Hash, Clock, Send, Shield, Loader2, Ticket, Trash2, QrCode } from "lucide-react";
+import {
+  LifeBuoy,
+  ArrowRightLeft,
+  HelpCircle,
+  MessageSquare,
+  Phone,
+  User,
+  Hash,
+  Clock,
+  Send,
+  Shield,
+  Loader2,
+  Ticket,
+  Trash2,
+  QrCode,
+} from "lucide-react";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { toast } from "sonner";
 import {
@@ -49,20 +71,27 @@ function SupportRequestsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => { setSelected(new Set()); }, [filter]);
+  useEffect(() => {
+    setSelected(new Set());
+  }, [filter]);
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
 
     const load = async () => {
-      const { data, error } = await (supabase as unknown as {
-        from: (t: string) => {
-          select: (c: string) => {
-            order: (col: string, o: { ascending: boolean }) => Promise<{ data: SupportRequest[] | null; error: { message: string } | null }>;
+      const { data, error } = await (
+        supabase as unknown as {
+          from: (t: string) => {
+            select: (c: string) => {
+              order: (
+                col: string,
+                o: { ascending: boolean },
+              ) => Promise<{ data: SupportRequest[] | null; error: { message: string } | null }>;
+            };
           };
-        };
-      })
+        }
+      )
         .from("support_requests")
         .select("*")
         .order("created_at", { ascending: false });
@@ -79,16 +108,12 @@ function SupportRequestsPage() {
 
     const channel = supabase
       .channel("support-requests-page")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "support_requests" },
-        () => { load(); },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "support_request_replies" },
-        () => { load(); },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_requests" }, () => {
+        load();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_request_replies" }, () => {
+        load();
+      })
       .subscribe();
 
     return () => {
@@ -113,24 +138,23 @@ function SupportRequestsPage() {
   }, [rows]);
 
   const updateStatus = async (id: string, status: SupportRequestStatus) => {
-    const patch = status === "resolved"
-      ? { status, resolved_by: user?.id ?? null, resolved_at: new Date().toISOString() }
-      : { status, resolved_by: null, resolved_at: null };
+    const patch =
+      status === "resolved"
+        ? { status, resolved_by: user?.id ?? null, resolved_at: new Date().toISOString() }
+        : { status, resolved_by: null, resolved_at: null };
     const { error } = await supabase.from("support_requests").update(patch).eq("id", id);
     if (error) toast.error(error.message);
     else toast.success(`Marked as ${STATUS_LABEL[status].toLowerCase()}`);
   };
 
-  const selectableIds = useMemo(
-    () => filtered.filter((r) => r.status === "resolved").map((r) => r.id),
-    [filtered],
-  );
+  const selectableIds = useMemo(() => filtered.filter((r) => r.status === "resolved").map((r) => r.id), [filtered]);
   const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
 
   const toggleOne = (id: string, on: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (on) next.add(id); else next.delete(id);
+      if (on) next.add(id);
+      else next.delete(id);
       return next;
     });
   };
@@ -144,7 +168,10 @@ function SupportRequestsPage() {
     setDeleting(true);
     const { error } = await supabase.from("support_requests").delete().in("id", ids);
     setDeleting(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(`Deleted ${ids.length} ticket${ids.length === 1 ? "" : "s"}`);
     setSelected(new Set());
     setRows((prev) => (prev ? prev.filter((r) => !selected.has(r.id)) : prev));
@@ -158,85 +185,91 @@ function SupportRequestsPage() {
           <LifeBuoy className="h-6 w-6 text-primary" />
           <div>
             <h1 className="font-display text-3xl font-bold">Support Requests</h1>
-            <p className="text-muted-foreground text-sm">
-              Requests submitted from the Find-My-Locker page.
-            </p>
+            <p className="text-muted-foreground text-sm">Requests submitted from the Find-My-Locker page.</p>
           </div>
         </div>
 
         <Tabs defaultValue="requests" className="mb-6">
           <TabsList>
-            <TabsTrigger value="requests" className="gap-1.5"><LifeBuoy className="h-4 w-4" /> Requests</TabsTrigger>
-            <TabsTrigger value="find-locker-qr" className="gap-1.5"><QrCode className="h-4 w-4" /> Find-My-Locker QR</TabsTrigger>
+            <TabsTrigger value="requests" className="gap-1.5">
+              <LifeBuoy className="h-4 w-4" /> Requests
+            </TabsTrigger>
+            <TabsTrigger value="find-locker-qr" className="gap-1.5">
+              <QrCode className="h-4 w-4" /> Inquiry-Support-QR
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="mt-4">
+            <Tabs value={filter} onValueChange={(v) => setFilter(v as SupportRequestStatus | "all")}>
+              <TabsList className="flex-wrap h-auto">
+                <TabsTrigger value="new">New{counts.new > 0 ? ` (${counts.new})` : ""}</TabsTrigger>
+                <TabsTrigger value="in_progress">
+                  In progress{counts.in_progress > 0 ? ` (${counts.in_progress})` : ""}
+                </TabsTrigger>
+                <TabsTrigger value="resolved">Resolved{counts.resolved > 0 ? ` (${counts.resolved})` : ""}</TabsTrigger>
+                <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
+              </TabsList>
 
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as SupportRequestStatus | "all")}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="new">New{counts.new > 0 ? ` (${counts.new})` : ""}</TabsTrigger>
-            <TabsTrigger value="in_progress">In progress{counts.in_progress > 0 ? ` (${counts.in_progress})` : ""}</TabsTrigger>
-            <TabsTrigger value="resolved">Resolved{counts.resolved > 0 ? ` (${counts.resolved})` : ""}</TabsTrigger>
-            <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value={filter} className="mt-4 space-y-3">
-            {!rows ? (
-              <Skeleton className="h-40 w-full" />
-            ) : filtered.length === 0 ? (
-              <Card className="p-10 text-center text-muted-foreground">
-                No {filter === "all" ? "" : STATUS_LABEL[filter as SupportRequestStatus].toLowerCase()} requests.
-              </Card>
-            ) : (
-              <>
-                {selectableIds.length > 0 && (
-                  <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={allSelected}
-                        onCheckedChange={(v) => toggleAll(v === true)}
+              <TabsContent value={filter} className="mt-4 space-y-3">
+                {!rows ? (
+                  <Skeleton className="h-40 w-full" />
+                ) : filtered.length === 0 ? (
+                  <Card className="p-10 text-center text-muted-foreground">
+                    No {filter === "all" ? "" : STATUS_LABEL[filter as SupportRequestStatus].toLowerCase()} requests.
+                  </Card>
+                ) : (
+                  <>
+                    {selectableIds.length > 0 && (
+                      <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox checked={allSelected} onCheckedChange={(v) => toggleAll(v === true)} />
+                          <span>
+                            Select all resolved ({selectableIds.length})
+                            {selected.size > 0 ? ` · ${selected.size} selected` : ""}
+                          </span>
+                        </label>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive" disabled={selected.size === 0 || deleting}>
+                              {deleting ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 mr-1" />
+                              )}
+                              Delete selected
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Delete {selected.size} resolved ticket{selected.size === 1 ? "" : "s"}?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This permanently removes the tickets and all their replies. This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
+                    {filtered.map((r) => (
+                      <SupportCard
+                        key={r.id}
+                        row={r}
+                        onUpdate={updateStatus}
+                        selectable={r.status === "resolved"}
+                        selected={selected.has(r.id)}
+                        onSelectedChange={(on) => toggleOne(r.id, on)}
                       />
-                      <span>
-                        Select all resolved ({selectableIds.length})
-                        {selected.size > 0 ? ` · ${selected.size} selected` : ""}
-                      </span>
-                    </label>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="destructive" disabled={selected.size === 0 || deleting}>
-                          {deleting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
-                          Delete selected
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete {selected.size} resolved ticket{selected.size === 1 ? "" : "s"}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This permanently removes the tickets and all their replies. This cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                    ))}
+                  </>
                 )}
-                {filtered.map((r) => (
-                  <SupportCard
-                    key={r.id}
-                    row={r}
-                    onUpdate={updateStatus}
-                    selectable={r.status === "resolved"}
-                    selected={selected.has(r.id)}
-                    onSelectedChange={(on) => toggleOne(r.id, on)}
-                  />
-                ))}
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="find-locker-qr" className="mt-4">
@@ -282,15 +315,23 @@ function SupportCard({
   const [sending, setSending] = useState(false);
 
   const loadReplies = async () => {
-    const { data, error } = await (supabase as unknown as {
-      from: (t: string) => {
-        select: (c: string) => {
-          eq: (col: string, v: string) => {
-            order: (col: string, o: { ascending: boolean }) => Promise<{ data: SupportRequestReply[] | null; error: { message: string } | null }>;
+    const { data, error } = await (
+      supabase as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (
+              col: string,
+              v: string,
+            ) => {
+              order: (
+                col: string,
+                o: { ascending: boolean },
+              ) => Promise<{ data: SupportRequestReply[] | null; error: { message: string } | null }>;
+            };
           };
         };
-      };
-    })
+      }
+    )
       .from("support_request_replies")
       .select("*")
       .eq("request_id", row.id)
@@ -337,9 +378,7 @@ function SupportCard({
             />
           )}
           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="font-display font-bold text-lg truncate">
-            {REQUEST_TYPE_LABEL[row.request_type]}
-          </span>
+          <span className="font-display font-bold text-lg truncate">{REQUEST_TYPE_LABEL[row.request_type]}</span>
           <Badge variant="outline" className="font-mono">
             <Ticket className="h-3 w-3 mr-1" />
             {row.ticket_number}
@@ -360,9 +399,7 @@ function SupportCard({
         <InfoRow icon={<Hash className="h-3.5 w-3.5" />} label="Locker" value={row.locker_number ?? "—"} mono />
       </div>
 
-      <div className="mt-3 rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">
-        {row.message}
-      </div>
+      <div className="mt-3 rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{row.message}</div>
 
       {expanded && (
         <div className="mt-3 space-y-3">
@@ -442,7 +479,17 @@ function SupportCard({
   );
 }
 
-function InfoRow({ icon, label, value, mono }: { icon: React.ReactNode; label: string; value: string; mono?: boolean }) {
+function InfoRow({
+  icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="flex items-center gap-2 min-w-0">
       <span className="text-muted-foreground shrink-0">{icon}</span>
