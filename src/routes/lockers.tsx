@@ -621,7 +621,7 @@ function MobileLockerList({
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               <MobileField label="Employee" value={l.employee_name} wide />
               <MobileField label="Badge" value={l.badge_number} />
-              <MobileField label="National ID" value={maskNationalId(l.national_id) || undefined} />
+              <MobileField label="National ID" value={(canRevealNid ? maskNationalId(l.national_id) : fullyMaskNationalId(l.national_id)) || undefined} />]
               <MobileField label="Key Lock" value={l.key_lock} />
               <MobileField label="Work" value={l.work_location} />
               <MobileField label="Batch" value={formatBatchIntake(l.batch_intake)} />
