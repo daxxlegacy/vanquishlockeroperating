@@ -56,7 +56,7 @@ export function FindLockerPanel() {
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg"><QrIcon className="h-4 w-4" /> Find My Locker QR</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg"><QrIcon className="h-4 w-4" /> Locker Inquiry QR</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex justify-center rounded-lg bg-white p-4">

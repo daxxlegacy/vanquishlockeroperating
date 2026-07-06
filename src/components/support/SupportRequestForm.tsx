@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import type { SupportRequestType } from "@/lib/support-requests";
+import { t, type Lang } from "@/lib/i18n-find-locker";
 
 export type SupportFormProps = {
   requestType: SupportRequestType;
@@ -16,19 +17,30 @@ export type SupportFormProps = {
   messageLabel?: string;
   messagePlaceholder?: string;
   submitLabel?: string;
+  /** Optional prefilled values from the lookup flow. */
+  initialName?: string;
+  initialBadge?: string;
+  initialLocker?: string;
+  /** UI language for labels/validation/success text. */
+  lang?: Lang;
 };
 
 export function SupportRequestForm({
   requestType,
   showLockerField = true,
   defaultMessage = "",
-  messageLabel = "Reason / message",
-  messagePlaceholder = "Tell us briefly what you need help with…",
-  submitLabel = "Submit request",
+  messageLabel,
+  messagePlaceholder,
+  submitLabel,
+  initialName = "",
+  initialBadge = "",
+  initialLocker = "",
+  lang = "en",
 }: SupportFormProps) {
-  const [name, setName] = useState("");
-  const [badge, setBadge] = useState("");
-  const [locker, setLocker] = useState("");
+  const tr = t[lang];
+  const [name, setName] = useState(initialName);
+  const [badge, setBadge] = useState(initialBadge);
+  const [locker, setLocker] = useState(initialLocker);
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState(defaultMessage);
   const [busy, setBusy] = useState(false);
@@ -54,11 +66,11 @@ export function SupportRequestForm({
     const c = contact.trim();
     const m = message.trim();
 
-    if (!n || n.length > 120) return setError("Please enter your full name.");
-    if (!b || b.length > 60) return setError("Please enter your badge number.");
-    if (!c || c.length > 40) return setError("Please enter a contact number.");
-    if (!m || m.length > 2000) return setError("Please describe your request.");
-    if (locker.length > 60) return setError("Locker number is too long.");
+    if (!n || n.length > 120) return setError(tr.form.errName);
+    if (!b || b.length > 60) return setError(tr.form.errBadge);
+    if (!c || c.length > 40) return setError(tr.form.errContact);
+    if (!m || m.length > 2000) return setError(tr.form.errMessage);
+    if (locker.length > 60) return setError(tr.form.errLocker);
 
     setBusy(true);
     try {
@@ -75,9 +87,9 @@ export function SupportRequestForm({
       if (err || !data || (data as { error?: string }).error) {
         const msg = (data as { error?: string } | null)?.error ?? err?.message ?? "";
         if (msg.toLowerCase().includes("too many")) {
-          setError("Too many requests. Please try again in a few minutes.");
+          setError(tr.form.errTooMany);
         } else {
-          setError("Couldn't submit right now — please try again or contact the admin office.");
+          setError(tr.form.errGeneric);
         }
         return;
       }
@@ -86,7 +98,7 @@ export function SupportRequestForm({
       setOkTicket(payload.ticket_number ?? null);
       setOkBadge(b);
     } catch {
-      setError("Couldn't submit right now — please try again or contact the admin office.");
+      setError(tr.form.errGeneric);
     } finally {
       setBusy(false);
     }
@@ -97,15 +109,15 @@ export function SupportRequestForm({
       <Alert className="border-success/40 bg-success/10">
         <CheckCircle2 className="h-4 w-4" />
         <AlertDescription>
-          <div className="font-medium">Your request has been received.</div>
+          <div className="font-medium">{tr.form.okHeading}</div>
           <div className="text-sm mt-1 break-words">
-            Ticket number:{" "}
+            {tr.form.okTicket}{" "}
             <span className="font-mono font-semibold">
               {okTicket ?? `#${okId.slice(0, 8).toUpperCase()}`}
             </span>
           </div>
           <div className="text-xs mt-1 break-words">
-            Save this number. Our team will contact you at{" "}
+            {tr.form.okSaveNumber}{" "}
             <span className="font-mono">{contact}</span>.
           </div>
           {okTicket && (
@@ -115,7 +127,7 @@ export function SupportRequestForm({
                 search={{ t: okTicket, b: okBadge }}
                 className="inline-flex items-center justify-center gap-1 h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium w-full"
               >
-                Check ticket status <ExternalLink className="h-3.5 w-3.5" />
+                {tr.form.okCheckStatus} <ExternalLink className="h-3.5 w-3.5" />
               </Link>
             </div>
           )}
@@ -128,7 +140,7 @@ export function SupportRequestForm({
     <form onSubmit={submit} className="space-y-3">
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="sr-name" className="text-sm">Full name</Label>
+          <Label htmlFor="sr-name" className="text-sm">{tr.form.fullName}</Label>
           <Input
             id="sr-name"
             value={name}
@@ -141,7 +153,7 @@ export function SupportRequestForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="sr-badge" className="text-sm">Badge number</Label>
+          <Label htmlFor="sr-badge" className="text-sm">{tr.form.badge}</Label>
           <Input
             id="sr-badge"
             value={badge}
@@ -154,7 +166,7 @@ export function SupportRequestForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="sr-contact" className="text-sm">Contact number</Label>
+          <Label htmlFor="sr-contact" className="text-sm">{tr.form.contact}</Label>
           <Input
             id="sr-contact"
             value={contact}
@@ -163,13 +175,13 @@ export function SupportRequestForm({
             required
             inputMode="tel"
             autoComplete="tel"
-            placeholder="e.g. 012-3456789"
+            placeholder={tr.form.contactPlaceholder}
             className="h-12 text-base"
           />
         </div>
         {showLockerField && (
           <div className="space-y-1.5">
-            <Label htmlFor="sr-locker" className="text-sm">Current locker number (optional)</Label>
+            <Label htmlFor="sr-locker" className="text-sm">{tr.form.lockerOptional}</Label>
             <Input
               id="sr-locker"
               value={locker}
@@ -184,14 +196,14 @@ export function SupportRequestForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="sr-message" className="text-sm">{messageLabel}</Label>
+        <Label htmlFor="sr-message" className="text-sm">{messageLabel ?? tr.transferPanel.messageLabel}</Label>
         <Textarea
           id="sr-message"
           rows={4}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onFocus={scrollFocusIntoView}
-          placeholder={messagePlaceholder}
+          placeholder={messagePlaceholder ?? tr.transferPanel.messagePlaceholder}
           maxLength={2000}
           required
           className="text-base min-h-[112px]"
@@ -206,7 +218,7 @@ export function SupportRequestForm({
 
       <Button type="submit" className="w-full h-12 text-base" disabled={busy}>
         {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-        {submitLabel}
+        {submitLabel ?? tr.transferPanel.submitLabel}
       </Button>
     </form>
   );

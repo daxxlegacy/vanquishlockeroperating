@@ -186,7 +186,7 @@ function TicketPage() {
       <div className="w-full max-w-2xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <Link to="/find-locker" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to Find My Locker
+            <ArrowLeft className="h-4 w-4" /> Back to Locker Inquiry
           </Link>
         </div>
 
