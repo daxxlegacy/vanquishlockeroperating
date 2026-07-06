@@ -195,7 +195,7 @@ function SupportRequestsPage() {
               <LifeBuoy className="h-4 w-4" /> Requests
             </TabsTrigger>
             <TabsTrigger value="find-locker-qr" className="gap-1.5">
-              <QrCode className="h-4 w-4" /> Inquiry-Support-QR
+              <QrCode className="h-4 w-4" /> Find-My-Locker QR
             </TabsTrigger>
           </TabsList>
 
