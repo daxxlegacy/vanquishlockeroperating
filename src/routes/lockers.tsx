@@ -592,6 +592,7 @@ function MobileLockerList({
   onPick: (id: string) => void;
   warnings: Set<string>;
 }) {
+  const canRevealNid = useCanRevealNationalId();
   if (rows.length === 0) {
     return <div className="p-8 text-center text-muted-foreground text-sm">No lockers match these filters.</div>;
   }
