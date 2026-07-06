@@ -63,7 +63,7 @@ function LockerInquiryPage() {
 
   const [lockerNumber, setLockerNumber] = useState("");
   const [badgeNumber, setBadgeNumber] = useState("");
-  const [nidLast4, setNidLast4] = useState("");
+  
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +82,6 @@ function LockerInquiryPage() {
         body: {
           badge_number: badgeNumber.trim(),
           locker_number: lockerNumber.trim() || undefined,
-          national_id_last4: nidLast4.trim() || undefined,
         },
       });
       if (error || !data || (data as { error?: string }).error) {
@@ -156,22 +155,6 @@ function LockerInquiryPage() {
                     inputMode="text"
                     className="h-12 text-base"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="nid4" className="text-sm">{tr.lookup.nidLast4}</Label>
-                  <Input
-                    id="nid4"
-                    value={nidLast4}
-                    onChange={(e) => setNidLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    onFocus={scrollFocusIntoView}
-                    autoComplete="off"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={4}
-                    placeholder="••••"
-                    className="h-12 text-base tracking-widest"
-                  />
-                  <p className="text-xs text-muted-foreground">{tr.lookup.nidLast4Hint}</p>
                 </div>
                 <Button
                   type="submit"
