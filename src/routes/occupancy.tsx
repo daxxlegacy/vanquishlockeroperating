@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
 import { NationalIdCell } from "@/components/NationalIdCell";
-import { maskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
+import { maskNationalId, fullyMaskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
 import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
 import { SortHeader, type SortState } from "@/components/SortHeader";
 import {
