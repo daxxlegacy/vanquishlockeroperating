@@ -353,7 +353,7 @@ function LockersPage() {
       "Location": l.location,
       "Key Lock": l.key_lock ?? "",
       "Badge Number": l.badge_number ?? "",
-      "National ID": canRevealNid ? (nidMap.get(l.id) ?? maskNationalId(l.national_id)) : maskNationalId(l.national_id),
+      "National ID": canRevealNid ? (nidMap.get(l.id) ?? maskNationalId(l.national_id)) : fullyMaskNationalId(l.national_id),
       "Employee Name": l.employee_name ?? "",
       "Work Location": l.work_location ?? "",
       "Status": (l.custom_status ?? "").trim() || (STATUS_LABEL[l.status as LockerStatus] ?? l.status),
