@@ -280,6 +280,10 @@ function SupportRequestsPage() {
           <TabsContent value="find-locker-qr" className="mt-4">
             <FindLockerPanel />
           </TabsContent>
+
+          <TabsContent value="identity-update" className="mt-4">
+            <IdentityUpdatePanel />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
