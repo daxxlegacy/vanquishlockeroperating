@@ -139,7 +139,7 @@ function SpareKeysPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
           {SPARE_OPTIONS.map((k) => (
             <Card key={k} className="p-3 flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${SWATCH[k]}`} />
@@ -195,7 +195,7 @@ function SpareKeysPage() {
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-base truncate">{l.locker_number}</div>
                             <div className="text-xs text-muted-foreground truncate">
-                              {l.location}{l.row_label ? ` · ${l.row_label}` : ""}
+                              {l.location}{l.row_label && l.row_label !== l.location ? ` · ${l.row_label}` : ""}
                             </div>
                           </div>
                           <KeyBadge status={l.spare_key_status} />
@@ -253,6 +253,7 @@ function Th({ children }: { children: React.ReactNode }) {
 type SpareRowProps = { rows: Locker[]; onPick: (id: string) => void };
 const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowComponentProps<SpareRowProps>) {
   const l = rows[index];
+  const rowLabel = l.row_label && l.row_label !== l.location ? l.row_label : "—";
   return (
     <div
       style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
@@ -261,7 +262,7 @@ const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowCompo
     >
       <div className="px-3 truncate font-medium">{l.locker_number}</div>
       <div className="px-3 truncate">{l.location}</div>
-      <div className="px-3 truncate text-muted-foreground">{l.row_label ?? "—"}</div>
+      <div className="px-3 truncate text-muted-foreground">{rowLabel}</div>
       <div className="px-3"><KeyBadge status={l.spare_key_status} /></div>
     </div>
   );
