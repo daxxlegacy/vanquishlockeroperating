@@ -34,6 +34,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   page_duplicates: "View Duplicates page",
   page_operations: "View Operations page",
   page_reconcile: "View Reconcile page",
+  page_support_requests: "View Support Requests page",
   page_upload: "View Upload page",
 };
 
