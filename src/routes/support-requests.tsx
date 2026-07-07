@@ -198,6 +198,9 @@ function SupportRequestsPage() {
             <TabsTrigger value="find-locker-qr" className="gap-1.5">
               <QrCode className="h-4 w-4" /> Locker Inquiry QR
             </TabsTrigger>
+            <TabsTrigger value="identity-update" className="gap-1.5">
+              <ClipboardCheck className="h-4 w-4" /> Identity Update
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="mt-4">
