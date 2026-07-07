@@ -67,7 +67,7 @@ export function IdentityUpdatePanel() {
       }
     )
       .from("locker_identity_claims")
-      .select("id,created_at,locker_number,badge_number,full_name,still_using,contact_number")
+      .select("id,created_at,locker_number,badge_number,full_name,still_using,contact_number,status")
       .order("created_at", { ascending: false });
     setLoading(false);
     if (error) {
