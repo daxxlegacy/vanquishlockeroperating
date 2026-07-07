@@ -37,6 +37,7 @@ import {
   Ticket,
   Trash2,
   QrCode,
+  ClipboardCheck,
 } from "lucide-react";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { IdentityUpdatePanel } from "@/components/support/IdentityUpdatePanel";
