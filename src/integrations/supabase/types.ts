@@ -190,63 +190,6 @@ export type Database = {
         }
         Relationships: []
       }
-      locker_identity_claims: {
-        Row: {
-          admin_notes: string | null
-          badge_number: string
-          claim_type: Database["public"]["Enums"]["locker_claim_type"]
-          client_ip: unknown
-          contact_number: string
-          created_at: string
-          full_name: string
-          id: string
-          location: string | null
-          locker_number: string
-          other_locker_numbers: string[] | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: Database["public"]["Enums"]["locker_claim_status"]
-          still_using: boolean | null
-          updated_at: string
-        }
-        Insert: {
-          admin_notes?: string | null
-          badge_number: string
-          claim_type: Database["public"]["Enums"]["locker_claim_type"]
-          client_ip?: unknown
-          contact_number: string
-          created_at?: string
-          full_name: string
-          id?: string
-          location?: string | null
-          locker_number: string
-          other_locker_numbers?: string[] | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["locker_claim_status"]
-          still_using?: boolean | null
-          updated_at?: string
-        }
-        Update: {
-          admin_notes?: string | null
-          badge_number?: string
-          claim_type?: Database["public"]["Enums"]["locker_claim_type"]
-          client_ip?: unknown
-          contact_number?: string
-          created_at?: string
-          full_name?: string
-          id?: string
-          location?: string | null
-          locker_number?: string
-          other_locker_numbers?: string[] | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["locker_claim_status"]
-          still_using?: boolean | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       locker_lookup_attempts: {
         Row: {
           attempted_at: string
@@ -916,20 +859,6 @@ export type Database = {
         Args: { _record_id: string; _table_name: string }
         Returns: string
       }
-      submit_locker_identity_claim: {
-        Args: {
-          _badge_number: string
-          _claim_type: Database["public"]["Enums"]["locker_claim_type"]
-          _contact_number: string
-          _full_name: string
-          _ip: string
-          _location: string
-          _locker_number: string
-          _other_locker_numbers: string[]
-          _still_using: boolean
-        }
-        Returns: Json
-      }
       submit_support_request: {
         Args: {
           _badge_number: string
@@ -964,7 +893,6 @@ export type Database = {
         | "page_upload"
         | "view_national_id"
         | "manage_support_requests"
-        | "manage_locker_claims"
       app_role: "admin" | "viewer"
       key_status:
         | "available"
@@ -974,8 +902,6 @@ export type Database = {
         | "unknown"
         | "taken"
         | "taken_for_cleaning"
-      locker_claim_status: "pending" | "approved" | "rejected"
-      locker_claim_type: "unknown_owner" | "multiple_locker"
       locker_status:
         | "active"
         | "empty"
@@ -1133,7 +1059,6 @@ export const Constants = {
         "page_upload",
         "view_national_id",
         "manage_support_requests",
-        "manage_locker_claims",
       ],
       app_role: ["admin", "viewer"],
       key_status: [
@@ -1145,8 +1070,6 @@ export const Constants = {
         "taken",
         "taken_for_cleaning",
       ],
-      locker_claim_status: ["pending", "approved", "rejected"],
-      locker_claim_type: ["unknown_owner", "multiple_locker"],
       locker_status: [
         "active",
         "empty",

@@ -19,7 +19,6 @@ import { Route as ReconcileRouteImport } from './routes/reconcile'
 import { Route as OccupancyRouteImport } from './routes/occupancy'
 import { Route as LockersRouteImport } from './routes/lockers'
 import { Route as FindLockerRouteImport } from './routes/find-locker'
-import { Route as ConfirmLockerIdentityRouteImport } from './routes/confirm-locker-identity'
 import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
 import { Route as AutomationRouteImport } from './routes/automation'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -78,11 +77,6 @@ const FindLockerRoute = FindLockerRouteImport.update({
   path: '/find-locker',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfirmLockerIdentityRoute = ConfirmLockerIdentityRouteImport.update({
-  id: '/confirm-locker-identity',
-  path: '/confirm-locker-identity',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AutomationHistoryRoute = AutomationHistoryRouteImport.update({
   id: '/automation-history',
   path: '/automation-history',
@@ -126,7 +120,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/confirm-locker-identity': typeof ConfirmLockerIdentityRoute
   '/find-locker': typeof FindLockerRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -146,7 +139,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/confirm-locker-identity': typeof ConfirmLockerIdentityRoute
   '/find-locker': typeof FindLockerRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -167,7 +159,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
-  '/confirm-locker-identity': typeof ConfirmLockerIdentityRoute
   '/find-locker': typeof FindLockerRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
@@ -189,7 +180,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/confirm-locker-identity'
     | '/find-locker'
     | '/lockers'
     | '/occupancy'
@@ -209,7 +199,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/confirm-locker-identity'
     | '/find-locker'
     | '/lockers'
     | '/occupancy'
@@ -229,7 +218,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/automation'
     | '/automation-history'
-    | '/confirm-locker-identity'
     | '/find-locker'
     | '/lockers'
     | '/occupancy'
@@ -250,7 +238,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   AutomationRoute: typeof AutomationRoute
   AutomationHistoryRoute: typeof AutomationHistoryRoute
-  ConfirmLockerIdentityRoute: typeof ConfirmLockerIdentityRoute
   FindLockerRoute: typeof FindLockerRoute
   LockersRoute: typeof LockersRoute
   OccupancyRoute: typeof OccupancyRoute
@@ -336,13 +323,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FindLockerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/confirm-locker-identity': {
-      id: '/confirm-locker-identity'
-      path: '/confirm-locker-identity'
-      fullPath: '/confirm-locker-identity'
-      preLoaderRoute: typeof ConfirmLockerIdentityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/automation-history': {
       id: '/automation-history'
       path: '/automation-history'
@@ -402,7 +382,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   AutomationRoute: AutomationRoute,
   AutomationHistoryRoute: AutomationHistoryRoute,
-  ConfirmLockerIdentityRoute: ConfirmLockerIdentityRoute,
   FindLockerRoute: FindLockerRoute,
   LockersRoute: LockersRoute,
   OccupancyRoute: OccupancyRoute,
