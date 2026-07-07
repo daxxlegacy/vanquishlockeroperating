@@ -16,10 +16,14 @@ import {
   Hash,
   Phone,
   Clock,
+  Check,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDateTime } from "@/lib/format-date";
 import { toast } from "sonner";
+
+type ClaimStatus = "pending" | "approved" | "rejected";
 
 type Claim = {
   id: string;
@@ -29,7 +33,9 @@ type Claim = {
   full_name: string;
   still_using: boolean | null;
   contact_number: string;
+  status: ClaimStatus;
 };
+
 
 export function IdentityUpdatePanel() {
   const url = useMemo(() => {
