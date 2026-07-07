@@ -17,6 +17,7 @@ export type AppPermission =
   | "page_duplicates"
   | "page_operations"
   | "page_reconcile"
+  | "page_support_requests"
   | "page_upload";
 
 export const PERMISSION_LABELS: Record<AppPermission, string> = {
