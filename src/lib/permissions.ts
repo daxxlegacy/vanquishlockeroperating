@@ -58,6 +58,7 @@ export const ACTION_PERMISSIONS: AppPermission[] = [
   "run_automation",
   "view_national_id",
   "manage_support_requests",
+  "manage_locker_claims",
 ];
 
 
