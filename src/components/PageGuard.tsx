@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { usePermissions, type AppPermission, PERMISSION_LABELS } from "@/lib/permissions";
+import { usePermissions, type AppPermission } from "@/lib/permissions";
 import { AppHeader } from "@/components/AppHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ShieldAlert } from "lucide-react";
