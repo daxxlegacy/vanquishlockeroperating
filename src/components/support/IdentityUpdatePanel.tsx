@@ -98,6 +98,24 @@ export function IdentityUpdatePanel() {
     a.click();
   };
 
+  const markDone = async (id: string) => {
+    const { error } = await supabase
+      .from("locker_identity_claims")
+      .update({ status: "approved", reviewed_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Marked as done");
+    setRows((prev) => prev ? prev.map((r) => r.id === id ? { ...r, status: "approved" } : r) : prev);
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this submission? This cannot be undone.")) return;
+    const { error } = await supabase.from("locker_identity_claims").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Submission deleted");
+    setRows((prev) => prev ? prev.filter((r) => r.id !== id) : prev);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
