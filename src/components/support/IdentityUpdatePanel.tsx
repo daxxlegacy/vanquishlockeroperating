@@ -16,10 +16,14 @@ import {
   Hash,
   Phone,
   Clock,
+  Check,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDateTime } from "@/lib/format-date";
 import { toast } from "sonner";
+
+type ClaimStatus = "pending" | "approved" | "rejected";
 
 type Claim = {
   id: string;
@@ -29,7 +33,9 @@ type Claim = {
   full_name: string;
   still_using: boolean | null;
   contact_number: string;
+  status: ClaimStatus;
 };
+
 
 export function IdentityUpdatePanel() {
   const url = useMemo(() => {
@@ -61,7 +67,7 @@ export function IdentityUpdatePanel() {
       }
     )
       .from("locker_identity_claims")
-      .select("id,created_at,locker_number,badge_number,full_name,still_using,contact_number")
+      .select("id,created_at,locker_number,badge_number,full_name,still_using,contact_number,status")
       .order("created_at", { ascending: false });
     setLoading(false);
     if (error) {
@@ -90,6 +96,24 @@ export function IdentityUpdatePanel() {
     a.href = c.toDataURL("image/png");
     a.download = "locker-identity-update-qr.png";
     a.click();
+  };
+
+  const markDone = async (id: string) => {
+    const { error } = await supabase
+      .from("locker_identity_claims")
+      .update({ status: "approved", reviewed_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Marked as done");
+    setRows((prev) => prev ? prev.map((r) => r.id === id ? { ...r, status: "approved" } : r) : prev);
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this submission? This cannot be undone.")) return;
+    const { error } = await supabase.from("locker_identity_claims").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Submission deleted");
+    setRows((prev) => prev ? prev.filter((r) => r.id !== id) : prev);
   };
 
   return (
@@ -138,8 +162,10 @@ export function IdentityUpdatePanel() {
         <Card className="p-10 text-center text-muted-foreground">No submissions yet.</Card>
       ) : (
         <div className="space-y-3">
-          {rows.map((r) => (
-            <Card key={r.id} className="p-4">
+          {rows.map((r) => {
+            const done = r.status === "approved";
+            return (
+            <Card key={r.id} className={`p-4 ${done ? "opacity-60" : ""}`}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 min-w-0 flex-wrap">
                   <Badge variant="outline" className="font-mono">
@@ -149,6 +175,7 @@ export function IdentityUpdatePanel() {
                   <Badge variant="outline">
                     {r.still_using ? "Still using" : r.still_using === false ? "No longer using" : "—"}
                   </Badge>
+                  {done ? <Badge className="bg-primary/10 text-primary hover:bg-primary/10">Done</Badge> : null}
                 </div>
                 <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" /> {formatDateTime(r.created_at)}
@@ -165,8 +192,20 @@ export function IdentityUpdatePanel() {
                   <Phone className="h-3.5 w-3.5 text-muted-foreground" /> {r.contact_number}
                 </span>
               </div>
+              <div className="mt-3 flex items-center justify-end gap-2">
+                {!done && (
+                  <Button variant="outline" size="sm" onClick={() => markDone(r.id)}>
+                    <Check className="h-4 w-4 mr-1" /> Mark as done
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => remove(r.id)} className="text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-1" /> Delete
+                </Button>
+              </div>
             </Card>
-          ))}
+            );
+          })}
+
         </div>
       )}
     </div>

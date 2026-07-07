@@ -1,0 +1,1 @@
+CREATE POLICY "Admins & managers can delete claims" ON public.locker_identity_claims FOR DELETE TO authenticated USING (has_role(auth.uid(), 'admin'::app_role) OR has_permission(auth.uid(), 'manage_locker_claims'::app_permission));
