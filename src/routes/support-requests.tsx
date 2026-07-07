@@ -39,6 +39,7 @@ import {
   QrCode,
 } from "lucide-react";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
+import { IdentityUpdatePanel } from "@/components/support/IdentityUpdatePanel";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
