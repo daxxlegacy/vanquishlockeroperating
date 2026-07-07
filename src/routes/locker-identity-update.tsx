@@ -88,16 +88,17 @@ function LockerIdentityUpdatePage() {
 
     setLoading(true);
     try {
-      const { data, error: rpcErr } = await supabase.rpc("submit_locker_identity_claim", {
-        _claim_type: "unknown_owner",
-        _locker_number: parsed.data.locker,
-        _badge_number: parsed.data.badge.trim(),
-        _full_name: parsed.data.name.trim(),
-        _contact_number: parsed.data.contact.trim(),
-        _location: "",
-        _still_using: parsed.data.still,
-        _other_locker_numbers: [],
-        _ip: "",
+      const { data, error: rpcErr } = await supabase.functions.invoke("submit-locker-identity-claim", {
+        body: {
+          claim_type: "unknown_owner",
+          locker_number: parsed.data.locker,
+          badge_number: parsed.data.badge.trim(),
+          full_name: parsed.data.name.trim(),
+          contact_number: parsed.data.contact.trim(),
+          location: "",
+          still_using: parsed.data.still,
+          other_locker_numbers: [],
+        },
       });
       if (rpcErr) {
         if ((rpcErr.message ?? "").toLowerCase().includes("rate limit")) {
