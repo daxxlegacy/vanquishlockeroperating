@@ -50,7 +50,7 @@ export const STATUS_LABEL: Record<SupportRequestStatus, string> = {
 export function useNewSupportRequestsCount() {
   const { user } = useAuth();
   const { has, loaded } = usePermissions();
-  const canView = has("manage_support_requests");
+  const canView = has("page_support_requests") || has("manage_support_requests");
   const [count, setCount] = useState(0);
 
   useEffect(() => {

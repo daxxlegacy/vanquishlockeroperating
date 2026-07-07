@@ -60,7 +60,7 @@ export const Route = createFileRoute("/support-requests")({
     ],
   }),
   component: () => (
-    <PageGuard permission="manage_support_requests">
+    <PageGuard permission={["page_support_requests", "manage_support_requests"]}>
       <SupportRequestsPage />
     </PageGuard>
   ),

@@ -965,6 +965,7 @@ export type Database = {
         | "view_national_id"
         | "manage_support_requests"
         | "manage_locker_claims"
+        | "page_support_requests"
       app_role: "admin" | "viewer"
       key_status:
         | "available"
@@ -1134,6 +1135,7 @@ export const Constants = {
         "view_national_id",
         "manage_support_requests",
         "manage_locker_claims",
+        "page_support_requests",
       ],
       app_role: ["admin", "viewer"],
       key_status: [
