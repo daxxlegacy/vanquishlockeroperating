@@ -18,6 +18,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReconcileRouteImport } from './routes/reconcile'
 import { Route as OccupancyRouteImport } from './routes/occupancy'
 import { Route as LockersRouteImport } from './routes/lockers'
+import { Route as LockerIdentityUpdateRouteImport } from './routes/locker-identity-update'
 import { Route as FindLockerRouteImport } from './routes/find-locker'
 import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
 import { Route as AutomationRouteImport } from './routes/automation'
@@ -72,6 +73,11 @@ const LockersRoute = LockersRouteImport.update({
   path: '/lockers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LockerIdentityUpdateRoute = LockerIdentityUpdateRouteImport.update({
+  id: '/locker-identity-update',
+  path: '/locker-identity-update',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FindLockerRoute = FindLockerRouteImport.update({
   id: '/find-locker',
   path: '/find-locker',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
   '/find-locker': typeof FindLockerRoute
+  '/locker-identity-update': typeof LockerIdentityUpdateRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
   '/reconcile': typeof ReconcileRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
   '/find-locker': typeof FindLockerRoute
+  '/locker-identity-update': typeof LockerIdentityUpdateRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
   '/reconcile': typeof ReconcileRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/automation': typeof AutomationRoute
   '/automation-history': typeof AutomationHistoryRoute
   '/find-locker': typeof FindLockerRoute
+  '/locker-identity-update': typeof LockerIdentityUpdateRoute
   '/lockers': typeof LockersRoute
   '/occupancy': typeof OccupancyRoute
   '/reconcile': typeof ReconcileRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/automation'
     | '/automation-history'
     | '/find-locker'
+    | '/locker-identity-update'
     | '/lockers'
     | '/occupancy'
     | '/reconcile'
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
     | '/automation'
     | '/automation-history'
     | '/find-locker'
+    | '/locker-identity-update'
     | '/lockers'
     | '/occupancy'
     | '/reconcile'
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/automation'
     | '/automation-history'
     | '/find-locker'
+    | '/locker-identity-update'
     | '/lockers'
     | '/occupancy'
     | '/reconcile'
@@ -239,6 +251,7 @@ export interface RootRouteChildren {
   AutomationRoute: typeof AutomationRoute
   AutomationHistoryRoute: typeof AutomationHistoryRoute
   FindLockerRoute: typeof FindLockerRoute
+  LockerIdentityUpdateRoute: typeof LockerIdentityUpdateRoute
   LockersRoute: typeof LockersRoute
   OccupancyRoute: typeof OccupancyRoute
   ReconcileRoute: typeof ReconcileRoute
@@ -316,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LockersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/locker-identity-update': {
+      id: '/locker-identity-update'
+      path: '/locker-identity-update'
+      fullPath: '/locker-identity-update'
+      preLoaderRoute: typeof LockerIdentityUpdateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/find-locker': {
       id: '/find-locker'
       path: '/find-locker'
@@ -383,6 +403,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutomationRoute: AutomationRoute,
   AutomationHistoryRoute: AutomationHistoryRoute,
   FindLockerRoute: FindLockerRoute,
+  LockerIdentityUpdateRoute: LockerIdentityUpdateRoute,
   LockersRoute: LockersRoute,
   OccupancyRoute: OccupancyRoute,
   ReconcileRoute: ReconcileRoute,

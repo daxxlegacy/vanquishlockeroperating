@@ -168,9 +168,9 @@ function LockerIdentityUpdatePage() {
         _badge_number: parsed.data.badge.trim(),
         _full_name: parsed.data.name.trim(),
         _contact_number: parsed.data.contact.trim(),
-        _location: null,
+        _location: "",
         _still_using: parsed.data.still,
-        _other_locker_numbers: null,
+        _other_locker_numbers: [],
         _ip: "",
       });
       if (rpcErr) {
