@@ -162,8 +162,10 @@ export function IdentityUpdatePanel() {
         <Card className="p-10 text-center text-muted-foreground">No submissions yet.</Card>
       ) : (
         <div className="space-y-3">
-          {rows.map((r) => (
-            <Card key={r.id} className="p-4">
+          {rows.map((r) => {
+            const done = r.status === "approved";
+            return (
+            <Card key={r.id} className={`p-4 ${done ? "opacity-60" : ""}`}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 min-w-0 flex-wrap">
                   <Badge variant="outline" className="font-mono">
@@ -173,6 +175,7 @@ export function IdentityUpdatePanel() {
                   <Badge variant="outline">
                     {r.still_using ? "Still using" : r.still_using === false ? "No longer using" : "—"}
                   </Badge>
+                  {done ? <Badge className="bg-primary/10 text-primary hover:bg-primary/10">Done</Badge> : null}
                 </div>
                 <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" /> {formatDateTime(r.created_at)}
@@ -189,8 +192,20 @@ export function IdentityUpdatePanel() {
                   <Phone className="h-3.5 w-3.5 text-muted-foreground" /> {r.contact_number}
                 </span>
               </div>
+              <div className="mt-3 flex items-center justify-end gap-2">
+                {!done && (
+                  <Button variant="outline" size="sm" onClick={() => markDone(r.id)}>
+                    <Check className="h-4 w-4 mr-1" /> Mark as done
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => remove(r.id)} className="text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-1" /> Delete
+                </Button>
+              </div>
             </Card>
-          ))}
+            );
+          })}
+
         </div>
       )}
     </div>
