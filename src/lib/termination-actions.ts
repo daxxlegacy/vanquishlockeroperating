@@ -6,7 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 type LockerStatus = Database["public"]["Enums"]["locker_status"];
-type KeyStatus = Database["public"]["Enums"]["key_status"];
+
 
 export const TERMINATION_UNDO_WINDOW_MS = 15 * 60 * 1000;
 
