@@ -37,8 +37,10 @@ import {
   Ticket,
   Trash2,
   QrCode,
+  ClipboardCheck,
 } from "lucide-react";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
+import { IdentityUpdatePanel } from "@/components/support/IdentityUpdatePanel";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
@@ -197,6 +199,9 @@ function SupportRequestsPage() {
             <TabsTrigger value="find-locker-qr" className="gap-1.5">
               <QrCode className="h-4 w-4" /> Locker Inquiry QR
             </TabsTrigger>
+            <TabsTrigger value="identity-update" className="gap-1.5">
+              <ClipboardCheck className="h-4 w-4" /> Identity Update
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="mt-4">
@@ -274,6 +279,10 @@ function SupportRequestsPage() {
 
           <TabsContent value="find-locker-qr" className="mt-4">
             <FindLockerPanel />
+          </TabsContent>
+
+          <TabsContent value="identity-update" className="mt-4">
+            <IdentityUpdatePanel />
           </TabsContent>
         </Tabs>
       </main>
