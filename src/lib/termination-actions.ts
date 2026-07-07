@@ -6,16 +6,17 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 type LockerStatus = Database["public"]["Enums"]["locker_status"];
-type KeyStatus = Database["public"]["Enums"]["key_status"];
+
 
 export const TERMINATION_UNDO_WINDOW_MS = 15 * 60 * 1000;
 
 /**
  * Build the locker UPDATE payload for a termination. Clears all occupant +
  * personal details while keeping location, row, key_lock, unit_type, and
- * compartment metadata intact. Applies the spare-key auto-rule:
- *   - status="find_spare_key"   → spare_key_status="missing"
- *   - status="reset"            → physical_key_status reset (cleared)
+ * compartment metadata intact. Does NOT touch spare_key_status — the spare
+ * key is a physical inventory item and must be managed explicitly on the
+ * Spare Keys page, otherwise a termination can silently overwrite a known
+ * "available" spare with "missing".
  */
 export function buildTerminationClearPayload(
   newStatus: LockerStatus,
@@ -28,9 +29,8 @@ export function buildTerminationClearPayload(
   work_location: null;
   status: LockerStatus;
   custom_status: null;
-  spare_key_status?: KeyStatus;
 } {
-  const base = {
+  return {
     employee_name: null,
     badge_number: null,
     national_id: null,
@@ -39,9 +39,7 @@ export function buildTerminationClearPayload(
     work_location: null,
     status: newStatus,
     custom_status: null,
-  } as const;
-  if (newStatus === "find_spare_key") return { ...base, spare_key_status: "missing" };
-  return base;
+  };
 }
 
 /**
