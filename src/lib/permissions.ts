@@ -48,6 +48,7 @@ export const PAGE_PERMISSIONS: AppPermission[] = [
   "page_duplicates",
   "page_operations",
   "page_reconcile",
+  "page_support_requests",
   "page_upload",
 ];
 
