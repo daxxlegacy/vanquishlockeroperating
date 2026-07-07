@@ -28,7 +28,7 @@ type PermRow = { user_id: string; permission: AppPermission };
 
 type CategoryKey = "pages" | "actions";
 const CATEGORIES: { key: CategoryKey; label: string; perms: AppPermission[] }[] = [
-  { key: "pages", label: "Page Access", perms: PAGE_PERMISSIONS },
+  { key: "pages", label: "Page Permissions", perms: PAGE_PERMISSIONS },
   { key: "actions", label: "Actions", perms: ACTION_PERMISSIONS },
 ];
 
