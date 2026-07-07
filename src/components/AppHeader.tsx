@@ -20,14 +20,12 @@ export function AppHeader() {
 
   if (!user) return null;
 
-  const navItems: { to: string; label: string; icon: typeof LayoutGrid; perm?: AppPermission; adminOnly?: boolean; badgeCount?: number }[] = [
+  const navItems: { to: string; label: string; icon: typeof LayoutGrid; perm?: AppPermission | AppPermission[]; adminOnly?: boolean; badgeCount?: number }[] = [
     { to: "/", label: "Map", icon: LayoutGrid, perm: "page_map" },
     { to: "/lockers", label: "Lockers", icon: TableIcon, perm: "page_lockers" },
     { to: "/spare-keys", label: "Spare Keys", icon: Key, perm: "page_spare_keys" },
     { to: "/occupancy", label: "Occupancy", icon: History, perm: "page_occupancy" },
-    
-    
-    { to: "/support-requests", label: "Support", icon: LifeBuoy, perm: "manage_support_requests", badgeCount: newSupportCount },
+    { to: "/support-requests", label: "Support", icon: LifeBuoy, perm: ["page_support_requests", "manage_support_requests"], badgeCount: newSupportCount },
     { to: "/reconcile", label: "Reconcile", icon: ShieldAlert, perm: "page_reconcile" },
     { to: "/upload", label: "Upload", icon: Upload, perm: "page_upload" },
     { to: "/admin", label: "Admin", icon: UserCog, adminOnly: true },
@@ -35,7 +33,10 @@ export function AppHeader() {
 
   const visibleItems = navItems.filter((item) => {
     if (item.adminOnly && role !== "admin") return false;
-    if (item.perm && !has(item.perm)) return false;
+    if (item.perm) {
+      const perms = Array.isArray(item.perm) ? item.perm : [item.perm];
+      if (!perms.some((p) => has(p))) return false;
+    }
     return true;
   });
 
