@@ -8,113 +8,40 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ShieldCheck, ClipboardCheck, CheckCircle2 } from "lucide-react";
-import { useLang, type Lang } from "@/lib/i18n-find-locker";
+import lockerDiagram from "@/assets/locker-diagram.png.asset.json";
 
 export const Route = createFileRoute("/locker-identity-update")({
   head: () => ({
     meta: [
-      { title: "Locker Identity Update" },
-      { name: "description", content: "Register the identity of the current locker holder." },
+      { title: "Locker Identity Update / Kemas Kini Identiti Loker" },
+      { name: "description", content: "Register the identity of the current locker holder. / Daftarkan identiti pemilik loker semasa." },
     ],
   }),
   component: LockerIdentityUpdatePage,
 });
 
-const tr = {
-  en: {
-    title: "Locker Identity Update",
-    subtitle:
-      "Please fill in your locker information accurately. This information is required for internal records.",
-    required: "* Indicates required question",
-    lockerNumber: "Locker Number *",
-    lockerHint: "Format: digits followed by one uppercase letter (e.g. 1411E)",
-    lockerPlaceholder: "e.g. 1411E",
-    badge: "Employee Number / Badge Number *",
-    badgePlaceholder: "e.g. CS1234 / T012625 / 1011165",
-    fullName: "Full Name *",
-    stillUsing: "Are you still using this locker? *",
-    yes: "Yes",
-    no: "No",
-    contact: "Phone Number *",
-    contactPlaceholder: "e.g. 012-3456789",
-    submit: "Submit",
-    submitting: "Submitting…",
-    privacy:
-      "Your information is used only for locker record updates and is not shared publicly.",
-    errors: {
-      lockerFormat: "Locker number must be digits followed by one uppercase letter (e.g. 1411E).",
-      badge: "Please enter your employee / badge number.",
-      name: "Please enter your full name.",
-      stillUsing: "Please answer whether you are still using this locker.",
-      contact: "Please enter a valid phone number.",
-      generic: "Couldn't submit right now — please try again shortly.",
-      rate: "Too many submissions. Please try again in a few minutes.",
-    },
-    successTitle: "Response recorded",
-    successBody: (id: string) =>
-      `Thank you, your response has been recorded. Reference #${id}. Please remove the notice sticker from your locker now that you've registered.`,
-  },
-  bm: {
-    title: "Kemas Kini Identiti Loker",
-    subtitle:
-      "Sila isikan maklumat loker anda dengan tepat. Maklumat ini diperlukan untuk rekod dalaman.",
-    required: "* Menunjukkan soalan wajib",
-    lockerNumber: "Nombor Loker *",
-    lockerHint: "Format: digit diikuti satu huruf besar (cth. 1411E)",
-    lockerPlaceholder: "cth. 1411E",
-    badge: "Nombor Pekerja / Nombor Badge *",
-    badgePlaceholder: "cth. CS1234 / T012625 / 1011165",
-    fullName: "Nama Penuh *",
-    stillUsing: "Adakah anda masih menggunakan loker ini? *",
-    yes: "Ya",
-    no: "Tidak",
-    contact: "Nombor Telefon *",
-    contactPlaceholder: "cth. 012-3456789",
-    submit: "Hantar",
-    submitting: "Menghantar…",
-    privacy:
-      "Maklumat anda hanya digunakan untuk kemas kini rekod loker dan tidak dikongsi secara umum.",
-    errors: {
-      lockerFormat: "Nombor loker mesti digit diikuti satu huruf besar (cth. 1411E).",
-      badge: "Sila masukkan nombor pekerja / badge anda.",
-      name: "Sila masukkan nama penuh anda.",
-      stillUsing: "Sila jawab sama ada anda masih menggunakan loker ini.",
-      contact: "Sila masukkan nombor telefon yang sah.",
-      generic: "Gagal menghantar — sila cuba lagi sebentar.",
-      rate: "Terlalu banyak penghantaran. Sila cuba lagi dalam beberapa minit.",
-    },
-    successTitle: "Respons direkodkan",
-    successBody: (id: string) =>
-      `Terima kasih, respons anda telah direkodkan. Rujukan #${id}. Sila tanggalkan pelekat notis dari loker anda selepas pendaftaran.`,
-  },
-} as const;
+const lockerRe = /^[0-9]+[A-Z]$/;
 
-function LanguageToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
+const ERR = {
+  lockerFormat: "Locker number must be digits followed by one uppercase letter (e.g. 1411E). / Nombor loker mesti digit diikuti satu huruf besar (cth. 1411E).",
+  badge: "Please enter your employee / badge number. / Sila masukkan nombor pekerja / badge anda.",
+  name: "Please enter your full name. / Sila masukkan nama penuh anda.",
+  stillUsing: "Please answer whether you are still using this locker. / Sila jawab sama ada anda masih menggunakan loker ini.",
+  contact: "Please enter a valid phone number. / Sila masukkan nombor telefon yang sah.",
+  generic: "Couldn't submit right now — please try again shortly. / Gagal menghantar — sila cuba lagi sebentar.",
+  rate: "Too many submissions. Please try again in a few minutes. / Terlalu banyak penghantaran. Sila cuba lagi dalam beberapa minit.",
+};
+
+function BiLabel({ en, bm }: { en: string; bm: string }) {
   return (
-    <div className="inline-flex items-center rounded-full border bg-background p-0.5 text-xs">
-      {(["en", "bm"] as const).map((l) => (
-        <button
-          key={l}
-          type="button"
-          onClick={() => setLang(l)}
-          className={`px-3 h-7 rounded-full font-medium transition-colors ${
-            lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-          }`}
-          aria-pressed={lang === l}
-        >
-          {l === "en" ? "EN" : "BM"}
-        </button>
-      ))}
-    </div>
+    <span className="block">
+      <span className="block text-sm font-medium">{en}</span>
+      <span className="block text-xs text-muted-foreground italic">{bm}</span>
+    </span>
   );
 }
 
-const lockerRe = /^[0-9]+[A-Z]$/;
-
 function LockerIdentityUpdatePage() {
-  const [lang, setLang] = useLang();
-  const t = tr[lang];
-
   const [lockerNumber, setLockerNumber] = useState("");
   const [badge, setBadge] = useState("");
   const [fullName, setFullName] = useState("");
@@ -125,7 +52,6 @@ function LockerIdentityUpdatePage() {
   const [error, setError] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
 
-  // Pre-fill locker from ?locker=1411E
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -142,11 +68,11 @@ function LockerIdentityUpdatePage() {
     setError(null);
 
     const schema = z.object({
-      locker: z.string().regex(lockerRe, t.errors.lockerFormat),
-      badge: z.string().trim().min(1, t.errors.badge).max(60),
-      name: z.string().trim().min(1, t.errors.name).max(120),
-      still: z.boolean({ invalid_type_error: t.errors.stillUsing, required_error: t.errors.stillUsing }),
-      contact: z.string().trim().min(5, t.errors.contact).max(40),
+      locker: z.string().regex(lockerRe, ERR.lockerFormat),
+      badge: z.string().trim().min(1, ERR.badge).max(60),
+      name: z.string().trim().min(1, ERR.name).max(120),
+      still: z.boolean({ invalid_type_error: ERR.stillUsing, required_error: ERR.stillUsing }),
+      contact: z.string().trim().min(5, ERR.contact).max(40),
     });
     const parsed = schema.safeParse({
       locker: lockerNumber.trim().toUpperCase(),
@@ -156,7 +82,7 @@ function LockerIdentityUpdatePage() {
       contact,
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? t.errors.generic);
+      setError(parsed.error.issues[0]?.message ?? ERR.generic);
       return;
     }
 
@@ -175,16 +101,16 @@ function LockerIdentityUpdatePage() {
       });
       if (rpcErr) {
         if ((rpcErr.message ?? "").toLowerCase().includes("rate limit")) {
-          setError(t.errors.rate);
+          setError(ERR.rate);
         } else {
-          setError(t.errors.generic);
+          setError(ERR.generic);
         }
         return;
       }
       const id = (data as { id?: string } | null)?.id ?? "—";
       setSuccessId(id.slice(0, 8));
     } catch {
-      setError(t.errors.generic);
+      setError(ERR.generic);
     } finally {
       setLoading(false);
     }
@@ -197,11 +123,16 @@ function LockerIdentityUpdatePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <CheckCircle2 className="h-5 w-5 text-primary" /> {t.successTitle}
+                <CheckCircle2 className="h-5 w-5 text-primary" /> Response recorded / Respons direkodkan
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-relaxed">{t.successBody(successId)}</p>
+            <CardContent className="space-y-3">
+              <p className="text-sm leading-relaxed">
+                Thank you, your response has been recorded. Reference #{successId}. Please remove the notice sticker from your locker now that you've registered.
+              </p>
+              <p className="text-sm leading-relaxed italic text-muted-foreground">
+                Terima kasih, respons anda telah direkodkan. Rujukan #{successId}. Sila tanggalkan pelekat notis dari loker anda selepas pendaftaran.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -212,48 +143,60 @@ function LockerIdentityUpdatePage() {
   return (
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto w-full max-w-md px-5 pt-6 pb-24 sm:pb-10">
-        <div className="flex justify-end mb-2">
-          <LanguageToggle lang={lang} setLang={setLang} />
-        </div>
-
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t.subtitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight">Locker Identity Update</h1>
+          <p className="text-base font-medium italic text-muted-foreground">Kemas Kini Identiti Loker</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Please fill in your locker information accurately. This information is required for internal records.
+          </p>
+          <p className="text-xs text-muted-foreground italic mt-1">
+            Sila isikan maklumat loker anda dengan tepat. Maklumat ini diperlukan untuk rekod dalaman.
+          </p>
         </div>
 
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <ClipboardCheck className="h-4 w-4" /> {t.title}
+              <ClipboardCheck className="h-4 w-4" /> Locker Identity Update
             </CardTitle>
-            <p className="text-xs text-muted-foreground">{t.required}</p>
+            <p className="text-xs text-muted-foreground">
+              * Indicates required question / Menunjukkan soalan wajib
+            </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="locker" className="text-sm">{t.lockerNumber}</Label>
+                <Label htmlFor="locker">
+                  <BiLabel en="Locker Number *" bm="Nombor Loker *" />
+                </Label>
                 <Input
                   id="locker"
                   value={lockerNumber}
                   onChange={(e) => setLockerNumber(e.target.value.toUpperCase())}
                   onFocus={scrollFocusIntoView}
-                  placeholder={t.lockerPlaceholder}
+                  placeholder="e.g. 1411E"
                   required
                   autoComplete="off"
                   inputMode="text"
                   className="h-12 text-base"
                 />
-                <p className="text-xs text-muted-foreground">{t.lockerHint}</p>
+                <p className="text-xs text-muted-foreground">
+                  Format: digits followed by one uppercase letter (e.g. 1411E)
+                  <br />
+                  <span className="italic">Format: digit diikuti satu huruf besar (cth. 1411E)</span>
+                </p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="badge" className="text-sm">{t.badge}</Label>
+                <Label htmlFor="badge">
+                  <BiLabel en="Employee Number / Badge Number *" bm="Nombor Pekerja / Nombor Badge *" />
+                </Label>
                 <Input
                   id="badge"
                   value={badge}
                   onChange={(e) => setBadge(e.target.value)}
                   onFocus={scrollFocusIntoView}
-                  placeholder={t.badgePlaceholder}
+                  placeholder="e.g. CS1234 / T012625 / 1011165"
                   required
                   autoComplete="off"
                   className="h-12 text-base"
@@ -261,7 +204,9 @@ function LockerIdentityUpdatePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="name" className="text-sm">{t.fullName}</Label>
+                <Label htmlFor="name">
+                  <BiLabel en="Full Name *" bm="Nama Penuh *" />
+                </Label>
                 <Input
                   id="name"
                   value={fullName}
@@ -274,37 +219,46 @@ function LockerIdentityUpdatePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-sm">{t.stillUsing}</Label>
+                <Label>
+                  <BiLabel
+                    en="Are you still using this locker? *"
+                    bm="Adakah anda masih menggunakan loker ini? *"
+                  />
+                </Label>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     type="button"
                     variant={stillUsing === true ? "default" : "outline"}
-                    className="h-12 text-base"
+                    className="h-12 text-base flex-col leading-tight"
                     onClick={() => setStillUsing(true)}
                     aria-pressed={stillUsing === true}
                   >
-                    {t.yes}
+                    <span>Yes</span>
+                    <span className="text-xs opacity-80 italic">Ya</span>
                   </Button>
                   <Button
                     type="button"
                     variant={stillUsing === false ? "default" : "outline"}
-                    className="h-12 text-base"
+                    className="h-12 text-base flex-col leading-tight"
                     onClick={() => setStillUsing(false)}
                     aria-pressed={stillUsing === false}
                   >
-                    {t.no}
+                    <span>No</span>
+                    <span className="text-xs opacity-80 italic">Tidak</span>
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="contact" className="text-sm">{t.contact}</Label>
+                <Label htmlFor="contact">
+                  <BiLabel en="Phone Number *" bm="Nombor Telefon *" />
+                </Label>
                 <Input
                   id="contact"
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
                   onFocus={scrollFocusIntoView}
-                  placeholder={t.contactPlaceholder}
+                  placeholder="e.g. 012-3456789"
                   required
                   autoComplete="tel"
                   inputMode="tel"
@@ -321,14 +275,45 @@ function LockerIdentityUpdatePage() {
 
               <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                {loading ? t.submitting : t.submit}
+                {loading ? "Submitting… / Menghantar…" : "Submit / Hantar"}
               </Button>
 
               <p className="flex items-start gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                {t.privacy}
+                <span>
+                  Your information is used only for locker record updates and is not shared publicly.
+                  <br />
+                  <span className="italic">
+                    Maklumat anda hanya digunakan untuk kemas kini rekod loker dan tidak dikongsi secara umum.
+                  </span>
+                </span>
               </p>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              Locker Diagram <span className="text-muted-foreground italic font-normal">/ Rajah Loker</span>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Use this diagram to identify your locker row (A–F, top to bottom).
+              <br />
+              <span className="italic">
+                Gunakan rajah ini untuk mengenal pasti baris loker anda (A–F, dari atas ke bawah).
+              </span>
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-lg overflow-hidden border bg-white">
+              <img
+                src={lockerDiagram.url}
+                alt="Locker diagram showing rows A through F from top to bottom / Rajah loker menunjukkan baris A hingga F dari atas ke bawah"
+                className="w-full h-auto"
+                loading="lazy"
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
