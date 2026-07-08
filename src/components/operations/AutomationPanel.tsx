@@ -205,11 +205,7 @@ export function AutomationPanel() {
           // Keep locker_occupancy in sync — flip the active row to Terminate.
           try {
             const { syncTerminationToOccupancy } = await import("@/lib/occupancy-sync");
-            await syncTerminationToOccupancy(
-              { ...l, employee_name: null, badge_number: null, status: "empty" } as never,
-              iso,
-              reason.trim() || null,
-            );
+            await syncTerminationToOccupancy(l as never, iso, reason.trim() || null);
           } catch (err) { console.warn(`occupancy sync failed for ${l.locker_number}:`, err); }
         }
         await supabase.from("automation_run_items").insert({
