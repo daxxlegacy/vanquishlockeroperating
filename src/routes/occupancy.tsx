@@ -574,6 +574,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                 <DropdownMenuItem onClick={() => handleClear("shoe")}>Clear Shoe Lockers</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button variant="outline" onClick={() => setSyncOpen(true)} title="Reconcile occupancy with the Lockers page">
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Sync with Lockers page
+            </Button>
           </>
         )}
         <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
