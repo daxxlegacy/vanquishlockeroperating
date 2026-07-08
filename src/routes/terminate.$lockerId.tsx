@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserMinus, ArrowLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { terminateLocker } from "@/lib/termination-actions";
+import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
