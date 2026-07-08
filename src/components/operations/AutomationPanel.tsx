@@ -202,6 +202,11 @@ export function AutomationPanel() {
           const { error: e2 } = await supabase.from("lockers")
             .update({ employee_name: null, badge_number: null, status: "empty" }).eq("id", l.id);
           if (e2) throw e2;
+          // Keep locker_occupancy in sync — flip the active row to Terminate.
+          try {
+            const { syncTerminationToOccupancy } = await import("@/lib/occupancy-sync");
+            await syncTerminationToOccupancy(l as never, iso, reason.trim() || null);
+          } catch (err) { console.warn(`occupancy sync failed for ${l.locker_number}:`, err); }
         }
         await supabase.from("automation_run_items").insert({
           run_id: runRow.id, termination_id: terminationId,

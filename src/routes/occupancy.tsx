@@ -15,7 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX } from "lucide-react";
+import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw } from "lucide-react";
+import { SyncOccupancyDialog } from "@/components/SyncOccupancyDialog";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
@@ -115,6 +116,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [importing, setImporting] = useState(false);
   const [importCat, setImportCat] = useState<OccCategory | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [reasons, setReasons] = useState<Map<string, string>>(new Map());
@@ -572,6 +574,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                 <DropdownMenuItem onClick={() => handleClear("shoe")}>Clear Shoe Lockers</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button variant="outline" onClick={() => setSyncOpen(true)} title="Reconcile occupancy with the Lockers page">
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Sync with Lockers page
+            </Button>
           </>
         )}
         <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
@@ -656,6 +661,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       </Card>
 
       <HistoryDialog lockerNumber={historyFor} onClose={() => setHistoryFor(null)} />
+      <SyncOccupancyDialog open={syncOpen} onClose={() => setSyncOpen(false)} />
     </div>
   );
 }
