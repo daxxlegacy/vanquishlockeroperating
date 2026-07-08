@@ -125,19 +125,28 @@ function SpareKeysPage() {
               {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match
             </p>
           </div>
-          {isAdmin && (
-            <Dialog open={addOpen} onOpenChange={setAddOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="h-4 w-4 mr-1" /> Add Spare Key Locker</Button>
-              </DialogTrigger>
-              <AddSpareKeyLockerDialog
-                existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
-                existingLocations={locations}
-                onClose={() => setAddOpen(false)}
-                onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
-              />
-            </Dialog>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={() => exportSpareKeysToExcel(filtered)}
+              disabled={!lockers || filtered.length === 0}
+            >
+              <Download className="h-4 w-4 mr-1" /> Export to Excel
+            </Button>
+            {isAdmin && (
+              <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                <DialogTrigger asChild>
+                  <Button><Plus className="h-4 w-4 mr-1" /> Add Spare Key Locker</Button>
+                </DialogTrigger>
+                <AddSpareKeyLockerDialog
+                  existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
+                  existingLocations={locations}
+                  onClose={() => setAddOpen(false)}
+                  onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
+                />
+              </Dialog>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
