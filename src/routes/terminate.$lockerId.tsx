@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserMinus, ArrowLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { terminateLocker } from "@/lib/termination-actions";
+import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -45,7 +46,7 @@ function TerminatePage() {
   })();
   const [date, setDate] = useState(initialDateStr);
   const [reason, setReason] = useState<"AWOL" | "RESIGN" | "RTV" | "">("");
-  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "find_spare_key" | "repair" | "on_hold">("empty");
+  const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>(() => defaultPostTerminationStatus(null));
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -171,14 +172,12 @@ function TerminatePage() {
               </div>
               <div>
                 <Label htmlFor="ts">Locker status after termination *</Label>
-                <Select value={newStatus} onValueChange={(v) => setNewStatus(v as typeof newStatus)}>
+                <Select value={newStatus} onValueChange={(v) => setNewStatus(v as Database["public"]["Enums"]["locker_status"])}>
                   <SelectTrigger id="ts"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="empty">Empty (ready for next user)</SelectItem>
-                    <SelectItem value="cleaning">Cleaning</SelectItem>
-                    <SelectItem value="find_spare_key">Find spare key</SelectItem>
-                    <SelectItem value="repair">Damage / Repair</SelectItem>
-                    <SelectItem value="on_hold">On hold</SelectItem>
+                    {LOCKER_STATUSES.filter((s) => s !== "active").map((s) => (
+                      <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">Choose what happens to the locker after the user is released.</p>
