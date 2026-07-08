@@ -46,7 +46,7 @@ function TerminatePage() {
   })();
   const [date, setDate] = useState(initialDateStr);
   const [reason, setReason] = useState<"AWOL" | "RESIGN" | "RTV" | "">("");
-  const [newStatus, setNewStatus] = useState<"empty" | "cleaning" | "find_spare_key" | "repair" | "on_hold">("empty");
+  const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>(() => defaultPostTerminationStatus(null));
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
