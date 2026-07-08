@@ -226,23 +226,27 @@ export function BulkStatusUpdateTab() {
       source: string; changed_by: string; changed_by_email: string | null;
     }[] = [];
     const BATCH = 40;
+    const { syncStatusChangeToOccupancy, syncActivationToOccupancy } = await import("@/lib/occupancy-sync");
     try {
       for (let i = 0; i < toApply.length; i += BATCH) {
         const slice = toApply.slice(i, i + BATCH);
         await Promise.all(slice.map(async (r) => {
           const newStatus = r.new_status!;
-          const { error, count } = await supabase
+          const { data: updatedRows, error } = await supabase
             .from("lockers")
-            .update({ status: newStatus, updated_at: new Date().toISOString() }, { count: "exact" })
-            .eq("locker_number", r.locker_number);
-          if (error) { errors++; return; }
-          if (count === 0) { skipped++; return; }
-          updated++;
-          // Mirror to locker_occupancy.status for the same locker_number (best-effort).
-          await supabase
-            .from("locker_occupancy")
             .update({ status: newStatus, updated_at: new Date().toISOString() })
-            .eq("locker_number", r.locker_number);
+            .eq("locker_number", r.locker_number)
+            .select("*");
+          if (error) { errors++; return; }
+          if (!updatedRows || updatedRows.length === 0) { skipped++; return; }
+          updated++;
+          const updatedLocker = updatedRows[0];
+          // Keep locker_occupancy in sync with the new status. Route through the
+          // canonical sync helpers so future drift stays impossible.
+          try {
+            if (newStatus === "active") await syncActivationToOccupancy(updatedLocker);
+            else await syncStatusChangeToOccupancy(updatedLocker);
+          } catch (e) { console.warn(`occupancy sync failed for ${r.locker_number}:`, e); }
           auditRows.push({
             locker_id: r.locker_id,
             locker_number: r.locker_number,
