@@ -172,14 +172,12 @@ function TerminatePage() {
               </div>
               <div>
                 <Label htmlFor="ts">Locker status after termination *</Label>
-                <Select value={newStatus} onValueChange={(v) => setNewStatus(v as typeof newStatus)}>
+                <Select value={newStatus} onValueChange={(v) => setNewStatus(v as Database["public"]["Enums"]["locker_status"])}>
                   <SelectTrigger id="ts"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="empty">Empty (ready for next user)</SelectItem>
-                    <SelectItem value="cleaning">Cleaning</SelectItem>
-                    <SelectItem value="find_spare_key">Find spare key</SelectItem>
-                    <SelectItem value="repair">Damage / Repair</SelectItem>
-                    <SelectItem value="on_hold">On hold</SelectItem>
+                    {LOCKER_STATUSES.filter((s) => s !== "active").map((s) => (
+                      <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">Choose what happens to the locker after the user is released.</p>
