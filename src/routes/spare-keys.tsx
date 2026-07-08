@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Key, Plus } from "lucide-react";
+import { Search, Key, Plus, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers } from "@/lib/locker-utils";
@@ -124,19 +125,28 @@ function SpareKeysPage() {
               {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match
             </p>
           </div>
-          {isAdmin && (
-            <Dialog open={addOpen} onOpenChange={setAddOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="h-4 w-4 mr-1" /> Add Spare Key Locker</Button>
-              </DialogTrigger>
-              <AddSpareKeyLockerDialog
-                existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
-                existingLocations={locations}
-                onClose={() => setAddOpen(false)}
-                onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
-              />
-            </Dialog>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={() => exportSpareKeysToExcel(filtered)}
+              disabled={!lockers || filtered.length === 0}
+            >
+              <Download className="h-4 w-4 mr-1" /> Export to Excel
+            </Button>
+            {isAdmin && (
+              <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                <DialogTrigger asChild>
+                  <Button><Plus className="h-4 w-4 mr-1" /> Add Spare Key Locker</Button>
+                </DialogTrigger>
+                <AddSpareKeyLockerDialog
+                  existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
+                  existingLocations={locations}
+                  onClose={() => setAddOpen(false)}
+                  onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
+                />
+              </Dialog>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
@@ -244,6 +254,22 @@ function SpareKeysPage() {
       <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} mode="spare" />
     </div>
   );
+}
+
+function exportSpareKeysToExcel(rows: Locker[]) {
+  const data = rows.map((l) => ({
+    "Locker #": l.locker_number,
+    Location: l.location,
+    Row: l.row_label && l.row_label !== l.location ? l.row_label : "",
+    "Spare Key Status": (l.spare_key_status ?? "unknown").replace(/_/g, " "),
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 22 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Spare Keys");
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `spare-keys-${stamp}.xlsx`);
+  toast.success(`Exported ${rows.length.toLocaleString()} lockers`);
 }
 
 function Th({ children }: { children: React.ReactNode }) {
