@@ -270,6 +270,7 @@ export function BulkStatusUpdateTab() {
     } finally {
       resume();
       invalidateLockersCache();
+      invalidateOccupancyCache();
     }
     setResult({ updated, skipped, errors });
     setApplying(false);
