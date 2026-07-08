@@ -256,8 +256,6 @@ function SpareKeysPage() {
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-
 function exportSpareKeysToExcel(rows: Locker[]) {
   const data = rows.map((l) => ({
     "Locker #": l.locker_number,
@@ -274,7 +272,7 @@ function exportSpareKeysToExcel(rows: Locker[]) {
   toast.success(`Exported ${rows.length.toLocaleString()} lockers`);
 }
 
-function ThDup({ children }: { children: React.ReactNode }) {
+function Th({ children }: { children: React.ReactNode }) {
   return <div className="px-3 py-2.5">{children}</div>;
 }
 
