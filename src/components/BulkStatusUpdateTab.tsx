@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
+import { invalidateOccupancyCache } from "@/lib/occupancy-cache";
 import { LOCKER_STATUSES, STATUS_LABEL, type LockerStatus } from "@/lib/locker-status";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { Card } from "@/components/ui/card";
