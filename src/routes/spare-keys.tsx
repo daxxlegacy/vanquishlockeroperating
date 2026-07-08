@@ -257,6 +257,24 @@ function SpareKeysPage() {
 }
 
 function Th({ children }: { children: React.ReactNode }) {
+
+function exportSpareKeysToExcel(rows: Locker[]) {
+  const data = rows.map((l) => ({
+    "Locker #": l.locker_number,
+    Location: l.location,
+    Row: l.row_label && l.row_label !== l.location ? l.row_label : "",
+    "Spare Key Status": (l.spare_key_status ?? "unknown").replace(/_/g, " "),
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 22 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Spare Keys");
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `spare-keys-${stamp}.xlsx`);
+  toast.success(`Exported ${rows.length.toLocaleString()} lockers`);
+}
+
+function ThDup({ children }: { children: React.ReactNode }) {
   return <div className="px-3 py-2.5">{children}</div>;
 }
 
