@@ -1,12 +1,7 @@
 // One-time reconciliation tool: fixes drift between locker_occupancy and lockers.
-// Preview → Apply pattern. Reuses syncTerminationToOccupancy / syncActivationToOccupancy
-// so future behavior stays consistent with the rest of the app.
+// Preview → Apply pattern. Operates across ALL categories (main, staff, shoe).
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  syncTerminationToOccupancy,
-  syncActivationToOccupancy,
-} from "@/lib/occupancy-sync";
 import { invalidateOccupancyCache } from "@/lib/occupancy-cache";
 import { invalidateLockersCache } from "@/lib/lockers-cache";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -26,6 +21,7 @@ type Termination = Database["public"]["Tables"]["terminations"]["Row"];
 
 type OccActive = {
   id: string;
+  category: string;
   locker_number: string;
   employee_name: string | null;
   badge_number: string | null;
@@ -35,18 +31,22 @@ type OccActive = {
 type Plan =
   | {
       kind: "terminate";
+      occupancy_id: string;
+      category: string;
       locker_number: string;
       occ_employee: string | null;
       locker_employee: string | null;
       termination_date: string;
       reason: string;
       source: "terminations" | "fallback";
-      locker: Locker; // hydrated lockers row (may have cleared fields already)
+      locker: Locker;
     }
   | {
       kind: "activate";
+      occupancy_id: null;
+      category: string;
       locker_number: string;
-      occ_employee: string | null; // always null here
+      occ_employee: null;
       locker_employee: string | null;
       termination_date: null;
       reason: null;
@@ -74,14 +74,13 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
   async function scan() {
     setScanning(true);
     try {
-      // 1. Occupancy active rows (main category)
+      // 1. Occupancy active rows across ALL categories (main, staff, shoe)
       const occ: OccActive[] = [];
       let from = 0;
       while (true) {
         const { data, error } = await supabase
           .from("locker_occupancy")
-          .select("id, locker_number, employee_name, badge_number, status")
-          .eq("category", "main")
+          .select("id, category, locker_number, employee_name, badge_number, status")
           .ilike("status", "active")
           .range(from, from + 999);
         if (error) throw error;
@@ -125,7 +124,6 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
         if (error) throw error;
         terms.push(...((data ?? []) as Termination[]));
       }
-      // Group terminations by locker_number (most-recent-first already).
       const termsByNum = new Map<string, Termination[]>();
       for (const t of terms) {
         const arr = termsByNum.get(t.locker_number) ?? [];
@@ -134,21 +132,21 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
       }
 
       const nextPlans: Plan[] = [];
-      const occByNum = new Map<string, OccActive>();
-      for (const o of occ) occByNum.set(o.locker_number, o);
+      // Active occupancy rows keyed by (locker_number, category)
+      const occByKey = new Map<string, OccActive>();
+      for (const o of occ) occByKey.set(`${o.locker_number}::${o.category}`, o);
 
       // Case A: occupancy active rows that don't match lockers → terminate
+      // (preserve the row's category on the write)
       for (const o of occ) {
         const l = lockerByNum.get(o.locker_number);
-        if (!l) continue; // locker missing entirely — leave alone (deletion flow handles it)
+        if (!l) continue; // locker missing entirely — handled by deletion flow
         const lockerIsActive = norm(l.status) === "active";
         const nameMatches = norm(l.employee_name) === norm(o.employee_name);
         const badgeMatches = norm(l.badge_number) === norm(o.badge_number);
         const lockerHasEmployee = !!(l.employee_name && l.employee_name.trim());
-        // Mismatch if: locker cleared, or different employee/badge, or status not active
         if (lockerHasEmployee && nameMatches && badgeMatches && lockerIsActive) continue;
 
-        // Find matching termination
         const candidates = termsByNum.get(o.locker_number) ?? [];
         const match = candidates.find((t) =>
           (o.employee_name && norm(t.prior_employee_name) === norm(o.employee_name)) ||
@@ -164,11 +162,13 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
           source = "terminations";
         } else {
           termDate = (l.updated_at ?? new Date().toISOString()).slice(0, 10);
-          reason = "Synced from Lockers page — original termination reason not recorded";
+          reason = "Synced from Lockers page — original reason not recorded";
           source = "fallback";
         }
         nextPlans.push({
           kind: "terminate",
+          occupancy_id: o.id,
+          category: o.category,
           locker_number: o.locker_number,
           occ_employee: o.employee_name,
           locker_employee: l.employee_name,
@@ -179,25 +179,49 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
         });
       }
 
-      // Case B (reverse): lockers active + employee set, no active occupancy row
+      // Case B: lockers active + employee set, and NO active occupancy row
+      // for that locker_number in ANY category → insert new Active.
+      // Infer category from any existing occupancy row (any status) for
+      // this locker_number, else default to 'main'.
+      const occCategoriesByNum = new Map<string, string>();
+      {
+        // fetch any-status category hint in bulk for lockers that need it
+        const needed: string[] = [];
+        for (const l of lockers) {
+          if (norm(l.status) !== "active") continue;
+          if (!l.employee_name && !l.badge_number) continue;
+          // any active occupancy for this locker (any category)?
+          const hasActiveAny = occ.some((o) => o.locker_number === l.locker_number);
+          if (!hasActiveAny) needed.push(l.locker_number);
+        }
+        for (let i = 0; i < needed.length; i += CHUNK) {
+          const slice = needed.slice(i, i + CHUNK);
+          if (slice.length === 0) continue;
+          const { data } = await supabase
+            .from("locker_occupancy")
+            .select("locker_number, category")
+            .in("locker_number", slice);
+          for (const r of (data ?? []) as { locker_number: string; category: string }[]) {
+            if (!occCategoriesByNum.has(r.locker_number)) {
+              occCategoriesByNum.set(r.locker_number, r.category);
+            }
+          }
+        }
+      }
+
       for (const l of lockers) {
         if (norm(l.status) !== "active") continue;
         if (!l.employee_name && !l.badge_number) continue;
-        const o = occByNum.get(l.locker_number);
-        if (o) {
-          const nameMatches = norm(l.employee_name) === norm(o.employee_name);
-          const badgeMatches = norm(l.badge_number) === norm(o.badge_number);
-          if (nameMatches && badgeMatches) continue;
-          // Occupancy has a different active person — already covered by Case A above,
-          // and after termination the activation gap will remain. Also add activate plan.
-        }
-        // Skip if we've already got a terminate plan for this locker AND occ matches locker
-        // (i.e., only pure "missing active" cases). If occ exists with different person,
-        // we still need the activate step after terminating them — include it.
+        // Skip if any active occupancy exists (Case A already handled mismatch)
+        const hasActiveAny = occ.some((o) => o.locker_number === l.locker_number);
+        if (hasActiveAny) continue;
+        const category = occCategoriesByNum.get(l.locker_number) ?? "main";
         nextPlans.push({
           kind: "activate",
+          occupancy_id: null,
+          category,
           locker_number: l.locker_number,
-          occ_employee: o?.employee_name ?? null,
+          occ_employee: null,
           locker_employee: l.employee_name,
           termination_date: null,
           reason: null,
@@ -206,7 +230,10 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
         });
       }
 
-      nextPlans.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+      nextPlans.sort((a, b) => {
+        const c = compareLockerNumbers(a.locker_number, b.locker_number);
+        return c !== 0 ? c : a.category.localeCompare(b.category);
+      });
       setPlans(nextPlans);
       setExcluded(new Set());
       toast.success(`Scan complete: ${nextPlans.length} discrepanc${nextPlans.length === 1 ? "y" : "ies"} found.`);
@@ -223,7 +250,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
     return { t, a };
   }, [plans]);
 
-  const key = (p: Plan) => `${p.kind}:${p.locker_number}`;
+  const key = (p: Plan) => `${p.kind}:${p.locker_number}:${p.category}`;
   const toggle = (p: Plan) => {
     setExcluded((prev) => {
       const next = new Set(prev);
@@ -254,25 +281,59 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
       const p = toApply[i];
       try {
         if (p.kind === "terminate") {
-          await syncTerminationToOccupancy(p.locker, p.termination_date, p.reason);
+          // Terminate the SPECIFIC occupancy row by id (preserves category).
+          // Also remove any prior terminate rows for the same (locker, category).
+          await supabase
+            .from("locker_occupancy")
+            .delete()
+            .eq("category", p.category)
+            .eq("locker_number", p.locker_number)
+            .or("status.ilike.terminate,status.ilike.terminated");
+
+          const { error } = await supabase
+            .from("locker_occupancy")
+            .update({
+              status: "Terminate",
+              termination_date: p.termination_date,
+              remarks: p.reason,
+            })
+            .eq("id", p.occupancy_id);
+          if (error) throw error;
+
           terminated++;
           auditRows.push({
             locker_id: p.locker.id,
             locker_number: p.locker_number,
-            previous_status: "active (occupancy)",
-            new_status: "terminate (occupancy)",
+            previous_status: `active (occupancy/${p.category})`,
+            new_status: `terminate (occupancy/${p.category})`,
             source: "sync_occupancy_with_lockers",
             changed_by: userId,
             changed_by_email: userEmail,
           });
         } else {
-          await syncActivationToOccupancy(p.locker);
+          // Insert a fresh Active row under the inferred category.
+          const { error } = await supabase.from("locker_occupancy").insert({
+            category: p.category,
+            locker_number: p.locker.locker_number,
+            locker_row: p.locker.row_label,
+            locker_location_by_row: p.locker.location,
+            key_lock_type: p.locker.key_lock,
+            badge_number: p.locker.badge_number,
+            employee_name: p.locker.employee_name,
+            national_id: p.locker.national_id,
+            work_location: p.locker.work_location,
+            status: "Active",
+            batch_intake_date: p.locker.batch_intake ?? null,
+            termination_date: null,
+            source_filename: "sync-with-lockers",
+          });
+          if (error) throw error;
           activated++;
           auditRows.push({
             locker_id: p.locker.id,
             locker_number: p.locker_number,
-            previous_status: "(missing occupancy)",
-            new_status: "active (occupancy)",
+            previous_status: `(missing occupancy/${p.category})`,
+            new_status: `active (occupancy/${p.category})`,
             source: "sync_occupancy_with_lockers",
             changed_by: userId,
             changed_by_email: userEmail,
@@ -280,7 +341,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
         }
       } catch (e) {
         errors++;
-        console.warn(`Sync failed for ${p.locker_number}:`, e);
+        console.warn(`Sync failed for ${p.locker_number} (${p.category}):`, e);
       }
       setProgress({ done: i + 1, total: toApply.length });
     }
@@ -300,15 +361,15 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && !applying && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-primary" />
             Sync Occupancy with Lockers page
           </DialogTitle>
           <DialogDescription>
-            One-time repair: finds active occupancy records that no longer match the Lockers page and
-            missing active records for occupied lockers.
+            Scans every locker_occupancy category (Main, Staff, Shoe) against the Lockers page and
+            fixes drifted or missing records.
           </DialogDescription>
         </DialogHeader>
 
@@ -330,7 +391,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
           </div>
         ) : scanning ? (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Scanning occupancy vs lockers…</p>
+            <p className="text-sm text-muted-foreground">Scanning occupancy vs lockers across all categories…</p>
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8" />)}
           </div>
         ) : plans.length === 0 ? (
@@ -352,6 +413,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
                   <tr className="text-left">
                     <th className="px-2 py-1.5 w-8"></th>
                     <th className="px-2 py-1.5">Locker #</th>
+                    <th className="px-2 py-1.5">Category</th>
                     <th className="px-2 py-1.5">Current Occupancy</th>
                     <th className="px-2 py-1.5">Employee (Occupancy)</th>
                     <th className="px-2 py-1.5">Employee (Lockers)</th>
@@ -369,10 +431,11 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
                           <Checkbox
                             checked={checked}
                             onCheckedChange={() => toggle(p)}
-                            aria-label={`Include ${p.locker_number}`}
+                            aria-label={`Include ${p.locker_number} (${p.category})`}
                           />
                         </td>
                         <td className="px-2 py-1 font-mono font-medium">{p.locker_number}</td>
+                        <td className="px-2 py-1 text-xs uppercase text-muted-foreground">{p.category}</td>
                         <td className="px-2 py-1">
                           <StatusBadge status={p.kind === "activate" ? "(missing)" : "active"} />
                         </td>
