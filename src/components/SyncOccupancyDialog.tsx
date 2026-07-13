@@ -77,7 +77,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [result, setResult] = useState<{ terminated: number; activated: number; errors: number } | null>(null);
+  const [result, setResult] = useState<{ terminated: number; activated: number; duplicates_removed: number; conflicts: { locker_number: string; message: string }[]; errors: number } | null>(null);
 
   const reset = () => { setPlans([]); setExcluded(new Set()); setProgress(null); setResult(null); };
 
