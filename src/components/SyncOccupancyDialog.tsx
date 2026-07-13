@@ -52,6 +52,19 @@ type Plan =
       reason: null;
       source: null;
       locker: Locker;
+    }
+  | {
+      kind: "duplicate_cleanup";
+      occupancy_id: string; // the row to DELETE
+      keep_id: string;
+      category: string; // category of the row to delete (for display)
+      locker_number: string;
+      occ_employee: string | null;
+      locker_employee: string | null;
+      termination_date: null;
+      reason: string; // explanation shown in preview
+      source: null;
+      locker: Locker | null;
     };
 
 function norm(v: string | null | undefined): string {
