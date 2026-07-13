@@ -202,7 +202,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
 
       // Case A: occupancy active rows that don't match lockers → terminate
       // (preserve the row's category on the write)
-      for (const o of occ) {
+      for (const o of occDedup) {
         const l = lockerByNum.get(o.locker_number);
         if (!l) continue; // locker missing entirely — handled by deletion flow
         const lockerIsActive = norm(l.status) === "active";
