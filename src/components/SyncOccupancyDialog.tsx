@@ -578,9 +578,13 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
                             <Badge variant="outline" className="border-destructive text-destructive">
                               Mark Terminated
                             </Badge>
-                          ) : (
+                          ) : p.kind === "activate" ? (
                             <Badge variant="outline" className="border-success text-success">
                               Add Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-warning text-warning">
+                              Remove Duplicate
                             </Badge>
                           )}
                         </td>
@@ -590,6 +594,8 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
                               {p.termination_date}
                               {p.source === "fallback" ? " (fallback)" : ""} · {p.reason}
                             </span>
+                          ) : p.kind === "duplicate_cleanup" ? (
+                            <span title={p.reason}>{p.reason}</span>
                           ) : "—"}
                         </td>
                       </tr>
