@@ -309,9 +309,13 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
   }
 
   const counts = useMemo(() => {
-    let t = 0, a = 0;
-    for (const p of plans) { if (p.kind === "terminate") t++; else a++; }
-    return { t, a };
+    let t = 0, a = 0, d = 0;
+    for (const p of plans) {
+      if (p.kind === "terminate") t++;
+      else if (p.kind === "activate") a++;
+      else d++;
+    }
+    return { t, a, d };
   }, [plans]);
 
   const key = (p: Plan) => `${p.kind}:${p.locker_number}:${p.category}`;
