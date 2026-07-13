@@ -338,7 +338,8 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
 
     setApplying(true);
     setProgress({ done: 0, total: toApply.length });
-    let terminated = 0, activated = 0, errors = 0;
+    let terminated = 0, activated = 0, duplicates_removed = 0, errors = 0;
+    const conflicts: { locker_number: string; message: string }[] = [];
     const auditRows: {
       locker_id: string | null; locker_number: string;
       previous_status: string | null; new_status: string;
@@ -348,9 +349,20 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
     for (let i = 0; i < toApply.length; i++) {
       const p = toApply[i];
       try {
-        if (p.kind === "terminate") {
-          // Terminate the SPECIFIC occupancy row by id (preserves category).
-          // Also remove any prior terminate rows for the same (locker, category).
+        if (p.kind === "duplicate_cleanup") {
+          const { error } = await supabase.from("locker_occupancy").delete().eq("id", p.occupancy_id);
+          if (error) throw error;
+          duplicates_removed++;
+          auditRows.push({
+            locker_id: p.locker?.id ?? null,
+            locker_number: p.locker_number,
+            previous_status: `active (occupancy/${p.category}) [duplicate]`,
+            new_status: `deleted (kept id=${p.keep_id})`,
+            source: "sync_occupancy_duplicate_cleanup",
+            changed_by: userId,
+            changed_by_email: userEmail,
+          });
+        } else if (p.kind === "terminate") {
           await supabase
             .from("locker_occupancy")
             .delete()
@@ -379,8 +391,8 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
             changed_by_email: userEmail,
           });
         } else {
-          // Insert a fresh Active row under the inferred category.
-          const { error } = await supabase.from("locker_occupancy").insert({
+          // activate — conflict-safe insert
+          const insertPayload = {
             category: p.category,
             locker_number: p.locker.locker_number,
             locker_row: p.locker.row_label,
@@ -394,18 +406,50 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
             batch_intake_date: p.locker.batch_intake ?? null,
             termination_date: null,
             source_filename: "sync-with-lockers",
-          });
-          if (error) throw error;
-          activated++;
-          auditRows.push({
-            locker_id: p.locker.id,
-            locker_number: p.locker_number,
-            previous_status: `(missing occupancy/${p.category})`,
-            new_status: `active (occupancy/${p.category})`,
-            source: "sync_occupancy_with_lockers",
-            changed_by: userId,
-            changed_by_email: userEmail,
-          });
+          };
+          const { error } = await supabase.from("locker_occupancy").insert(insertPayload);
+          if (error) {
+            if ((error as { code?: string }).code === "23505") {
+              // Another active row exists for this locker_number in some category.
+              const { data: existing } = await supabase
+                .from("locker_occupancy")
+                .select("id, category, employee_name, badge_number")
+                .eq("locker_number", p.locker_number)
+                .ilike("status", "active")
+                .limit(1);
+              const ex = existing?.[0];
+              const norm = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+              if (
+                ex &&
+                norm(ex.employee_name) === norm(p.locker.employee_name) &&
+                norm(ex.badge_number) === norm(p.locker.badge_number)
+              ) {
+                // Same person — just update the existing row to the correct details.
+                await supabase.from("locker_occupancy").update(insertPayload).eq("id", ex.id);
+                activated++;
+              } else {
+                conflicts.push({
+                  locker_number: p.locker_number,
+                  message: ex
+                    ? `Active occupant already exists in '${ex.category}' (${ex.employee_name ?? "—"} / ${ex.badge_number ?? "—"}) — manual review needed.`
+                    : "Unique-constraint violation — manual review needed.",
+                });
+              }
+            } else {
+              throw error;
+            }
+          } else {
+            activated++;
+            auditRows.push({
+              locker_id: p.locker.id,
+              locker_number: p.locker_number,
+              previous_status: `(missing occupancy/${p.category})`,
+              new_status: `active (occupancy/${p.category})`,
+              source: "sync_occupancy_with_lockers",
+              changed_by: userId,
+              changed_by_email: userEmail,
+            });
+          }
         }
       } catch (e) {
         errors++;
@@ -422,9 +466,11 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
 
     invalidateOccupancyCache();
     invalidateLockersCache();
-    setResult({ terminated, activated, errors });
+    setResult({ terminated, activated, duplicates_removed, conflicts, errors });
     setApplying(false);
-    toast.success(`Sync applied: ${terminated} terminated, ${activated} activated, ${errors} error${errors === 1 ? "" : "s"}.`);
+    toast.success(
+      `Sync applied: ${terminated} terminated · ${activated} activated · ${duplicates_removed} duplicates removed · ${conflicts.length} conflicts · ${errors} error${errors === 1 ? "" : "s"}.`,
+    );
   }
 
   return (
