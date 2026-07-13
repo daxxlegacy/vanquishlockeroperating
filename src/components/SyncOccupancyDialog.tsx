@@ -530,10 +530,9 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
         ) : (
           <>
             <div className="text-sm">
-              <span className="text-destructive font-semibold">{counts.t}</span> occupancy record
-              {counts.t === 1 ? "" : "s"} will be marked <b>Terminated</b> ·{" "}
-              <span className="text-success font-semibold">{counts.a}</span> missing <b>Active</b>{" "}
-              record{counts.a === 1 ? "" : "s"} will be added.
+              <span className="text-destructive font-semibold">{counts.t}</span> to <b>Terminate</b> ·{" "}
+              <span className="text-success font-semibold">{counts.a}</span> to <b>Activate</b> ·{" "}
+              <span className="text-warning font-semibold">{counts.d}</span> duplicate row{counts.d === 1 ? "" : "s"} to <b>Remove</b>.
             </div>
 
             <div className="border rounded-md overflow-x-auto max-h-[400px] overflow-y-auto">
