@@ -471,15 +471,64 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
         .filter((r) => r.locker_number);
 
       if (records.length === 0) { toast.error("No rows found in the sheet"); return; }
+
+      // De-duplicate Active rows within the uploaded file itself: if the same
+      // locker_number appears more than once as Active, keep only the LAST
+      // occurrence (later rows typically reflect the latest state).
+      const isActiveStatus = (s: string | null) => !!s && /active/i.test(s);
+      const activeSeen = new Map<string, number>(); // locker_number -> last index
+      records.forEach((r, i) => {
+        if (isActiveStatus(r.status)) activeSeen.set(r.locker_number, i);
+      });
+      const dedupedRecords: typeof records = [];
+      let inFileDupSkipped = 0;
+      records.forEach((r, i) => {
+        if (isActiveStatus(r.status) && activeSeen.get(r.locker_number) !== i) {
+          inFileDupSkipped++;
+          return;
+        }
+        dedupedRecords.push(r);
+      });
+
       const { error: delErr } = await supabase.from("locker_occupancy").delete().eq("category", category);
       if (delErr) { toast.error(`Replace failed: ${delErr.message}`); return; }
+
       const CHUNK = 500;
-      for (let i = 0; i < records.length; i += CHUNK) {
-        const slice = records.slice(i, i + CHUNK);
+      const crossCategoryConflicts: string[] = [];
+      for (let i = 0; i < dedupedRecords.length; i += CHUNK) {
+        const slice = dedupedRecords.slice(i, i + CHUNK);
         const { error } = await supabase.from("locker_occupancy").insert(slice);
-        if (error) { toast.error(`Insert failed: ${error.message}`); return; }
+        if (error) {
+          if ((error as { code?: string }).code === "23505") {
+            // A locker in this chunk conflicts with an Active row in another
+            // category. Fall back to per-row inserts to isolate the offenders.
+            for (const row of slice) {
+              const { error: rowErr } = await supabase.from("locker_occupancy").insert(row);
+              if (rowErr) {
+                if ((rowErr as { code?: string }).code === "23505") {
+                  crossCategoryConflicts.push(row.locker_number);
+                } else {
+                  toast.error(`Insert failed for ${row.locker_number}: ${rowErr.message}`);
+                  return;
+                }
+              }
+            }
+          } else {
+            toast.error(`Insert failed: ${error.message}`);
+            return;
+          }
+        }
       }
-      toast.success(`Imported ${records.length.toLocaleString()} rows for ${CATEGORY_LABEL[category]}`);
+
+      const inserted = dedupedRecords.length - crossCategoryConflicts.length;
+      const parts: string[] = [`Imported ${inserted.toLocaleString()} rows for ${CATEGORY_LABEL[category]}`];
+      if (inFileDupSkipped > 0) parts.push(`${inFileDupSkipped} duplicate Active row${inFileDupSkipped === 1 ? "" : "s"} in the file were skipped`);
+      if (crossCategoryConflicts.length > 0) {
+        parts.push(`${crossCategoryConflicts.length} locker${crossCategoryConflicts.length === 1 ? "" : "s"} skipped — already Active in another category: ${crossCategoryConflicts.slice(0, 10).join(", ")}${crossCategoryConflicts.length > 10 ? "…" : ""}`);
+        toast.warning(parts.join(" · "), { duration: 12000 });
+      } else {
+        toast.success(parts.join(" · "));
+      }
       invalidateOccupancyCache(category);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import failed");
