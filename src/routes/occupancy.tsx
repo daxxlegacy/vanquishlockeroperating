@@ -50,7 +50,6 @@ const ROW_HEIGHT = 44;
 const VIEWPORT_HEIGHT = 640;
 const COLS = [
   { key: "locker", w: 100 },
-  { key: "cat", w: 110 },
   { key: "status", w: 110 },
   { key: "badge", w: 120 },
   { key: "emp", w: 180 },
@@ -353,7 +352,6 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     const nidMap = canRevealNid ? await fetchFullNationalIds("locker_occupancy", realIds) : new Map<string, string>();
     return filtered.map((r) => ({
       "Locker Number": r.locker_number,
-      "Category": r.category,
       "Status": r.status ?? "",
       "Badge Number": r.badge_number ?? "",
       "Employee Name": r.employee_name ?? "",
@@ -610,7 +608,6 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
                   <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker" values={columnValues.locker} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
-                  <Th><SortHeader label="Category" col="cat" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Category" values={columnValues.cat} selected={colFilters.cat ?? new Set()} onChange={setColFilter("cat")} /></Th>
                   <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={columnValues.status} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
                   <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={columnValues.badge} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
                   <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={columnValues.emp} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
@@ -707,7 +704,7 @@ const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHist
       <div className="px-3 truncate font-medium font-mono">
         {isFirst ? lockerNumber : <span className="text-muted-foreground/60 text-xs pl-3">↳</span>}
       </div>
-      <div className="px-3 truncate text-xs uppercase text-muted-foreground">{row.category}</div>
+      
       <div className="px-3"><StatusBadge status={row.status} /></div>
       <div className="px-3 truncate font-mono text-xs">{row.badge_number ?? "—"}</div>
       <div className="px-3 truncate">{row.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</div>
@@ -741,7 +738,7 @@ function LockerGroup({ lockerNumber, group, reason, onViewHistory }: { lockerNum
             className={`border-t ${isFirst ? "" : "bg-muted/20"} hover:bg-muted/40`}
           >
             <td className="px-3 py-2 font-medium font-mono">{isFirst ? lockerNumber : <span className="text-muted-foreground/60 text-xs pl-3">↳</span>}</td>
-            <td className="px-3 py-2 text-xs uppercase text-muted-foreground">{r.category}</td>
+            
             <td className="px-3 py-2"><StatusBadge status={r.status} /></td>
             <td className="px-3 py-2 font-mono text-xs">{r.badge_number ?? "—"}</td>
             <td className="px-3 py-2">{r.employee_name ?? <span className="text-muted-foreground italic">vacant</span>}</td>
