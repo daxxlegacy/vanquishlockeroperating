@@ -26,6 +26,9 @@ type OccActive = {
   employee_name: string | null;
   badge_number: string | null;
   status: string | null;
+  updated_at: string | null;
+  termination_date: string | null;
+  remarks: string | null;
 };
 
 type Plan =
@@ -52,6 +55,19 @@ type Plan =
       reason: null;
       source: null;
       locker: Locker;
+    }
+  | {
+      kind: "duplicate_cleanup";
+      occupancy_id: string; // the row to DELETE
+      keep_id: string;
+      category: string; // category of the row to delete (for display)
+      locker_number: string;
+      occ_employee: string | null;
+      locker_employee: string | null;
+      termination_date: null;
+      reason: string; // explanation shown in preview
+      source: null;
+      locker: Locker | null;
     };
 
 function norm(v: string | null | undefined): string {
@@ -64,7 +80,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [result, setResult] = useState<{ terminated: number; activated: number; errors: number } | null>(null);
+  const [result, setResult] = useState<{ terminated: number; activated: number; duplicates_removed: number; conflicts: { locker_number: string; message: string }[]; errors: number } | null>(null);
 
   const reset = () => { setPlans([]); setExcluded(new Set()); setProgress(null); setResult(null); };
 
@@ -80,7 +96,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
       while (true) {
         const { data, error } = await supabase
           .from("locker_occupancy")
-          .select("id, category, locker_number, employee_name, badge_number, status")
+          .select("id, category, locker_number, employee_name, badge_number, status, updated_at, termination_date, remarks")
           .ilike("status", "active")
           .range(from, from + 999);
         if (error) throw error;
@@ -132,13 +148,61 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
       }
 
       const nextPlans: Plan[] = [];
+
+      // Pre-pass: detect DUPLICATE active rows for the same locker_number
+      // (violates the invariant enforced by locker_occupancy_active_locker_unique).
+      // For each group, decide which row to KEEP and mark the rest for cleanup.
+      const byNum = new Map<string, OccActive[]>();
+      for (const o of occ) {
+        const arr = byNum.get(o.locker_number) ?? [];
+        arr.push(o);
+        byNum.set(o.locker_number, arr);
+      }
+      const removedIds = new Set<string>();
+      for (const [locker_number, group] of byNum) {
+        if (group.length < 2) continue;
+        const l = lockerByNum.get(locker_number);
+        // Rank: (1) matches lockers row exactly, (2) more complete data
+        // (has termination_date or remarks), (3) most recently updated.
+        const score = (r: OccActive): number => {
+          let s = 0;
+          if (l && norm(l.employee_name) === norm(r.employee_name) && norm(l.badge_number) === norm(r.badge_number)) s += 1000;
+          if (r.termination_date) s += 10;
+          if (r.remarks && r.remarks.trim()) s += 5;
+          s += r.updated_at ? new Date(r.updated_at).getTime() / 1e12 : 0;
+          return s;
+        };
+        const sorted = [...group].sort((a, b) => score(b) - score(a));
+        const keep = sorted[0];
+        for (const dup of sorted.slice(1)) {
+          removedIds.add(dup.id);
+          nextPlans.push({
+            kind: "duplicate_cleanup",
+            occupancy_id: dup.id,
+            keep_id: keep.id,
+            category: dup.category,
+            locker_number,
+            occ_employee: dup.employee_name,
+            locker_employee: l?.employee_name ?? null,
+            termination_date: null,
+            reason: `Duplicate Active row — keeping ${keep.category}/${keep.employee_name ?? "—"} (${keep.badge_number ?? "—"})`,
+            source: null,
+            locker: l ?? null,
+          });
+        }
+      }
+
+      // Filter out rows that are queued for duplicate cleanup so Case A doesn't
+      // also emit a terminate for them.
+      const occDedup = occ.filter((o) => !removedIds.has(o.id));
+
       // Active occupancy rows keyed by (locker_number, category)
       const occByKey = new Map<string, OccActive>();
-      for (const o of occ) occByKey.set(`${o.locker_number}::${o.category}`, o);
+      for (const o of occDedup) occByKey.set(`${o.locker_number}::${o.category}`, o);
 
       // Case A: occupancy active rows that don't match lockers → terminate
       // (preserve the row's category on the write)
-      for (const o of occ) {
+      for (const o of occDedup) {
         const l = lockerByNum.get(o.locker_number);
         if (!l) continue; // locker missing entirely — handled by deletion flow
         const lockerIsActive = norm(l.status) === "active";
@@ -245,12 +309,16 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
   }
 
   const counts = useMemo(() => {
-    let t = 0, a = 0;
-    for (const p of plans) { if (p.kind === "terminate") t++; else a++; }
-    return { t, a };
+    let t = 0, a = 0, d = 0;
+    for (const p of plans) {
+      if (p.kind === "terminate") t++;
+      else if (p.kind === "activate") a++;
+      else d++;
+    }
+    return { t, a, d };
   }, [plans]);
 
-  const key = (p: Plan) => `${p.kind}:${p.locker_number}:${p.category}`;
+  const key = (p: Plan) => `${p.kind}:${p.locker_number}:${p.category}:${p.occupancy_id ?? ""}`;
   const toggle = (p: Plan) => {
     setExcluded((prev) => {
       const next = new Set(prev);
@@ -270,7 +338,8 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
 
     setApplying(true);
     setProgress({ done: 0, total: toApply.length });
-    let terminated = 0, activated = 0, errors = 0;
+    let terminated = 0, activated = 0, duplicates_removed = 0, errors = 0;
+    const conflicts: { locker_number: string; message: string }[] = [];
     const auditRows: {
       locker_id: string | null; locker_number: string;
       previous_status: string | null; new_status: string;
@@ -280,9 +349,20 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
     for (let i = 0; i < toApply.length; i++) {
       const p = toApply[i];
       try {
-        if (p.kind === "terminate") {
-          // Terminate the SPECIFIC occupancy row by id (preserves category).
-          // Also remove any prior terminate rows for the same (locker, category).
+        if (p.kind === "duplicate_cleanup") {
+          const { error } = await supabase.from("locker_occupancy").delete().eq("id", p.occupancy_id);
+          if (error) throw error;
+          duplicates_removed++;
+          auditRows.push({
+            locker_id: p.locker?.id ?? null,
+            locker_number: p.locker_number,
+            previous_status: `active (occupancy/${p.category}) [duplicate]`,
+            new_status: `deleted (kept id=${p.keep_id})`,
+            source: "sync_occupancy_duplicate_cleanup",
+            changed_by: userId,
+            changed_by_email: userEmail,
+          });
+        } else if (p.kind === "terminate") {
           await supabase
             .from("locker_occupancy")
             .delete()
@@ -311,8 +391,8 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
             changed_by_email: userEmail,
           });
         } else {
-          // Insert a fresh Active row under the inferred category.
-          const { error } = await supabase.from("locker_occupancy").insert({
+          // activate — conflict-safe insert
+          const insertPayload = {
             category: p.category,
             locker_number: p.locker.locker_number,
             locker_row: p.locker.row_label,
@@ -326,18 +406,50 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
             batch_intake_date: p.locker.batch_intake ?? null,
             termination_date: null,
             source_filename: "sync-with-lockers",
-          });
-          if (error) throw error;
-          activated++;
-          auditRows.push({
-            locker_id: p.locker.id,
-            locker_number: p.locker_number,
-            previous_status: `(missing occupancy/${p.category})`,
-            new_status: `active (occupancy/${p.category})`,
-            source: "sync_occupancy_with_lockers",
-            changed_by: userId,
-            changed_by_email: userEmail,
-          });
+          };
+          const { error } = await supabase.from("locker_occupancy").insert(insertPayload);
+          if (error) {
+            if ((error as { code?: string }).code === "23505") {
+              // Another active row exists for this locker_number in some category.
+              const { data: existing } = await supabase
+                .from("locker_occupancy")
+                .select("id, category, employee_name, badge_number")
+                .eq("locker_number", p.locker_number)
+                .ilike("status", "active")
+                .limit(1);
+              const ex = existing?.[0];
+              const norm = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+              if (
+                ex &&
+                norm(ex.employee_name) === norm(p.locker.employee_name) &&
+                norm(ex.badge_number) === norm(p.locker.badge_number)
+              ) {
+                // Same person — just update the existing row to the correct details.
+                await supabase.from("locker_occupancy").update(insertPayload).eq("id", ex.id);
+                activated++;
+              } else {
+                conflicts.push({
+                  locker_number: p.locker_number,
+                  message: ex
+                    ? `Active occupant already exists in '${ex.category}' (${ex.employee_name ?? "—"} / ${ex.badge_number ?? "—"}) — manual review needed.`
+                    : "Unique-constraint violation — manual review needed.",
+                });
+              }
+            } else {
+              throw error;
+            }
+          } else {
+            activated++;
+            auditRows.push({
+              locker_id: p.locker.id,
+              locker_number: p.locker_number,
+              previous_status: `(missing occupancy/${p.category})`,
+              new_status: `active (occupancy/${p.category})`,
+              source: "sync_occupancy_with_lockers",
+              changed_by: userId,
+              changed_by_email: userEmail,
+            });
+          }
         }
       } catch (e) {
         errors++;
@@ -354,9 +466,11 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
 
     invalidateOccupancyCache();
     invalidateLockersCache();
-    setResult({ terminated, activated, errors });
+    setResult({ terminated, activated, duplicates_removed, conflicts, errors });
     setApplying(false);
-    toast.success(`Sync applied: ${terminated} terminated, ${activated} activated, ${errors} error${errors === 1 ? "" : "s"}.`);
+    toast.success(
+      `Sync applied: ${terminated} terminated · ${activated} activated · ${duplicates_removed} duplicates removed · ${conflicts.length} conflicts · ${errors} error${errors === 1 ? "" : "s"}.`,
+    );
   }
 
   return (
@@ -381,12 +495,27 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
             </div>
             <div className="text-sm">
               <span className="text-success font-semibold">{result.terminated}</span> terminated ·{" "}
-              <span className="text-success font-semibold">{result.activated}</span> added ·{" "}
+              <span className="text-success font-semibold">{result.activated}</span> activated ·{" "}
+              <span className="text-warning font-semibold">{result.duplicates_removed}</span> duplicates removed ·{" "}
+              <span className={result.conflicts.length > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>
+                {result.conflicts.length}
+              </span>{" "}
+              conflict{result.conflicts.length === 1 ? "" : "s"} need manual review ·{" "}
               <span className={result.errors > 0 ? "text-destructive" : "text-muted-foreground"}>
                 {result.errors}
               </span>{" "}
-              errors
+              error{result.errors === 1 ? "" : "s"}
             </div>
+            {result.conflicts.length > 0 && (
+              <div className="border rounded-md p-3 text-xs bg-destructive/5 max-h-56 overflow-y-auto space-y-1">
+                <div className="font-semibold text-destructive mb-1">Conflicts (locker already has an active occupant elsewhere):</div>
+                {result.conflicts.map((c) => (
+                  <div key={c.locker_number} className="font-mono">
+                    <span className="font-semibold">{c.locker_number}</span> — <span className="font-sans">{c.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <Button onClick={onClose}>Done</Button>
           </div>
         ) : scanning ? (
@@ -401,10 +530,9 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
         ) : (
           <>
             <div className="text-sm">
-              <span className="text-destructive font-semibold">{counts.t}</span> occupancy record
-              {counts.t === 1 ? "" : "s"} will be marked <b>Terminated</b> ·{" "}
-              <span className="text-success font-semibold">{counts.a}</span> missing <b>Active</b>{" "}
-              record{counts.a === 1 ? "" : "s"} will be added.
+              <span className="text-destructive font-semibold">{counts.t}</span> to <b>Terminate</b> ·{" "}
+              <span className="text-success font-semibold">{counts.a}</span> to <b>Activate</b> ·{" "}
+              <span className="text-warning font-semibold">{counts.d}</span> duplicate row{counts.d === 1 ? "" : "s"} to <b>Remove</b>.
             </div>
 
             <div className="border rounded-md overflow-x-auto max-h-[400px] overflow-y-auto">
@@ -450,9 +578,13 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
                             <Badge variant="outline" className="border-destructive text-destructive">
                               Mark Terminated
                             </Badge>
-                          ) : (
+                          ) : p.kind === "activate" ? (
                             <Badge variant="outline" className="border-success text-success">
                               Add Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-warning text-warning">
+                              Remove Duplicate
                             </Badge>
                           )}
                         </td>
@@ -462,6 +594,8 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
                               {p.termination_date}
                               {p.source === "fallback" ? " (fallback)" : ""} · {p.reason}
                             </span>
+                          ) : p.kind === "duplicate_cleanup" ? (
+                            <span title={p.reason}>{p.reason}</span>
                           ) : "—"}
                         </td>
                       </tr>
