@@ -495,12 +495,27 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
             </div>
             <div className="text-sm">
               <span className="text-success font-semibold">{result.terminated}</span> terminated ·{" "}
-              <span className="text-success font-semibold">{result.activated}</span> added ·{" "}
+              <span className="text-success font-semibold">{result.activated}</span> activated ·{" "}
+              <span className="text-warning font-semibold">{result.duplicates_removed}</span> duplicates removed ·{" "}
+              <span className={result.conflicts.length > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>
+                {result.conflicts.length}
+              </span>{" "}
+              conflict{result.conflicts.length === 1 ? "" : "s"} need manual review ·{" "}
               <span className={result.errors > 0 ? "text-destructive" : "text-muted-foreground"}>
                 {result.errors}
               </span>{" "}
-              errors
+              error{result.errors === 1 ? "" : "s"}
             </div>
+            {result.conflicts.length > 0 && (
+              <div className="border rounded-md p-3 text-xs bg-destructive/5 max-h-56 overflow-y-auto space-y-1">
+                <div className="font-semibold text-destructive mb-1">Conflicts (locker already has an active occupant elsewhere):</div>
+                {result.conflicts.map((c) => (
+                  <div key={c.locker_number} className="font-mono">
+                    <span className="font-semibold">{c.locker_number}</span> — <span className="font-sans">{c.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <Button onClick={onClose}>Done</Button>
           </div>
         ) : scanning ? (
