@@ -148,9 +148,57 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
       }
 
       const nextPlans: Plan[] = [];
+
+      // Pre-pass: detect DUPLICATE active rows for the same locker_number
+      // (violates the invariant enforced by locker_occupancy_active_locker_unique).
+      // For each group, decide which row to KEEP and mark the rest for cleanup.
+      const byNum = new Map<string, OccActive[]>();
+      for (const o of occ) {
+        const arr = byNum.get(o.locker_number) ?? [];
+        arr.push(o);
+        byNum.set(o.locker_number, arr);
+      }
+      const removedIds = new Set<string>();
+      for (const [locker_number, group] of byNum) {
+        if (group.length < 2) continue;
+        const l = lockerByNum.get(locker_number);
+        // Rank: (1) matches lockers row exactly, (2) more complete data
+        // (has termination_date or remarks), (3) most recently updated.
+        const score = (r: OccActive): number => {
+          let s = 0;
+          if (l && norm(l.employee_name) === norm(r.employee_name) && norm(l.badge_number) === norm(r.badge_number)) s += 1000;
+          if (r.termination_date) s += 10;
+          if (r.remarks && r.remarks.trim()) s += 5;
+          s += r.updated_at ? new Date(r.updated_at).getTime() / 1e12 : 0;
+          return s;
+        };
+        const sorted = [...group].sort((a, b) => score(b) - score(a));
+        const keep = sorted[0];
+        for (const dup of sorted.slice(1)) {
+          removedIds.add(dup.id);
+          nextPlans.push({
+            kind: "duplicate_cleanup",
+            occupancy_id: dup.id,
+            keep_id: keep.id,
+            category: dup.category,
+            locker_number,
+            occ_employee: dup.employee_name,
+            locker_employee: l?.employee_name ?? null,
+            termination_date: null,
+            reason: `Duplicate Active row — keeping ${keep.category}/${keep.employee_name ?? "—"} (${keep.badge_number ?? "—"})`,
+            source: null,
+            locker: l ?? null,
+          });
+        }
+      }
+
+      // Filter out rows that are queued for duplicate cleanup so Case A doesn't
+      // also emit a terminate for them.
+      const occDedup = occ.filter((o) => !removedIds.has(o.id));
+
       // Active occupancy rows keyed by (locker_number, category)
       const occByKey = new Map<string, OccActive>();
-      for (const o of occ) occByKey.set(`${o.locker_number}::${o.category}`, o);
+      for (const o of occDedup) occByKey.set(`${o.locker_number}::${o.category}`, o);
 
       // Case A: occupancy active rows that don't match lockers → terminate
       // (preserve the row's category on the write)
