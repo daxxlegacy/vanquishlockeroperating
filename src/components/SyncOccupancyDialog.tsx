@@ -26,6 +26,9 @@ type OccActive = {
   employee_name: string | null;
   badge_number: string | null;
   status: string | null;
+  updated_at: string | null;
+  termination_date: string | null;
+  remarks: string | null;
 };
 
 type Plan =
