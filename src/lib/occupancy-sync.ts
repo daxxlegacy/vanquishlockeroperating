@@ -121,53 +121,35 @@ export async function syncStatusChangeToOccupancy(locker: Locker): Promise<void>
  * - Otherwise inserts a new Active row. Category is inferred from any
  *   existing occupancy row for this locker_number, or defaults to 'main'.
  */
+export class OccupancyConflictError extends Error {
+  locker_number: string;
+  existing_category: string;
+  existing_employee: string | null;
+  existing_badge: string | null;
+  constructor(locker_number: string, existing: { category: string; employee_name: string | null; badge_number: string | null }) {
+    super(`Locker ${locker_number} has an active occupant in category '${existing.category}' (${existing.employee_name ?? "—"} / ${existing.badge_number ?? "—"})`);
+    this.name = "OccupancyConflictError";
+    this.locker_number = locker_number;
+    this.existing_category = existing.category;
+    this.existing_employee = existing.employee_name;
+    this.existing_badge = existing.badge_number;
+  }
+}
+
+function norm(v: string | null | undefined) {
+  return (v ?? "").trim().toLowerCase();
+}
+
 export async function syncActivationToOccupancy(locker: Locker): Promise<void> {
   if (!locker.employee_name && !locker.badge_number) return;
 
   const { data: activeRows } = await supabase
     .from("locker_occupancy")
-    .select("id, category")
+    .select("id, category, employee_name, badge_number")
     .eq("locker_number", locker.locker_number)
     .ilike("status", "active");
 
-  if (activeRows && activeRows.length > 0) {
-    const [keep, ...extras] = activeRows;
-    const payload = {
-      category: keep.category,
-      locker_number: locker.locker_number,
-      locker_row: locker.row_label,
-      locker_location_by_row: locker.location,
-      key_lock_type: locker.key_lock,
-      badge_number: locker.badge_number,
-      employee_name: locker.employee_name,
-      national_id: locker.national_id,
-      work_location: locker.work_location,
-      status: "Active",
-      batch_intake_date: locker.batch_intake ?? null,
-      termination_date: null,
-      source_filename: "manual-activation",
-    };
-    await supabase.from("locker_occupancy").update(payload).eq("id", keep.id);
-    if (extras.length > 0) {
-      await supabase
-        .from("locker_occupancy")
-        .delete()
-        .in("id", extras.map((r) => r.id));
-    }
-    return;
-  }
-
-  // No active row — infer category from any existing occupancy row for
-  // this locker_number, default to 'main'.
-  const { data: anyRow } = await supabase
-    .from("locker_occupancy")
-    .select("category")
-    .eq("locker_number", locker.locker_number)
-    .limit(1);
-  const category = anyRow && anyRow.length > 0 ? anyRow[0].category : "main";
-
-  await supabase.from("locker_occupancy").insert({
-    category,
+  const payloadCore = {
     locker_number: locker.locker_number,
     locker_row: locker.row_label,
     locker_location_by_row: locker.location,
@@ -180,5 +162,75 @@ export async function syncActivationToOccupancy(locker: Locker): Promise<void> {
     batch_intake_date: locker.batch_intake ?? null,
     termination_date: null,
     source_filename: "manual-activation",
-  });
+  };
+
+  if (activeRows && activeRows.length > 0) {
+    // If any existing active row is a different person, that's a conflict —
+    // don't silently overwrite.
+    const different = activeRows.find(
+      (r) =>
+        (norm(r.employee_name) !== norm(locker.employee_name)) ||
+        (norm(r.badge_number) !== norm(locker.badge_number)),
+    );
+    // Prefer a matching row to update; if none matches and there's a different
+    // person, surface as conflict.
+    const sameRow = activeRows.find(
+      (r) =>
+        norm(r.employee_name) === norm(locker.employee_name) &&
+        norm(r.badge_number) === norm(locker.badge_number),
+    );
+    if (!sameRow && different) {
+      throw new OccupancyConflictError(locker.locker_number, {
+        category: different.category,
+        employee_name: different.employee_name,
+        badge_number: different.badge_number,
+      });
+    }
+    const keep = sameRow ?? activeRows[0];
+    const extras = activeRows.filter((r) => r.id !== keep.id);
+    await supabase
+      .from("locker_occupancy")
+      .update({ ...payloadCore, category: keep.category })
+      .eq("id", keep.id);
+    if (extras.length > 0) {
+      await supabase.from("locker_occupancy").delete().in("id", extras.map((r) => r.id));
+    }
+    return;
+  }
+
+  const { data: anyRow } = await supabase
+    .from("locker_occupancy")
+    .select("category")
+    .eq("locker_number", locker.locker_number)
+    .limit(1);
+  const category = anyRow && anyRow.length > 0 ? anyRow[0].category : "main";
+
+  const { error } = await supabase.from("locker_occupancy").insert({ ...payloadCore, category });
+  if (error) {
+    // Race: another Active row appeared between the SELECT and INSERT (unique
+    // index `locker_occupancy_active_locker_unique`). Re-fetch and reconcile.
+    if ((error as { code?: string }).code === "23505") {
+      const { data: raced } = await supabase
+        .from("locker_occupancy")
+        .select("id, category, employee_name, badge_number")
+        .eq("locker_number", locker.locker_number)
+        .ilike("status", "active")
+        .limit(1);
+      const existing = raced?.[0];
+      if (!existing) throw error;
+      const sameone =
+        norm(existing.employee_name) === norm(locker.employee_name) &&
+        norm(existing.badge_number) === norm(locker.badge_number);
+      if (sameone) {
+        await supabase.from("locker_occupancy").update({ ...payloadCore, category: existing.category }).eq("id", existing.id);
+        return;
+      }
+      throw new OccupancyConflictError(locker.locker_number, {
+        category: existing.category,
+        employee_name: existing.employee_name,
+        badge_number: existing.badge_number,
+      });
+    }
+    throw error;
+  }
 }
