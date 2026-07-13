@@ -318,7 +318,7 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
     return { t, a, d };
   }, [plans]);
 
-  const key = (p: Plan) => `${p.kind}:${p.locker_number}:${p.category}`;
+  const key = (p: Plan) => `${p.kind}:${p.locker_number}:${p.category}:${p.occupancy_id ?? ""}`;
   const toggle = (p: Plan) => {
     setExcluded((prev) => {
       const next = new Set(prev);
