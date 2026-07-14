@@ -224,18 +224,26 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-1">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">From (old locker)</div>
                   <div className="font-semibold">{locker.locker_number}</div>
                   <div className="text-xs text-muted-foreground">
                     {locker.location}{locker.row_label ? ` · ${locker.row_label}` : ""}
                   </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
+                    <KeyBadge status={locker.spare_key_status} />
+                  </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">To (new locker)</div>
                   <div className="font-semibold">{target?.locker_number}</div>
                   <div className="text-xs text-muted-foreground">
                     {target?.location}{target?.row_label ? ` · ${target.row_label}` : ""}
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
+                    <KeyBadge status={target?.spare_key_status ?? null} />
                   </div>
                 </div>
               </div>
@@ -243,6 +251,16 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Old locker action</div>
                 <div className="font-semibold">{STATUS_LABEL[oldAction]}</div>
               </div>
+              {(SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") ||
+                SPARE_KEY_WARNING_STATUSES.includes(target?.spare_key_status ?? "unknown")) && (
+                <p className="text-xs text-warning flex items-start gap-1">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    One or both spare keys are not yet returned — recommend recovering them before/after the transfer.
+                    <span className="block text-muted-foreground italic">Kunci sandaran belum dipulangkan — disyorkan diambil semula sebelum/selepas pemindahan.</span>
+                  </span>
+                </p>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               Runs as a single atomic operation — the target locker is locked so two users can't claim it at the same time.
