@@ -203,7 +203,7 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
                   <div className="text-xs text-muted-foreground">{target?.location}{target?.row_label ? ` · ${target.row_label}` : ""}</div>
                   <div className="flex items-center gap-2 pt-1">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
-                    <KeyBadge status={target?.spare_key_status} />
+                    <KeyBadge status={target?.spare_key_status ?? null} />
                   </div>
                 </div>
               </div>
