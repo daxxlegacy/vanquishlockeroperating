@@ -561,6 +561,7 @@ function UploadPage() {
     if (!apply) setSpareResult(null);
     try {
       const buf = await f.arrayBuffer();
+      const XLSX = await getXLSX();
       const wb = XLSX.read(buf, { type: "array", cellDates: false });
       const allRows: Record<string, unknown>[] = [];
       for (const sn of wb.SheetNames) {
