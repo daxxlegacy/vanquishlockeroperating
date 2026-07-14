@@ -778,7 +778,11 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       </Card>
 
       <HistoryDialog lockerNumber={historyFor} onClose={() => setHistoryFor(null)} />
-      <SyncOccupancyDialog open={syncOpen} onClose={() => setSyncOpen(false)} />
+      <SyncOccupancyDialog
+        open={syncOpen}
+        onClose={() => setSyncOpen(false)}
+        onRequestForceTerminate={isAdmin ? (row) => setForceTerminateRow(row) : undefined}
+      />
       {isAdmin && <EditOccupancyRowDialog row={editRow} onClose={() => setEditRow(null)} />}
       {isAdmin && <DeleteOccupancyRowDialog row={deleteRow} onClose={() => setDeleteRow(null)} />}
       {isAdmin && <ForceTerminateDialog row={forceTerminateRow} onClose={() => setForceTerminateRow(null)} />}
