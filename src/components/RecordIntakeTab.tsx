@@ -95,6 +95,7 @@ export function RecordIntakeTab() {
     setParsing(true);
     try {
       const buf = await f.arrayBuffer();
+      const XLSX = await getXLSX();
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const sheetName = wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
