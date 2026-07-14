@@ -83,6 +83,7 @@ export function BulkStatusUpdateTab() {
     setParsing(true);
     try {
       const buf = await f.arrayBuffer();
+      const XLSX = await getXLSX();
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null, raw: true });
