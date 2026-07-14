@@ -15,8 +15,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw } from "lucide-react";
+import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil } from "lucide-react";
 import { SyncOccupancyDialog } from "@/components/SyncOccupancyDialog";
+import { EditOccupancyRowDialog, DeleteOccupancyRowDialog } from "@/components/EditOccupancyRowDialog";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
@@ -59,6 +60,7 @@ const COLS = [
   { key: "reason", w: 180 },
   { key: "work", w: 140 },
   { key: "history", w: 90 },
+  { key: "actions", w: 90 },
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
 const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
@@ -116,6 +118,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [importCat, setImportCat] = useState<OccCategory | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [reasons, setReasons] = useState<Map<string, string>>(new Map());
@@ -666,6 +670,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                   <Th>Reason</Th>
                   <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
                   <Th>History</Th>
+                  <Th>{isAdmin ? "Actions" : ""}</Th>
                 </div>
                 {flattened.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No rows match these filters.</div>
@@ -674,7 +679,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                     rowComponent={OccupancyRow as any}
                     rowCount={flattened.length}
                     rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor }}
+                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor, isAdmin, onEdit: setEditRow, onDelete: setDeleteRow }}
                     style={{ height: Math.min(VIEWPORT_HEIGHT, flattened.length * ROW_HEIGHT + 4) }}
                   />
                 )}
@@ -708,6 +713,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
 
       <HistoryDialog lockerNumber={historyFor} onClose={() => setHistoryFor(null)} />
       <SyncOccupancyDialog open={syncOpen} onClose={() => setSyncOpen(false)} />
+      {isAdmin && <EditOccupancyRowDialog row={editRow} onClose={() => setEditRow(null)} />}
+      {isAdmin && <DeleteOccupancyRowDialog row={deleteRow} onClose={() => setDeleteRow(null)} />}
     </div>
   );
 }
@@ -740,8 +747,14 @@ function syntheticRowFromLocker(l: Locker): Row {
 }
 
 type FlatRow = { row: Row; lockerNumber: string; groupIndex: number; groupLength: number; reason: string | null };
-type OccupancyRowProps = { rows: FlatRow[]; onViewHistory: (lockerNumber: string) => void };
-const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory }: RowComponentProps<OccupancyRowProps>) {
+type OccupancyRowProps = {
+  rows: FlatRow[];
+  onViewHistory: (lockerNumber: string) => void;
+  isAdmin: boolean;
+  onEdit: (row: OccupancyRow) => void;
+  onDelete: (row: OccupancyRow) => void;
+};
+const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory, isAdmin, onEdit, onDelete }: RowComponentProps<OccupancyRowProps>) {
   const { row, lockerNumber, groupIndex, reason } = rows[index];
   const isFirst = groupIndex === 0;
   const isActive = (row.status ?? "").toLowerCase() === "active";
@@ -769,6 +782,18 @@ const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHist
           <Button variant="ghost" size="sm" onClick={() => onViewHistory(lockerNumber)} className="h-7 px-2">
             <Eye className="h-3.5 w-3.5 mr-1" /> View
           </Button>
+        )}
+      </div>
+      <div className="px-2 flex items-center gap-1">
+        {isAdmin && !row.__synthetic && (
+          <>
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit occupancy record" onClick={() => onEdit(row)}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete occupancy record" onClick={() => onDelete(row)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </>
         )}
       </div>
     </div>
