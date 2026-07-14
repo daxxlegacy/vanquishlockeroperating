@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Repeat, Search } from "lucide-react";
+import { Repeat, Search, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLockers, invalidateLockersCache, patchLockersInCache } from "@/lib/lockers-cache";
@@ -13,7 +13,10 @@ import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { recordSwapHistory, SwapStepError } from "@/lib/occupancy-sync";
 import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
+import { KeyBadge } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
+
+const SPARE_KEY_WARNING_STATUSES = ["missing", "with_employee"];
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
