@@ -198,6 +198,7 @@ export function BulkStatusUpdateTab() {
       all.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
       const aoa: (string | null)[][] = [["Locker Number", "New Status"]];
       for (const r of all) aoa.push([r.locker_number, r.status ?? ""]);
+      const XLSX = await getXLSX();
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws["!cols"] = [{ wch: 18 }, { wch: 18 }];
       const wb = XLSX.utils.book_new();
