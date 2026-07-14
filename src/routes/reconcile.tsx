@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounced } from "@/hooks/use-debounced";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
