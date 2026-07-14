@@ -121,6 +121,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [syncOpen, setSyncOpen] = useState(false);
   const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
+  const [forceTerminateRow, setForceTerminateRow] = useState<OccupancyRow | null>(null);
+  const [forceActivateRow, setForceActivateRow] = useState<OccupancyRow | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [reasons, setReasons] = useState<Map<string, string>>(new Map());
