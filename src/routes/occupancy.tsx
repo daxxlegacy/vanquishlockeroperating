@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil, MoreVertical, PlayCircle, StopCircle } from "lucide-react";
+import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil, MoreVertical, PlayCircle, StopCircle, CheckCircle2 } from "lucide-react";
 import { SyncOccupancyDialog } from "@/components/SyncOccupancyDialog";
 import { EditOccupancyRowDialog, DeleteOccupancyRowDialog } from "@/components/EditOccupancyRowDialog";
 import { ForceTerminateDialog, ForceActivateDialog } from "@/components/ForceOccupancyDialogs";
