@@ -5,13 +5,16 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserMinus } from "lucide-react";
+import { UserMinus, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBatchIntake } from "@/lib/locker-utils";
 import { terminateLocker } from "@/lib/termination-actions";
 import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
+import { KeyBadge } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
+
+const SPARE_KEY_WARNING_STATUSES = ["missing", "with_employee"];
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
