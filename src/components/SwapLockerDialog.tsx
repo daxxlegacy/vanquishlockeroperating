@@ -79,11 +79,27 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
         // Instant cache patch so the Lockers page + LockerDetail re-render
         // with the swapped occupants immediately, before any background refetch.
         patchLockersInCache([result.a, result.b]);
-        // Record swap history: terminate outgoing occupancy rows, then insert
-        // fresh Active rows for the incoming occupants. Order matters to
-        // respect locker_occupancy_active_locker_unique.
-        await recordSwapHistory(preA, result.a, preB.locker_number);
-        await recordSwapHistory(preB, result.b, preA.locker_number);
+        // Record swap history: terminate outgoing occupancy row(s), then
+        // insert fresh Active row for the incoming occupant. Order matters
+        // to respect locker_occupancy_active_locker_unique.
+        try {
+          await recordSwapHistory(preA, result.a, preB.locker_number);
+        } catch (err) {
+          throw new Error(
+            err instanceof SwapStepError
+              ? `Locker ${err.lockerNumber} (side A): ${err.step} step failed — ${err.message.replace(/^Swap \w+ failed for [^:]+: /, "")}`
+              : err instanceof Error ? `Locker A swap-history failed: ${err.message}` : "Locker A swap-history failed",
+          );
+        }
+        try {
+          await recordSwapHistory(preB, result.b, preA.locker_number);
+        } catch (err) {
+          throw new Error(
+            err instanceof SwapStepError
+              ? `Locker ${err.lockerNumber} (side B): ${err.step} step failed — ${err.message.replace(/^Swap \w+ failed for [^:]+: /, "")}`
+              : err instanceof Error ? `Locker B swap-history failed: ${err.message}` : "Locker B swap-history failed",
+          );
+        }
       }
 
       toast.success(`Swapped ${locker.locker_number} ↔ ${target.locker_number}`);
