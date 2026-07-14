@@ -747,8 +747,14 @@ function syntheticRowFromLocker(l: Locker): Row {
 }
 
 type FlatRow = { row: Row; lockerNumber: string; groupIndex: number; groupLength: number; reason: string | null };
-type OccupancyRowProps = { rows: FlatRow[]; onViewHistory: (lockerNumber: string) => void };
-const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory }: RowComponentProps<OccupancyRowProps>) {
+type OccupancyRowProps = {
+  rows: FlatRow[];
+  onViewHistory: (lockerNumber: string) => void;
+  isAdmin: boolean;
+  onEdit: (row: OccupancyRow) => void;
+  onDelete: (row: OccupancyRow) => void;
+};
+const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory, isAdmin, onEdit, onDelete }: RowComponentProps<OccupancyRowProps>) {
   const { row, lockerNumber, groupIndex, reason } = rows[index];
   const isFirst = groupIndex === 0;
   const isActive = (row.status ?? "").toLowerCase() === "active";
@@ -776,6 +782,18 @@ const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHist
           <Button variant="ghost" size="sm" onClick={() => onViewHistory(lockerNumber)} className="h-7 px-2">
             <Eye className="h-3.5 w-3.5 mr-1" /> View
           </Button>
+        )}
+      </div>
+      <div className="px-2 flex items-center gap-1">
+        {isAdmin && !row.__synthetic && (
+          <>
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit occupancy record" onClick={() => onEdit(row)}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete occupancy record" onClick={() => onDelete(row)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </>
         )}
       </div>
     </div>
