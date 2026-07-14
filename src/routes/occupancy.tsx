@@ -475,6 +475,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     setImporting(true);
     try {
       const buf = await file.arrayBuffer();
+      const XLSX = await getXLSX();
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const targetSheet =
         category === "main" ? "Occupied + Vacant" :
