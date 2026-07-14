@@ -957,6 +957,7 @@ async function parseHr(f: File, filename?: string): Promise<HrPerson[]> {
     });
   } else {
     const buf = await f.arrayBuffer();
+    const XLSX = await getXLSX();
     const wb = XLSX.read(buf, { type: "array", cellDates: false });
     // pick the sheet with the most rows (handles "grddyn" + hidden helper sheets)
     let bestSheet = wb.SheetNames[0];
