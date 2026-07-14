@@ -553,24 +553,68 @@ export function SyncOccupancyDialog({
             <div className="text-sm">
               <span className="text-success font-semibold">{result.terminated}</span> terminated ·{" "}
               <span className="text-success font-semibold">{result.activated}</span> activated ·{" "}
-              <span className="text-warning font-semibold">{result.duplicates_removed}</span> duplicates removed ·{" "}
-              <span className={result.conflicts.length > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>
-                {result.conflicts.length}
-              </span>{" "}
-              conflict{result.conflicts.length === 1 ? "" : "s"} need manual review ·{" "}
-              <span className={result.errors > 0 ? "text-destructive" : "text-muted-foreground"}>
-                {result.errors}
-              </span>{" "}
-              error{result.errors === 1 ? "" : "s"}
+              <span className="text-warning font-semibold">{result.duplicates_removed}</span> duplicates removed
+              {result.failedItems.length > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-destructive font-semibold">{result.failedItems.length}</span>{" "}
+                  item{result.failedItems.length === 1 ? "" : "s"} need attention
+                </>
+              )}
             </div>
-            {result.conflicts.length > 0 && (
-              <div className="border rounded-md p-3 text-xs bg-destructive/5 max-h-56 overflow-y-auto space-y-1">
-                <div className="font-semibold text-destructive mb-1">Conflicts (locker already has an active occupant elsewhere):</div>
-                {result.conflicts.map((c) => (
-                  <div key={c.locker_number} className="font-mono">
-                    <span className="font-semibold">{c.locker_number}</span> — <span className="font-sans">{c.message}</span>
+            {result.failedItems.length > 0 && (
+              <div className="border rounded-md bg-destructive/5">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between px-3 py-2 text-sm font-semibold text-destructive"
+                  onClick={() => setFailedExpanded((v) => !v)}
+                >
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    {result.failedItems.length} item{result.failedItems.length === 1 ? "" : "s"} need attention
+                  </span>
+                  {failedExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </button>
+                {failedExpanded && (
+                  <div className="max-h-72 overflow-y-auto divide-y divide-destructive/20 border-t border-destructive/20">
+                    {result.failedItems.map((f, idx) => {
+                      const actionLabel =
+                        f.kind === "terminate" ? "Mark Terminated"
+                        : f.kind === "activate" ? "Add Active"
+                        : "Remove Duplicate";
+                      return (
+                        <div key={`${f.locker_number}-${f.category}-${idx}`} className="px-3 py-2 text-xs space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="font-mono font-semibold">{f.locker_number}</span>
+                              <span className="text-muted-foreground"> · {f.category}</span>
+                              <span className="text-muted-foreground"> · {actionLabel}</span>
+                              {f.code && (
+                                <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] text-destructive">
+                                  {f.code}
+                                </span>
+                              )}
+                            </div>
+                            {f.conflictRow && onRequestForceTerminate && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 shrink-0 gap-1"
+                                onClick={() => {
+                                  onRequestForceTerminate(f.conflictRow!);
+                                  onClose();
+                                }}
+                              >
+                                <StopCircle className="h-3.5 w-3.5" /> Resolve conflict
+                              </Button>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground">{f.reason}</div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
               </div>
             )}
             <Button onClick={onClose}>Done</Button>
