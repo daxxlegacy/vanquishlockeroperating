@@ -969,7 +969,29 @@ async function parseHr(f: File, filename?: string): Promise<HrPerson[]> {
       const nrows = range.e.r - range.s.r;
       if (nrows > bestRows) { bestRows = nrows; bestSheet = name; }
     }
-    rows = XLSX.utils.sheet_to_json(wb.Sheets[bestSheet], { defval: "", raw: true });
+    // Auto-detect header row: some HR exports have title/blank rows above
+    // the real header (e.g. "Employee Code" / "Employee Name" on row 3).
+    const aoa = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[bestSheet], { header: 1, defval: "", raw: true });
+    let headerIdx = 0;
+    for (let i = 0; i < Math.min(aoa.length, 20); i++) {
+      const row = aoa[i] ?? [];
+      const norm = row.map((c) => n(String(c ?? "")));
+      const hasName = norm.some((h) => ["employeename", "name", "fullname", "legalname"].includes(h));
+      const hasCode = norm.some((h) => ["employeecode", "empcode", "employeeid", "empid", "badgenumber", "badge", "personnumber"].includes(h));
+      if (hasName || hasCode) { headerIdx = i; break; }
+    }
+    const headerRow = (aoa[headerIdx] ?? []).map((c, i) => {
+      const s = String(c ?? "").trim();
+      return s === "" ? `__col${i}` : s;
+    });
+    rows = [];
+    for (let i = headerIdx + 1; i < aoa.length; i++) {
+      const r = aoa[i] ?? [];
+      if (r.every((c) => c === "" || c === null || c === undefined)) continue;
+      const obj: Record<string, unknown> = {};
+      for (let j = 0; j < headerRow.length; j++) obj[headerRow[j]] = r[j] ?? "";
+      rows.push(obj);
+    }
   }
   if (rows.length === 0) throw new Error("Empty HR file");
 
