@@ -892,6 +892,7 @@ export type Database = {
       }
       can_access_lockers: { Args: { _user_id: string }; Returns: boolean }
       can_view_national_id: { Args: { _user_id: string }; Returns: boolean }
+      count_occupancy_drift: { Args: never; Returns: Json }
       gen_support_ticket_number: { Args: never; Returns: string }
       get_support_ticket_public: {
         Args: { _badge: string; _ticket: string }
