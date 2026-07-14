@@ -1050,7 +1050,7 @@ function detectHrCols(headers: string[]): {
     badge: ["employeecode", "empcode", "employeeid", "empid", "badgenumber", "badge", "personnumber"],
     name: ["employeename", "name", "fullname", "legalname"],
     status: ["status", "employeestatus", "employmentstatus", "75", "57"],
-    terminate: ["t1terminatedate", "terminatedate", "terminationdate", "terminated", "termdate", "resigndate", "resignationdate", "lastworkingday", "lwd", "exitdate", "leavingdate", "dateofleaving", "dateoftermination"],
+    terminate: ["t1terminatedate", "terminatedate", "terminationdate", "terminated", "termdate", "resigndate", "resignationdate", "lastworkingday", "lastworkingdate", "lwd", "exitdate", "leavingdate", "dateofleaving", "dateoftermination"],
     join: ["joincompanydate", "joindate", "hiredate", "joiningdate", "dateofjoining"],
     workLocation: ["worklocation", "location", "site"],
     gradeset: ["gradeset", "grade"],
