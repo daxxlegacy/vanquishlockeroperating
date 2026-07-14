@@ -15,9 +15,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil } from "lucide-react";
+import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil, MoreVertical, PlayCircle, StopCircle } from "lucide-react";
 import { SyncOccupancyDialog } from "@/components/SyncOccupancyDialog";
 import { EditOccupancyRowDialog, DeleteOccupancyRowDialog } from "@/components/EditOccupancyRowDialog";
+import { ForceTerminateDialog, ForceActivateDialog } from "@/components/ForceOccupancyDialogs";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
@@ -60,7 +61,7 @@ const COLS = [
   { key: "reason", w: 180 },
   { key: "work", w: 140 },
   { key: "history", w: 90 },
-  { key: "actions", w: 90 },
+  { key: "actions", w: 130 },
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
 const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
@@ -120,6 +121,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [syncOpen, setSyncOpen] = useState(false);
   const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
+  const [forceTerminateRow, setForceTerminateRow] = useState<OccupancyRow | null>(null);
+  const [forceActivateRow, setForceActivateRow] = useState<OccupancyRow | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [reasons, setReasons] = useState<Map<string, string>>(new Map());
@@ -679,7 +682,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                     rowComponent={OccupancyRow as any}
                     rowCount={flattened.length}
                     rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor, isAdmin, onEdit: setEditRow, onDelete: setDeleteRow }}
+                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor, isAdmin, onEdit: setEditRow, onDelete: setDeleteRow, onForceTerminate: setForceTerminateRow, onForceActivate: setForceActivateRow }}
                     style={{ height: Math.min(VIEWPORT_HEIGHT, flattened.length * ROW_HEIGHT + 4) }}
                   />
                 )}
@@ -715,6 +718,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       <SyncOccupancyDialog open={syncOpen} onClose={() => setSyncOpen(false)} />
       {isAdmin && <EditOccupancyRowDialog row={editRow} onClose={() => setEditRow(null)} />}
       {isAdmin && <DeleteOccupancyRowDialog row={deleteRow} onClose={() => setDeleteRow(null)} />}
+      {isAdmin && <ForceTerminateDialog row={forceTerminateRow} onClose={() => setForceTerminateRow(null)} />}
+      {isAdmin && <ForceActivateDialog row={forceActivateRow} onClose={() => setForceActivateRow(null)} />}
     </div>
   );
 }
@@ -753,8 +758,10 @@ type OccupancyRowProps = {
   isAdmin: boolean;
   onEdit: (row: OccupancyRow) => void;
   onDelete: (row: OccupancyRow) => void;
+  onForceTerminate: (row: OccupancyRow) => void;
+  onForceActivate: (row: OccupancyRow) => void;
 };
-const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory, isAdmin, onEdit, onDelete }: RowComponentProps<OccupancyRowProps>) {
+const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory, isAdmin, onEdit, onDelete, onForceTerminate, onForceActivate }: RowComponentProps<OccupancyRowProps>) {
   const { row, lockerNumber, groupIndex, reason } = rows[index];
   const isFirst = groupIndex === 0;
   const isActive = (row.status ?? "").toLowerCase() === "active";
@@ -793,6 +800,24 @@ const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHist
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete occupancy record" onClick={() => onDelete(row)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="More actions">
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isActive ? (
+                  <DropdownMenuItem onClick={() => onForceTerminate(row)} className="text-destructive focus:text-destructive">
+                    <StopCircle className="h-4 w-4 mr-2" /> Force Terminate
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => onForceActivate(row)}>
+                    <PlayCircle className="h-4 w-4 mr-2" /> Force Activate
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         )}
       </div>
