@@ -41,6 +41,7 @@ async function parseRoster(f: File): Promise<Record<string, unknown>[]> {
     });
   }
   const buf = await f.arrayBuffer();
+  const XLSX = await getXLSX();
   const wb = XLSX.read(buf, { type: "array" });
   return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
 }
