@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRightLeft, Search, AlertCircle } from "lucide-react";
+import { ArrowRightLeft, Search, AlertCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLockers, invalidateLockersCache, patchLockersInCache } from "@/lib/lockers-cache";
@@ -234,6 +235,15 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
                     <KeyBadge status={locker.spare_key_status} />
                   </div>
+                  <Link
+                    to="/spare-keys"
+                    search={{ search: locker.locker_number }}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    View spare key details <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
                 <div className="space-y-1">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">To (new locker)</div>
@@ -245,6 +255,15 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
                     <KeyBadge status={target?.spare_key_status ?? null} />
                   </div>
+                  <Link
+                    to="/spare-keys"
+                    search={{ search: target?.locker_number ?? "" }}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    View spare key details <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
               </div>
               <div>

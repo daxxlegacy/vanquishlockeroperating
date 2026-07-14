@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserMinus, AlertCircle } from "lucide-react";
+import { UserMinus, AlertCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { parseBatchIntake } from "@/lib/locker-utils";
@@ -79,6 +80,15 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
               </span>
             </p>
           )}
+          <Link
+            to="/spare-keys"
+            search={{ search: locker.locker_number }}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            View spare key details <ExternalLink className="h-3 w-3" />
+          </Link>
         </div>
 
         <div className="space-y-4 py-2">
