@@ -758,8 +758,10 @@ type OccupancyRowProps = {
   isAdmin: boolean;
   onEdit: (row: OccupancyRow) => void;
   onDelete: (row: OccupancyRow) => void;
+  onForceTerminate: (row: OccupancyRow) => void;
+  onForceActivate: (row: OccupancyRow) => void;
 };
-const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory, isAdmin, onEdit, onDelete }: RowComponentProps<OccupancyRowProps>) {
+const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHistory, isAdmin, onEdit, onDelete, onForceTerminate, onForceActivate }: RowComponentProps<OccupancyRowProps>) {
   const { row, lockerNumber, groupIndex, reason } = rows[index];
   const isFirst = groupIndex === 0;
   const isActive = (row.status ?? "").toLowerCase() === "active";
@@ -798,6 +800,24 @@ const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHist
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete occupancy record" onClick={() => onDelete(row)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="More actions">
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isActive ? (
+                  <DropdownMenuItem onClick={() => onForceTerminate(row)} className="text-destructive focus:text-destructive">
+                    <StopCircle className="h-4 w-4 mr-2" /> Force Terminate
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => onForceActivate(row)}>
+                    <PlayCircle className="h-4 w-4 mr-2" /> Force Activate
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         )}
       </div>
