@@ -20,10 +20,10 @@ export const Route = createFileRoute("/locker-identity-update")({
   component: LockerIdentityUpdatePage,
 });
 
-const lockerRe = /^[0-9]+[A-Z]$/;
+const lockerRe = /^([0-9]+[A-Z]+|[A-Z]+[0-9]+)$/;
 
 const ERR = {
-  lockerFormat: "Locker number must be digits followed by one uppercase letter (e.g. 1411E). / Nombor loker mesti digit diikuti satu huruf besar (cth. 1411E).",
+  lockerFormat: "Locker number must be digits+letter (e.g. 1411E) or letters+digits (e.g. B08). / Nombor loker mesti digit+huruf (cth. 1411E) atau huruf+digit (cth. B08).",
   badge: "Please enter your employee / badge number. / Sila masukkan nombor pekerja / badge anda.",
   name: "Please enter your full name. / Sila masukkan nama penuh anda.",
   stillUsing: "Please answer whether you are still using this locker. / Sila jawab sama ada anda masih menggunakan loker ini.",
@@ -175,16 +175,16 @@ function LockerIdentityUpdatePage() {
                   value={lockerNumber}
                   onChange={(e) => setLockerNumber(e.target.value.toUpperCase())}
                   onFocus={scrollFocusIntoView}
-                  placeholder="e.g. 1411E"
+                  placeholder="e.g. 1411E or B08"
                   required
                   autoComplete="off"
                   inputMode="text"
                   className="h-12 text-base"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Format: digits followed by one uppercase letter (e.g. 1411E)
+                  Format: digits + one letter (e.g. 1411E) or letters + digits (e.g. B08)
                   <br />
-                  <span className="italic">Format: digit diikuti satu huruf besar (cth. 1411E)</span>
+                  <span className="italic">Format: digit + satu huruf (cth. 1411E) atau huruf + digit (cth. B08)</span>
                 </p>
               </div>
 
