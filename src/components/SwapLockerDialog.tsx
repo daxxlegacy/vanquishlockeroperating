@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Repeat, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { useLockers, invalidateLockersCache, patchLockersInCache } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { recordSwapHistory } from "@/lib/occupancy-sync";
@@ -76,6 +76,9 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
 
       const result = data as { a: Locker; b: Locker } | null;
       if (result?.a && result?.b) {
+        // Instant cache patch so the Lockers page + LockerDetail re-render
+        // with the swapped occupants immediately, before any background refetch.
+        patchLockersInCache([result.a, result.b]);
         // Record swap history: terminate outgoing occupancy rows, then insert
         // fresh Active rows for the incoming occupants. Order matters to
         // respect locker_occupancy_active_locker_unique.
