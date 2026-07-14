@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import defaultLayoutData from "@/data/locker-map-layout.json";
 import { supabase } from "@/integrations/supabase/client";
 
