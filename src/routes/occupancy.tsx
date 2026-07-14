@@ -718,6 +718,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       <SyncOccupancyDialog open={syncOpen} onClose={() => setSyncOpen(false)} />
       {isAdmin && <EditOccupancyRowDialog row={editRow} onClose={() => setEditRow(null)} />}
       {isAdmin && <DeleteOccupancyRowDialog row={deleteRow} onClose={() => setDeleteRow(null)} />}
+      {isAdmin && <ForceTerminateDialog row={forceTerminateRow} onClose={() => setForceTerminateRow(null)} />}
+      {isAdmin && <ForceActivateDialog row={forceActivateRow} onClose={() => setForceActivateRow(null)} />}
     </div>
   );
 }
