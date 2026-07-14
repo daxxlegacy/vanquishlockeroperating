@@ -80,6 +80,15 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
               </span>
             </p>
           )}
+          <Link
+            to="/spare-keys"
+            search={{ search: locker.locker_number }}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            View spare key details <ExternalLink className="h-3 w-3" />
+          </Link>
         </div>
 
         <div className="space-y-4 py-2">
