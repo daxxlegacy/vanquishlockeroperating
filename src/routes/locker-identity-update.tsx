@@ -175,16 +175,16 @@ function LockerIdentityUpdatePage() {
                   value={lockerNumber}
                   onChange={(e) => setLockerNumber(e.target.value.toUpperCase())}
                   onFocus={scrollFocusIntoView}
-                  placeholder="e.g. 1411E"
+                  placeholder="e.g. 1411E or B08"
                   required
                   autoComplete="off"
                   inputMode="text"
                   className="h-12 text-base"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Format: digits followed by one uppercase letter (e.g. 1411E)
+                  Format: digits + one letter (e.g. 1411E) or letters + digits (e.g. B08)
                   <br />
-                  <span className="italic">Format: digit diikuti satu huruf besar (cth. 1411E)</span>
+                  <span className="italic">Format: digit + satu huruf (cth. 1411E) atau huruf + digit (cth. B08)</span>
                 </p>
               </div>
 
