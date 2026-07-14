@@ -64,6 +64,10 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
     if (!target) { toast.error("Pick a locker to swap with"); return; }
     setBusy(true);
     try {
+      // Snapshot pre-swap occupants so we can terminate the outgoing rows correctly.
+      const preA = { locker_number: locker.locker_number, employee_name: locker.employee_name, badge_number: locker.badge_number };
+      const preB = { locker_number: target.locker_number, employee_name: target.employee_name, badge_number: target.badge_number };
+
       const { data, error } = await supabase.rpc("swap_lockers" as never, {
         _a_id: locker.id,
         _b_id: target.id,
@@ -72,8 +76,11 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
 
       const result = data as { a: Locker; b: Locker } | null;
       if (result?.a && result?.b) {
-        await syncActivationToOccupancy(result.a);
-        await syncActivationToOccupancy(result.b);
+        // Record swap history: terminate outgoing occupancy rows, then insert
+        // fresh Active rows for the incoming occupants. Order matters to
+        // respect locker_occupancy_active_locker_unique.
+        await recordSwapHistory(preA, result.a, preB.locker_number);
+        await recordSwapHistory(preB, result.b, preA.locker_number);
       }
 
       toast.success(`Swapped ${locker.locker_number} ↔ ${target.locker_number}`);
