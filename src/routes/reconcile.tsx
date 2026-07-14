@@ -364,7 +364,7 @@ function ReconcilePage() {
 
   const counts = results ? bucketCounts(results) : { must_terminate: 0, rehire_suspect: 0, missing_from_hr: 0, ok_current: 0 };
 
-  const exportAll = (fmt: "xlsx" | "csv") => {
+  const exportAll = async (fmt: "xlsx" | "csv") => {
     if (!results) return;
     if (!confirmNidExport()) return;
     const byBucket = (b: Bucket) =>
