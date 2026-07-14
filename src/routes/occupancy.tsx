@@ -682,7 +682,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                     rowComponent={OccupancyRow as any}
                     rowCount={flattened.length}
                     rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor, isAdmin, onEdit: setEditRow, onDelete: setDeleteRow }}
+                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor, isAdmin, onEdit: setEditRow, onDelete: setDeleteRow, onForceTerminate: setForceTerminateRow, onForceActivate: setForceActivateRow }}
                     style={{ height: Math.min(VIEWPORT_HEIGHT, flattened.length * ROW_HEIGHT + 4) }}
                   />
                 )}
