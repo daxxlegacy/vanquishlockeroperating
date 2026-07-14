@@ -59,7 +59,10 @@ function SpareKeysPage() {
   const isAdmin = role === "admin";
   const [addOpen, setAddOpen] = useState(false);
   const { lockers: rawLockers } = useLockers();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("search") ?? "";
+  });
   const debouncedSearch = useDebounced(search, 180);
   const [spareFilter, setSpareFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
