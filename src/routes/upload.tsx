@@ -2004,6 +2004,7 @@ async function parseFileWithHeaderDetection(f: File, markerTokens: string[]): Pr
     return await parseFile(f);
   }
   const buf = await f.arrayBuffer();
+  const XLSX = await getXLSX();
   const wb = XLSX.read(buf, { type: "array", cellDates: false });
   const out: Record<string, unknown>[] = [];
   for (const sn of wb.SheetNames) {
