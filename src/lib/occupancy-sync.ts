@@ -120,6 +120,7 @@ export async function recordSwapHistory(
     remarks: `Swapped from ${otherLockerNumber}`,
     source_filename: "locker-swap",
   });
+  if (insErr) throw new SwapStepError("insert", lockerNumber, insErr);
 }
 
 
