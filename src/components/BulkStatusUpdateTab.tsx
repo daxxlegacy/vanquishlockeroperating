@@ -1,7 +1,7 @@
 // Bulk Status Update tab — updates ONLY locker_number + status.
 // Never touches employee_name, badge_number, or national_id.
 import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
