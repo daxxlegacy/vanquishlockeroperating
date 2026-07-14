@@ -118,6 +118,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [importCat, setImportCat] = useState<OccCategory | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [reasons, setReasons] = useState<Map<string, string>>(new Map());
