@@ -291,15 +291,6 @@ const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowCompo
 });
 
 
-function KeyBadge({ status }: { status: string | null }) {
-  const s = status ?? "unknown";
-  return (
-    <Badge variant="outline" className="gap-1.5 capitalize">
-      <span className={`h-2 w-2 rounded-full ${SWATCH[s] ?? "bg-muted-foreground"}`} />
-      {s.replace(/_/g, " ")}
-    </Badge>
-  );
-}
 
 function AddSpareKeyLockerDialog({
   existingNumbers,
