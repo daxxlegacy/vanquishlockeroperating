@@ -75,15 +75,40 @@ function norm(v: string | null | undefined): string {
   return (v ?? "").trim().toLowerCase();
 }
 
-export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+type FailedItem = {
+  locker_number: string;
+  category: string;
+  kind: "terminate" | "activate" | "duplicate_cleanup";
+  reason: string;
+  code?: string;
+  conflictRow?: OccupancyRow | null;
+};
+
+type ApplyResult = {
+  terminated: number;
+  activated: number;
+  duplicates_removed: number;
+  failedItems: FailedItem[];
+};
+
+export function SyncOccupancyDialog({
+  open,
+  onClose,
+  onRequestForceTerminate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onRequestForceTerminate?: (row: OccupancyRow) => void;
+}) {
   const [scanning, setScanning] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [result, setResult] = useState<{ terminated: number; activated: number; duplicates_removed: number; conflicts: { locker_number: string; message: string }[]; errors: number } | null>(null);
+  const [result, setResult] = useState<ApplyResult | null>(null);
+  const [failedExpanded, setFailedExpanded] = useState(true);
 
-  const reset = () => { setPlans([]); setExcluded(new Set()); setProgress(null); setResult(null); };
+  const reset = () => { setPlans([]); setExcluded(new Set()); setProgress(null); setResult(null); setFailedExpanded(true); };
 
   useEffect(() => { if (!open) reset(); }, [open]);
   useEffect(() => { if (open && plans.length === 0 && !scanning && !result) void scan(); /* eslint-disable-next-line */ }, [open]);
