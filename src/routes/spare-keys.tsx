@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Search, Key, Plus, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers } from "@/lib/locker-utils";
