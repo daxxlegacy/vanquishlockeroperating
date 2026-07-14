@@ -9,6 +9,101 @@ import type { Database } from "@/integrations/supabase/types";
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
 /**
+ * Record a swap event for one side of a locker swap.
+ * - Terminates the CURRENT active occupancy row(s) for this locker_number
+ *   whose occupant matches the outgoing (pre-swap) person, with a
+ *   "Swapped to <otherLocker>" remark.
+ * - Then inserts a new Active row for the incoming (post-swap) occupant with
+ *   remarks "Swapped from <otherLocker>" and source_filename "locker-swap".
+ * - Order matters: terminate outgoing rows BEFORE inserting the new Active
+ *   row to respect locker_occupancy_active_locker_unique.
+ */
+export async function recordSwapHistory(
+  outgoing: { locker_number: string; employee_name: string | null; badge_number: string | null },
+  postSwapLocker: Locker,
+  otherLockerNumber: string,
+): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  const lockerNumber = postSwapLocker.locker_number;
+
+  // 1. Find all currently-active occupancy rows for this locker_number.
+  const { data: activeRows } = await supabase
+    .from("locker_occupancy")
+    .select("id, category, employee_name, badge_number")
+    .eq("locker_number", lockerNumber)
+    .ilike("status", "active");
+
+  // 2. Terminate any active row that belongs to the outgoing occupant.
+  //    (If a row exists that doesn't match either party, leave it — safer
+  //    than silent overwrite; the swap RPC has already validated the state.)
+  let outgoingCategory: string | null = null;
+  const outgoingIds: string[] = [];
+  for (const r of activeRows ?? []) {
+    const matchOutgoing =
+      norm(r.employee_name) === norm(outgoing.employee_name) &&
+      norm(r.badge_number) === norm(outgoing.badge_number);
+    if (matchOutgoing) {
+      outgoingIds.push(r.id);
+      outgoingCategory = outgoingCategory ?? r.category;
+    }
+  }
+
+  if (outgoingIds.length > 0) {
+    // Clear any prior Terminate rows in the outgoing category for this
+    // locker_number so only the swap-terminate remains as the latest.
+    if (outgoingCategory) {
+      await supabase
+        .from("locker_occupancy")
+        .delete()
+        .eq("category", outgoingCategory)
+        .eq("locker_number", lockerNumber)
+        .or("status.ilike.terminate,status.ilike.terminated");
+    }
+    await supabase
+      .from("locker_occupancy")
+      .update({
+        status: "Terminate",
+        termination_date: today,
+        remarks: `Swapped to ${otherLockerNumber}`,
+      })
+      .in("id", outgoingIds);
+  }
+
+  // 3. Insert a fresh Active row for the incoming occupant (if any).
+  if (!postSwapLocker.employee_name && !postSwapLocker.badge_number) return;
+
+  // Prefer the outgoing row's category to keep the swap consistent; else
+  // any existing category for this locker_number; else default 'main'.
+  let category = outgoingCategory;
+  if (!category) {
+    const { data: anyRow } = await supabase
+      .from("locker_occupancy")
+      .select("category")
+      .eq("locker_number", lockerNumber)
+      .limit(1);
+    category = anyRow && anyRow.length > 0 ? anyRow[0].category : "main";
+  }
+
+  await supabase.from("locker_occupancy").insert({
+    category,
+    locker_number: lockerNumber,
+    locker_row: postSwapLocker.row_label,
+    locker_location_by_row: postSwapLocker.location,
+    key_lock_type: postSwapLocker.key_lock,
+    badge_number: postSwapLocker.badge_number,
+    employee_name: postSwapLocker.employee_name,
+    national_id: postSwapLocker.national_id,
+    work_location: postSwapLocker.work_location,
+    status: "Active",
+    batch_intake_date: today,
+    termination_date: null,
+    remarks: `Swapped from ${otherLockerNumber}`,
+    source_filename: "locker-swap",
+  });
+}
+
+
+/**
  * Mark a locker as terminated in occupancy history across every category
  * where it appears.
  * - Flips existing Active row(s) to Terminate, preserving each row's category.
