@@ -670,6 +670,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                   <Th>Reason</Th>
                   <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
                   <Th>History</Th>
+                  <Th>{isAdmin ? "Actions" : ""}</Th>
                 </div>
                 {flattened.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No rows match these filters.</div>
@@ -678,7 +679,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                     rowComponent={OccupancyRow as any}
                     rowCount={flattened.length}
                     rowHeight={ROW_HEIGHT}
-                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor }}
+                    rowProps={{ rows: flattened, onViewHistory: setHistoryFor, isAdmin, onEdit: setEditRow, onDelete: setDeleteRow }}
                     style={{ height: Math.min(VIEWPORT_HEIGHT, flattened.length * ROW_HEIGHT + 4) }}
                   />
                 )}
