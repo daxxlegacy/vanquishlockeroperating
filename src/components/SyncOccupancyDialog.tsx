@@ -11,10 +11,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/StatusBadge";
-import { CheckCircle2, RefreshCw } from "lucide-react";
+import { CheckCircle2, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import type { Database } from "@/integrations/supabase/types";
+import type { OccupancyRow } from "@/lib/occupancy-cache";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 type Termination = Database["public"]["Tables"]["terminations"]["Row"];
