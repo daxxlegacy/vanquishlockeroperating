@@ -153,7 +153,7 @@ function DupList({ groups, keyLabel, onPick }: { groups: Locker[][]; keyLabel: "
   );
 }
 
-function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
+async function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
   if (groups.length === 0) {
     toast.error("Nothing to export");
     return;
