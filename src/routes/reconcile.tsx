@@ -385,6 +385,7 @@ function ReconcilePage() {
       const csv = Papa.unparse(flat);
       downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `reconcile-${stamp}.csv`);
     } else {
+      const XLSX = await getXLSX();
       const wb = XLSX.utils.book_new();
       for (const [name, rows] of Object.entries(sheets)) {
         const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ note: "(empty)" }]);
