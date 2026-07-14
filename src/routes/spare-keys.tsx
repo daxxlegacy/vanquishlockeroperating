@@ -147,7 +147,7 @@ function SpareKeysPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
           {SPARE_OPTIONS.map((k) => (
             <Card key={k} className="p-3 flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 rounded-full ${SWATCH[k]}`} />
+              <span className={`h-2.5 w-2.5 rounded-full ${SPARE_KEY_SWATCH[k]}`} />
               <div>
                 <div className="text-lg font-bold font-display leading-tight">{counts[k].toLocaleString()}</div>
                 <div className="text-[10px] text-muted-foreground capitalize leading-tight">{k.replace(/_/g, " ")}</div>
