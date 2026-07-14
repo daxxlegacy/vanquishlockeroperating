@@ -123,6 +123,47 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
   const [forceTerminateRow, setForceTerminateRow] = useState<OccupancyRow | null>(null);
   const [forceActivateRow, setForceActivateRow] = useState<OccupancyRow | null>(null);
+  const [drift, setDrift] = useState<{ terminate_needed: number; activate_needed: number; duplicates: number } | null>(null);
+  const [driftLoading, setDriftLoading] = useState(false);
+
+  const refreshDrift = useMemo(() => async () => {
+    if (!isAdmin) return;
+    setDriftLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("count_occupancy_drift");
+      if (error) throw error;
+      const d = data as { terminate_needed: number; activate_needed: number; duplicates: number } | null;
+      if (d) setDrift(d);
+    } catch {
+      // silent — indicator is a nice-to-have
+    } finally {
+      setDriftLoading(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    void refreshDrift();
+    const id = window.setInterval(() => { void refreshDrift(); }, 3 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [isAdmin, refreshDrift]);
+
+  // Refresh drift after any dialog closes (they may have mutated occupancy)
+  const prevDialogsOpen = useRef(false);
+  const anyDialogOpen = syncOpen || !!editRow || !!deleteRow || !!forceTerminateRow || !!forceActivateRow;
+  useEffect(() => {
+    if (prevDialogsOpen.current && !anyDialogOpen) void refreshDrift();
+    prevDialogsOpen.current = anyDialogOpen;
+  }, [anyDialogOpen, refreshDrift]);
+
+  // Refresh after imports complete
+  const prevImporting = useRef(false);
+  useEffect(() => {
+    if (prevImporting.current && !importing) void refreshDrift();
+    prevImporting.current = importing;
+  }, [importing, refreshDrift]);
+
+  const driftTotal = drift ? drift.terminate_needed + drift.activate_needed + drift.duplicates : 0;
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [reasons, setReasons] = useState<Map<string, string>>(new Map());
