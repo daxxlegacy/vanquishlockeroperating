@@ -986,9 +986,12 @@ type HistoryEvent = {
   by: string | null;
 };
 
-function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null; onClose: () => void }) {
+function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: string | null; isAdmin: boolean; onClose: () => void }) {
   const [events, setEvents] = useState<HistoryEvent[] | null>(null);
   const [tick, setTick] = useState(0);
+  const [confirmEvent, setConfirmEvent] = useState<HistoryEvent | null>(null);
+  const [confirmStage, setConfirmStage] = useState<1 | 2>(1);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!lockerNumber) return;
@@ -1040,6 +1043,51 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
     })();
   }, [lockerNumber, tick]);
 
+  const openConfirm = (ev: HistoryEvent) => {
+    setConfirmEvent(ev);
+    setConfirmStage(1);
+  };
+
+  const isCurrentActive = confirmEvent?.source === "occupancy"
+    && (confirmEvent.status ?? "").toLowerCase() === "active";
+
+  const doDelete = async () => {
+    if (!confirmEvent || !lockerNumber) return;
+    if (isCurrentActive && confirmStage === 1) {
+      setConfirmStage(2);
+      return;
+    }
+    setDeleting(true);
+    try {
+      const rawId = confirmEvent.id.slice(2);
+      const { data: u } = await supabase.auth.getUser();
+      if (confirmEvent.source === "occupancy") {
+        const { error } = await supabase.from("locker_occupancy").delete().eq("id", rawId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("terminations").delete().eq("id", rawId);
+        if (error) throw error;
+      }
+      await supabase.from("status_change_log").insert({
+        locker_id: null,
+        locker_number: lockerNumber,
+        previous_status: confirmEvent.status,
+        new_status: "(deleted)",
+        source: confirmEvent.source === "occupancy" ? "history_delete_occupancy" : "history_delete_termination",
+        changed_by: u.user?.id ?? null,
+        changed_by_email: u.user?.email ?? null,
+      });
+      toast.success("History entry deleted");
+      setConfirmEvent(null);
+      setConfirmStage(1);
+      setTick((t) => t + 1);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <Dialog open={!!lockerNumber} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-2xl">
@@ -1064,7 +1112,20 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
                       <span className="font-medium">{e.employee_name ?? "—"}</span>
                       {e.badge_number && <span className="font-mono text-xs text-muted-foreground">#{e.badge_number}</span>}
                     </div>
-                    <Badge variant="outline" className="text-[10px] uppercase">{e.source}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] uppercase">{e.source}</Badge>
+                      {isAdmin && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          title="Delete this history entry"
+                          onClick={() => openConfirm(e)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {e.date_label}: {fmtDate(e.date)}
@@ -1077,6 +1138,36 @@ function HistoryDialog({ lockerNumber, onClose }: { lockerNumber: string | null;
           )}
         </div>
       </DialogContent>
+
+      <Dialog open={!!confirmEvent} onOpenChange={(v) => { if (!v) { setConfirmEvent(null); setConfirmStage(1); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {isCurrentActive && confirmStage === 2 ? "Delete current active record?" : "Delete history entry?"}
+            </DialogTitle>
+            <DialogDescription>
+              {isCurrentActive && confirmStage === 2
+                ? "This is the current occupancy record, not just history — deleting it will remove the active occupant record entirely. Are you sure?"
+                : "This permanently deletes this history entry. It will not affect the current Lockers page or Occupancy status — only this historical record."}
+            </DialogDescription>
+          </DialogHeader>
+          {confirmEvent && (
+            <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+              <div><span className="text-muted-foreground">Status:</span> <span className="font-medium">{confirmEvent.status}</span></div>
+              <div><span className="text-muted-foreground">Employee:</span> <span className="font-medium">{confirmEvent.employee_name ?? "—"}</span></div>
+              <div><span className="text-muted-foreground">Badge:</span> <span className="font-mono">{confirmEvent.badge_number ?? "—"}</span></div>
+              <div><span className="text-muted-foreground">{confirmEvent.date_label}:</span> <span>{fmtDate(confirmEvent.date)}</span></div>
+              <div><span className="text-muted-foreground">Source table:</span> <span className="font-mono">{confirmEvent.source === "occupancy" ? "locker_occupancy" : "terminations"}</span></div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setConfirmEvent(null); setConfirmStage(1); }} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={doDelete} disabled={deleting}>
+              {deleting ? "Deleting…" : isCurrentActive && confirmStage === 1 ? "Continue" : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
