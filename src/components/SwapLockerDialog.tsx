@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Repeat, Search } from "lucide-react";
+import { Repeat, Search, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLockers, invalidateLockersCache, patchLockersInCache } from "@/lib/lockers-cache";
@@ -13,7 +13,10 @@ import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { recordSwapHistory, SwapStepError } from "@/lib/occupancy-sync";
 import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
+import { KeyBadge } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
+
+const SPARE_KEY_WARNING_STATUSES = ["missing", "with_employee"];
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
@@ -183,19 +186,37 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
           <div className="space-y-3 py-2">
             <div className="rounded-md border bg-muted/30 p-4 space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-1">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Locker A</div>
                   <div className="font-semibold">{locker.locker_number}</div>
                   <div>{locker.employee_name ?? "—"}{locker.badge_number ? <span className="text-muted-foreground"> · {locker.badge_number}</span> : null}</div>
                   <div className="text-xs text-muted-foreground">{locker.location}{locker.row_label ? ` · ${locker.row_label}` : ""}</div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
+                    <KeyBadge status={locker.spare_key_status} />
+                  </div>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Locker B</div>
                   <div className="font-semibold">{target?.locker_number}</div>
                   <div>{target?.employee_name ?? "—"}{target?.badge_number ? <span className="text-muted-foreground"> · {target.badge_number}</span> : null}</div>
                   <div className="text-xs text-muted-foreground">{target?.location}{target?.row_label ? ` · ${target.row_label}` : ""}</div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
+                    <KeyBadge status={target?.spare_key_status ?? null} />
+                  </div>
                 </div>
               </div>
+              {(SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") ||
+                SPARE_KEY_WARNING_STATUSES.includes(target?.spare_key_status ?? "unknown")) && (
+                <p className="text-xs text-warning flex items-start gap-1">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    One or both spare keys are not yet returned — recommend recovering them before/after the swap.
+                    <span className="block text-muted-foreground italic">Kunci sandaran belum dipulangkan — disyorkan diambil semula sebelum/selepas pertukaran.</span>
+                  </span>
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 This will terminate the current occupants' records and create new intake records reflecting the swap — full history is preserved for both employees. Physical attributes (row, key lock) stay with each locker.
               </p>
