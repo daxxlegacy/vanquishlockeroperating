@@ -20,6 +20,7 @@ import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
+import { KeyBadge, SPARE_KEY_SWATCH } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -41,12 +42,6 @@ const SPARE_OPTIONS = [
   "taken",
   "taken_for_cleaning",
 ] as const;
-const SWATCH: Record<string, string> = {
-  missing: "bg-destructive",
-  available: "bg-success",
-  taken: "bg-primary",
-  taken_for_cleaning: "bg-accent",
-};
 
 export const Route = createFileRoute("/spare-keys")({
   head: () => ({
