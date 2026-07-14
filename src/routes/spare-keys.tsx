@@ -256,13 +256,14 @@ function SpareKeysPage() {
   );
 }
 
-function exportSpareKeysToExcel(rows: Locker[]) {
+async function exportSpareKeysToExcel(rows: Locker[]) {
   const data = rows.map((l) => ({
     "Locker #": l.locker_number,
     Location: l.location,
     Row: l.row_label && l.row_label !== l.location ? l.row_label : "",
     "Spare Key Status": (l.spare_key_status ?? "unknown").replace(/_/g, " "),
   }));
+  const XLSX = await getXLSX();
   const ws = XLSX.utils.json_to_sheet(data);
   ws["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 22 }];
   const wb = XLSX.utils.book_new();
