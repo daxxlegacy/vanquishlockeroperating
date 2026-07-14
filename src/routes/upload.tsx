@@ -2013,12 +2013,12 @@ async function parseFileWithHeaderDetection(f: File, markerTokens: string[]): Pr
     if (!aoa.length) continue;
     let headerIdx = 0;
     for (let i = 0; i < Math.min(aoa.length, 20); i++) {
-      const row = aoa[i] ?? [];
+      const row: unknown[] = aoa[i] ?? [];
       const tokens = row.map(normTok).filter(Boolean);
       const hits = tokens.filter((t) => markers.has(t)).length;
       if (hits >= 2) { headerIdx = i; break; }
     }
-    const headers = (aoa[headerIdx] ?? []).map((h) => String(h ?? "").trim());
+    const headers = ((aoa[headerIdx] ?? []) as unknown[]).map((h) => String(h ?? "").trim());
     for (let i = headerIdx + 1; i < aoa.length; i++) {
       const row = aoa[i] ?? [];
       const rec: Record<string, unknown> = {};
