@@ -435,6 +435,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
     if (!confirmNidExport()) return;
     const rows = await buildExportRows();
+    const XLSX = await getXLSX();
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Occupancy");
