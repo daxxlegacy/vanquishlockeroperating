@@ -12,6 +12,7 @@ import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { syncActivationToOccupancy } from "@/lib/occupancy-sync";
+import { recordSwapHistory } from "@/lib/occupancy-sync";
 import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
