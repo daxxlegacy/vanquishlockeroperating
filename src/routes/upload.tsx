@@ -543,6 +543,7 @@ function UploadPage() {
         const csv = Papa.unparse(cleaned);
         downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `lockers-${stamp}.csv`);
       } else {
+        const XLSX = await getXLSX();
         const ws = XLSX.utils.json_to_sheet(cleaned);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Lockers");
