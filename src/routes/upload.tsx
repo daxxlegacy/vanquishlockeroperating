@@ -1984,6 +1984,7 @@ async function parseFileAllSheets(f: File): Promise<{ sheet: string; rows: Recor
     return [{ sheet: "csv", rows }];
   }
   const buf = await f.arrayBuffer();
+  const XLSX = await getXLSX();
   const wb = XLSX.read(buf, { type: "array", cellDates: false });
   return wb.SheetNames.map((sn) => ({
     sheet: sn,
