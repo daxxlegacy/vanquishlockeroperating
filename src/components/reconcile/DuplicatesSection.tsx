@@ -178,6 +178,7 @@ async function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
       "Remark": l.remark ?? "",
     }));
   });
+  const XLSX = await getXLSX();
   const ws = XLSX.utils.json_to_sheet(rows);
   const headers = Object.keys(rows[0]);
   ws["!cols"] = headers.map((h) => ({
