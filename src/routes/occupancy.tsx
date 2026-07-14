@@ -669,8 +669,30 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                 <DropdownMenuItem onClick={() => handleClear("shoe")}>Clear Shoe Lockers</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" onClick={() => setSyncOpen(true)} title="Reconcile occupancy with the Lockers page">
+            <Button
+              variant="outline"
+              onClick={() => setSyncOpen(true)}
+              className="relative"
+              title={
+                drift == null
+                  ? "Reconcile occupancy with the Lockers page"
+                  : driftTotal > 0
+                    ? `${driftTotal} record${driftTotal === 1 ? "" : "s"} out of sync with Lockers page — click to review.`
+                    : "In sync with Lockers page"
+              }
+            >
               <RefreshCw className="h-4 w-4 mr-1.5" /> Sync with Lockers page
+              {drift != null && driftTotal > 0 && (
+                <span
+                  className="ml-2 inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground"
+                  aria-label={`${driftTotal} records out of sync`}
+                >
+                  {driftTotal > 99 ? "99+" : driftTotal}
+                </span>
+              )}
+              {drift != null && driftTotal === 0 && !driftLoading && (
+                <CheckCircle2 className="ml-2 h-4 w-4 text-emerald-500" aria-label="In sync" />
+              )}
             </Button>
           </>
         )}
