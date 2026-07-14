@@ -11,10 +11,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/StatusBadge";
-import { CheckCircle2, RefreshCw } from "lucide-react";
+import { CheckCircle2, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import type { Database } from "@/integrations/supabase/types";
+import type { OccupancyRow } from "@/lib/occupancy-cache";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 type Termination = Database["public"]["Tables"]["terminations"]["Row"];
@@ -74,15 +75,40 @@ function norm(v: string | null | undefined): string {
   return (v ?? "").trim().toLowerCase();
 }
 
-export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+type FailedItem = {
+  locker_number: string;
+  category: string;
+  kind: "terminate" | "activate" | "duplicate_cleanup";
+  reason: string;
+  code?: string;
+  conflictRow?: OccupancyRow | null;
+};
+
+type ApplyResult = {
+  terminated: number;
+  activated: number;
+  duplicates_removed: number;
+  failedItems: FailedItem[];
+};
+
+export function SyncOccupancyDialog({
+  open,
+  onClose,
+  onRequestForceTerminate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onRequestForceTerminate?: (row: OccupancyRow) => void;
+}) {
   const [scanning, setScanning] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [result, setResult] = useState<{ terminated: number; activated: number; duplicates_removed: number; conflicts: { locker_number: string; message: string }[]; errors: number } | null>(null);
+  const [result, setResult] = useState<ApplyResult | null>(null);
+  const [failedExpanded, setFailedExpanded] = useState(true);
 
-  const reset = () => { setPlans([]); setExcluded(new Set()); setProgress(null); setResult(null); };
+  const reset = () => { setPlans([]); setExcluded(new Set()); setProgress(null); setResult(null); setFailedExpanded(true); };
 
   useEffect(() => { if (!open) reset(); }, [open]);
   useEffect(() => { if (open && plans.length === 0 && !scanning && !result) void scan(); /* eslint-disable-next-line */ }, [open]);
@@ -338,13 +364,32 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
 
     setApplying(true);
     setProgress({ done: 0, total: toApply.length });
-    let terminated = 0, activated = 0, duplicates_removed = 0, errors = 0;
-    const conflicts: { locker_number: string; message: string }[] = [];
+    let terminated = 0, activated = 0, duplicates_removed = 0;
+    const failedItems: FailedItem[] = [];
     const auditRows: {
       locker_id: string | null; locker_number: string;
       previous_status: string | null; new_status: string;
       source: string; changed_by: string; changed_by_email: string | null;
     }[] = [];
+
+    const fetchConflictRow = async (locker_number: string): Promise<OccupancyRow | null> => {
+      const { data } = await supabase
+        .from("locker_occupancy")
+        .select("*")
+        .eq("locker_number", locker_number)
+        .ilike("status", "active")
+        .limit(1);
+      return (data?.[0] as OccupancyRow | undefined) ?? null;
+    };
+
+    const describeError = (err: unknown): { code?: string; message: string } => {
+      const e = err as { code?: string; message?: string; details?: string; hint?: string } | null;
+      if (!e) return { message: "Unknown error" };
+      return {
+        code: e.code,
+        message: e.message || e.details || e.hint || "Unknown database error",
+      };
+    };
 
     for (let i = 0; i < toApply.length; i++) {
       const p = toApply[i];
@@ -410,29 +455,34 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
           const { error } = await supabase.from("locker_occupancy").insert(insertPayload);
           if (error) {
             if ((error as { code?: string }).code === "23505") {
-              // Another active row exists for this locker_number in some category.
-              const { data: existing } = await supabase
-                .from("locker_occupancy")
-                .select("id, category, employee_name, badge_number")
-                .eq("locker_number", p.locker_number)
-                .ilike("status", "active")
-                .limit(1);
-              const ex = existing?.[0];
-              const norm = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+              const conflictRow = await fetchConflictRow(p.locker_number);
               if (
-                ex &&
-                norm(ex.employee_name) === norm(p.locker.employee_name) &&
-                norm(ex.badge_number) === norm(p.locker.badge_number)
+                conflictRow &&
+                norm(conflictRow.employee_name) === norm(p.locker.employee_name) &&
+                norm(conflictRow.badge_number) === norm(p.locker.badge_number)
               ) {
-                // Same person — just update the existing row to the correct details.
-                await supabase.from("locker_occupancy").update(insertPayload).eq("id", ex.id);
+                // Same person — update in place.
+                await supabase.from("locker_occupancy").update(insertPayload).eq("id", conflictRow.id);
                 activated++;
-              } else {
-                conflicts.push({
+                auditRows.push({
+                  locker_id: p.locker.id,
                   locker_number: p.locker_number,
-                  message: ex
-                    ? `Active occupant already exists in '${ex.category}' (${ex.employee_name ?? "—"} / ${ex.badge_number ?? "—"}) — manual review needed.`
-                    : "Unique-constraint violation — manual review needed.",
+                  previous_status: `active (occupancy/${conflictRow.category})`,
+                  new_status: `active (occupancy/${conflictRow.category}) [merged]`,
+                  source: "sync_occupancy_with_lockers",
+                  changed_by: userId,
+                  changed_by_email: userEmail,
+                });
+              } else {
+                failedItems.push({
+                  locker_number: p.locker_number,
+                  category: p.category,
+                  kind: "activate",
+                  code: "23505",
+                  reason: conflictRow
+                    ? `Conflict — ${p.locker_number} already has an active occupant in '${conflictRow.category}' (${conflictRow.employee_name ?? "—"}${conflictRow.badge_number ? ` / ${conflictRow.badge_number}` : ""}).`
+                    : `Conflict — ${p.locker_number} already has an active occupant (row not found on lookup).`,
+                  conflictRow,
                 });
               }
             } else {
@@ -452,8 +502,15 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
           }
         }
       } catch (e) {
-        errors++;
+        const { code, message } = describeError(e);
         console.warn(`Sync failed for ${p.locker_number} (${p.category}):`, e);
+        failedItems.push({
+          locker_number: p.locker_number,
+          category: p.category,
+          kind: p.kind,
+          code,
+          reason: message,
+        });
       }
       setProgress({ done: i + 1, total: toApply.length });
     }
@@ -466,10 +523,10 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
 
     invalidateOccupancyCache();
     invalidateLockersCache();
-    setResult({ terminated, activated, duplicates_removed, conflicts, errors });
+    setResult({ terminated, activated, duplicates_removed, failedItems });
     setApplying(false);
     toast.success(
-      `Sync applied: ${terminated} terminated · ${activated} activated · ${duplicates_removed} duplicates removed · ${conflicts.length} conflicts · ${errors} error${errors === 1 ? "" : "s"}.`,
+      `Sync applied: ${terminated} terminated · ${activated} activated · ${duplicates_removed} duplicates removed${failedItems.length > 0 ? ` · ${failedItems.length} need${failedItems.length === 1 ? "s" : ""} attention` : ""}.`,
     );
   }
 
@@ -496,24 +553,68 @@ export function SyncOccupancyDialog({ open, onClose }: { open: boolean; onClose:
             <div className="text-sm">
               <span className="text-success font-semibold">{result.terminated}</span> terminated ·{" "}
               <span className="text-success font-semibold">{result.activated}</span> activated ·{" "}
-              <span className="text-warning font-semibold">{result.duplicates_removed}</span> duplicates removed ·{" "}
-              <span className={result.conflicts.length > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>
-                {result.conflicts.length}
-              </span>{" "}
-              conflict{result.conflicts.length === 1 ? "" : "s"} need manual review ·{" "}
-              <span className={result.errors > 0 ? "text-destructive" : "text-muted-foreground"}>
-                {result.errors}
-              </span>{" "}
-              error{result.errors === 1 ? "" : "s"}
+              <span className="text-warning font-semibold">{result.duplicates_removed}</span> duplicates removed
+              {result.failedItems.length > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-destructive font-semibold">{result.failedItems.length}</span>{" "}
+                  item{result.failedItems.length === 1 ? "" : "s"} need attention
+                </>
+              )}
             </div>
-            {result.conflicts.length > 0 && (
-              <div className="border rounded-md p-3 text-xs bg-destructive/5 max-h-56 overflow-y-auto space-y-1">
-                <div className="font-semibold text-destructive mb-1">Conflicts (locker already has an active occupant elsewhere):</div>
-                {result.conflicts.map((c) => (
-                  <div key={c.locker_number} className="font-mono">
-                    <span className="font-semibold">{c.locker_number}</span> — <span className="font-sans">{c.message}</span>
+            {result.failedItems.length > 0 && (
+              <div className="border rounded-md bg-destructive/5">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between px-3 py-2 text-sm font-semibold text-destructive"
+                  onClick={() => setFailedExpanded((v) => !v)}
+                >
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    {result.failedItems.length} item{result.failedItems.length === 1 ? "" : "s"} need attention
+                  </span>
+                  {failedExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </button>
+                {failedExpanded && (
+                  <div className="max-h-72 overflow-y-auto divide-y divide-destructive/20 border-t border-destructive/20">
+                    {result.failedItems.map((f, idx) => {
+                      const actionLabel =
+                        f.kind === "terminate" ? "Mark Terminated"
+                        : f.kind === "activate" ? "Add Active"
+                        : "Remove Duplicate";
+                      return (
+                        <div key={`${f.locker_number}-${f.category}-${idx}`} className="px-3 py-2 text-xs space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="font-mono font-semibold">{f.locker_number}</span>
+                              <span className="text-muted-foreground"> · {f.category}</span>
+                              <span className="text-muted-foreground"> · {actionLabel}</span>
+                              {f.code && (
+                                <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] text-destructive">
+                                  {f.code}
+                                </span>
+                              )}
+                            </div>
+                            {f.conflictRow && onRequestForceTerminate && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 shrink-0 gap-1"
+                                onClick={() => {
+                                  onRequestForceTerminate(f.conflictRow!);
+                                  onClose();
+                                }}
+                              >
+                                <StopCircle className="h-3.5 w-3.5" /> Resolve conflict
+                              </Button>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground">{f.reason}</div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
               </div>
             )}
             <Button onClick={onClose}>Done</Button>
