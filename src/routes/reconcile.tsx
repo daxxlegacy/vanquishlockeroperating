@@ -1323,6 +1323,7 @@ async function parseMednefits(f: File): Promise<MedRow[]> {
     raw = parsed.data as unknown[][];
   } else {
     const buf = await f.arrayBuffer();
+    const XLSX = await getXLSX();
     const wb = XLSX.read(buf, { type: "array", cellDates: false });
     // Prefer the "List" sheet if present; else the sheet with the most rows.
     let bestSheet = wb.SheetNames[0];
