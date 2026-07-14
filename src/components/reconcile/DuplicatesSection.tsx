@@ -11,7 +11,7 @@ import { Users, BadgeAlert, Download } from "lucide-react";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { useAuth } from "@/lib/auth";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
