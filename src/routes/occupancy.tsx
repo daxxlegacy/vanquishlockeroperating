@@ -1069,12 +1069,11 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
         if (error) throw error;
       }
       await supabase.from("status_change_log").insert({
-        locker_id: null,
         locker_number: lockerNumber,
         previous_status: confirmEvent.status,
         new_status: "(deleted)",
         source: confirmEvent.source === "occupancy" ? "history_delete_occupancy" : "history_delete_termination",
-        changed_by: u.user?.id ?? null,
+        changed_by: u.user?.id ?? "",
         changed_by_email: u.user?.email ?? null,
       });
       toast.success("History entry deleted");
