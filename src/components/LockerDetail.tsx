@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,9 +47,11 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const isAdmin = role === "admin";
+  const editedRef = useRef(false);
 
   useEffect(() => {
     if (!lockerId || !open) return;
+    editedRef.current = false;
     const cached = getLockerById(lockerId);
     if (cached) setLocker(cached);
     // Admins can read the full national_id from the base table (RLS allows).
@@ -57,7 +59,9 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     const source = isAdmin ? "lockers" : "lockers_masked";
     (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (col: string, v: string) => { single: () => Promise<{ data: Locker | null }> } } } })
       .from(source).select("*").eq("id", lockerId).single().then(({ data }) => {
-        if (data) setLocker(data);
+        // Guard against overwriting in-progress edits: if the admin has
+        // started editing before the fresh fetch resolves, keep local state.
+        if (data && !editedRef.current) setLocker(data);
       });
   }, [lockerId, open, isAdmin]);
 
@@ -69,7 +73,10 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     );
   }
 
-  const update = (k: keyof Locker, v: string | null) => setLocker({ ...locker, [k]: v });
+  const update = (k: keyof Locker, v: string | null) => {
+    editedRef.current = true;
+    setLocker({ ...locker, [k]: v });
+  };
 
   const handleSave = () => {
     if (!isAdmin) return;
