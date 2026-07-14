@@ -65,6 +65,22 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
           </DialogDescription>
         </DialogHeader>
 
+        <div className="rounded-md border bg-muted/30 p-3 space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
+            <KeyBadge status={locker.spare_key_status} />
+          </div>
+          {SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") && (
+            <p className="text-xs text-warning flex items-start gap-1">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>
+                Spare key not yet returned — recommend recovering it before/after termination.
+                <span className="block text-muted-foreground italic">Kunci sandaran belum dipulangkan — disyorkan diambil semula sebelum/selepas penamatan.</span>
+              </span>
+            </p>
+          )}
+        </div>
+
         <div className="space-y-4 py-2">
           <div>
             <Label htmlFor="term-date">Termination date (dd/mm/yyyy) *</Label>
