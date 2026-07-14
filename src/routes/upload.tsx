@@ -798,7 +798,7 @@ function UploadPage() {
     setCheckBusy(false);
   };
 
-  const exportRosterCheck = (fmt: "xlsx" | "csv") => {
+  const exportRosterCheck = async (fmt: "xlsx" | "csv") => {
     if (!checkResult) return;
     const sheets: Record<string, Record<string, unknown>[]> = {
       "In file NOT in DB": checkResult.inFileNotInDb.map((p) => ({ badge: p.badge ?? "", name: p.name ?? "" })),
@@ -818,6 +818,7 @@ function UploadPage() {
       ]);
       downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `roster-check-${stamp}.csv`);
     } else {
+      const XLSX = await getXLSX();
       const wb = XLSX.utils.book_new();
       for (const [name, rows] of Object.entries(sheets)) {
         const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ note: "(empty)" }]);
