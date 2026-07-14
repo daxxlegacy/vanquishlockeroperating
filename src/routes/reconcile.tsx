@@ -1138,9 +1138,10 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
     return hay.includes(q);
   });
 
-  const exportXlsx = () => {
+  const exportXlsx = async () => {
     if (!results) return;
     if (!confirmNidExport()) return;
+    const XLSX = await getXLSX();
     const wb = XLSX.utils.book_new();
     const matchedRows = matched.map((r) => ({
       locker_number: r.db.locker_number,
