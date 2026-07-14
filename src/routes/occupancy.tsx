@@ -777,7 +777,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
         )}
       </Card>
 
-      <HistoryDialog lockerNumber={historyFor} onClose={() => setHistoryFor(null)} />
+      <HistoryDialog lockerNumber={historyFor} isAdmin={isAdmin} onClose={() => setHistoryFor(null)} />
       <SyncOccupancyDialog
         open={syncOpen}
         onClose={() => setSyncOpen(false)}
