@@ -10,63 +10,83 @@ type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
 /**
  * Record a swap event for one side of a locker swap.
- * - Terminates the CURRENT active occupancy row(s) for this locker_number
- *   whose occupant matches the outgoing (pre-swap) person, with a
- *   "Swapped to <otherLocker>" remark.
- * - Then inserts a new Active row for the incoming (post-swap) occupant with
- *   remarks "Swapped from <otherLocker>" and source_filename "locker-swap".
- * - Order matters: terminate outgoing rows BEFORE inserting the new Active
- *   row to respect locker_occupancy_active_locker_unique.
+ *
+ * For a swap, BOTH lockers are guaranteed to already be occupied — that's
+ * the whole premise — so the current Active occupancy row for this
+ * locker_number IS the outgoing occupant by definition. We do NOT run a
+ * "does an active row already exist" pre-check (which would always fire),
+ * and we do NOT match on employee_name/badge_number (uploaded occupancy
+ * rows can drift in casing/spelling from lockers.employee_name and would
+ * fail a strict match, leaving a stale Active row that then collides with
+ * the new insert).
+ *
+ * Sequence:
+ *   1. Terminate ALL current Active occupancy row(s) for this locker_number,
+ *      preserving each row's category, tagged "Swapped to <otherLocker>".
+ *   2. Insert one fresh Active row for the incoming occupant tagged
+ *      "Swapped from <otherLocker>".
+ *
+ * A `SwapStepError` is thrown with the specific step + locker if any DB
+ * operation fails, so the caller can surface which side/step broke.
  */
+export class SwapStepError extends Error {
+  step: "terminate" | "insert" | "lookup";
+  lockerNumber: string;
+  constructor(step: "terminate" | "insert" | "lookup", lockerNumber: string, cause: unknown) {
+    const causeMsg = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : JSON.stringify(cause);
+    super(`Swap ${step} failed for ${lockerNumber}: ${causeMsg}`);
+    this.name = "SwapStepError";
+    this.step = step;
+    this.lockerNumber = lockerNumber;
+  }
+}
+
 export async function recordSwapHistory(
-  outgoing: { locker_number: string; employee_name: string | null; badge_number: string | null },
+  _outgoing: { locker_number: string; employee_name: string | null; badge_number: string | null },
   postSwapLocker: Locker,
   otherLockerNumber: string,
 ): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
   const lockerNumber = postSwapLocker.locker_number;
 
-  // 1. Find all currently-active occupancy rows for this locker_number.
-  const { data: activeRows } = await supabase
+  // 1. Look up current active occupancy rows for this locker_number.
+  //    These are the outgoing occupants by definition (swap requires
+  //    both lockers to already be occupied). Do NOT filter by employee
+  //    match — occupancy data can drift from the lockers table.
+  const { data: activeRows, error: lookupErr } = await supabase
     .from("locker_occupancy")
-    .select("id, category, employee_name, badge_number")
+    .select("id, category")
     .eq("locker_number", lockerNumber)
     .ilike("status", "active");
+  if (lookupErr) throw new SwapStepError("lookup", lockerNumber, lookupErr);
 
-  // 2. Terminate any active row that belongs to the outgoing occupant.
-  //    (If a row exists that doesn't match either party, leave it — safer
-  //    than silent overwrite; the swap RPC has already validated the state.)
-  let outgoingCategory: string | null = null;
-  const outgoingIds: string[] = [];
-  for (const r of activeRows ?? []) {
-    const matchOutgoing =
-      norm(r.employee_name) === norm(outgoing.employee_name) &&
-      norm(r.badge_number) === norm(outgoing.badge_number);
-    if (matchOutgoing) {
-      outgoingIds.push(r.id);
-      outgoingCategory = outgoingCategory ?? r.category;
-    }
-  }
+  const outgoingCategory: string | null = activeRows && activeRows.length > 0 ? activeRows[0].category : null;
 
-  if (outgoingIds.length > 0) {
-    // Clear any prior Terminate rows in the outgoing category for this
-    // locker_number so only the swap-terminate remains as the latest.
-    if (outgoingCategory) {
-      await supabase
+  // 2. Terminate ALL of them (usually just one), preserving each row's
+  //    own category. Clear any prior Terminate rows first so only the
+  //    swap-terminate remains as the latest event per category.
+  if (activeRows && activeRows.length > 0) {
+    const categories = [...new Set(activeRows.map((r) => r.category))];
+    for (const cat of categories) {
+      const { error: delErr } = await supabase
         .from("locker_occupancy")
         .delete()
-        .eq("category", outgoingCategory)
+        .eq("category", cat)
         .eq("locker_number", lockerNumber)
         .or("status.ilike.terminate,status.ilike.terminated");
+      if (delErr) throw new SwapStepError("terminate", lockerNumber, delErr);
     }
-    await supabase
+
+    const ids = activeRows.map((r) => r.id);
+    const { error: updErr } = await supabase
       .from("locker_occupancy")
       .update({
         status: "Terminate",
         termination_date: today,
         remarks: `Swapped to ${otherLockerNumber}`,
       })
-      .in("id", outgoingIds);
+      .in("id", ids);
+    if (updErr) throw new SwapStepError("terminate", lockerNumber, updErr);
   }
 
   // 3. Insert a fresh Active row for the incoming occupant (if any).
@@ -84,7 +104,7 @@ export async function recordSwapHistory(
     category = anyRow && anyRow.length > 0 ? anyRow[0].category : "main";
   }
 
-  await supabase.from("locker_occupancy").insert({
+  const { error: insErr } = await supabase.from("locker_occupancy").insert({
     category,
     locker_number: lockerNumber,
     locker_row: postSwapLocker.row_label,
@@ -100,6 +120,7 @@ export async function recordSwapHistory(
     remarks: `Swapped from ${otherLockerNumber}`,
     source_filename: "locker-swap",
   });
+  if (insErr) throw new SwapStepError("insert", lockerNumber, insErr);
 }
 
 
