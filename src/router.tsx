@@ -54,6 +54,21 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
   );
 }
 
+function DefaultPendingComponent() {
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="mb-6 h-8 w-64 animate-pulse rounded-md bg-muted" />
+        <div className="space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-12 animate-pulse rounded-md bg-muted/60" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const getRouter = () => {
   const router = createRouter({
     routeTree,
@@ -63,6 +78,8 @@ export const getRouter = () => {
     defaultPreloadDelay: 30,
     defaultPreloadStaleTime: 0,
     defaultErrorComponent: DefaultErrorComponent,
+    defaultPendingComponent: DefaultPendingComponent,
+    defaultPendingMs: 200,
   });
 
   return router;
