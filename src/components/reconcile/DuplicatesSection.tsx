@@ -11,7 +11,7 @@ import { Users, BadgeAlert, Download } from "lucide-react";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { useAuth } from "@/lib/auth";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -153,7 +153,7 @@ function DupList({ groups, keyLabel, onPick }: { groups: Locker[][]; keyLabel: "
   );
 }
 
-function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
+async function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
   if (groups.length === 0) {
     toast.error("Nothing to export");
     return;
@@ -178,6 +178,7 @@ function exportDuplicates(groups: Locker[][], kind: "name" | "badge") {
       "Remark": l.remark ?? "",
     }));
   });
+  const XLSX = await getXLSX();
   const ws = XLSX.utils.json_to_sheet(rows);
   const headers = Object.keys(rows[0]);
   ws["!cols"] = headers.map((h) => ({

@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import defaultLayoutData from "@/data/locker-map-layout.json";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -145,6 +145,7 @@ export function onLayoutChange(handler: () => void): () => void {
  */
 export async function parseLayoutFromFile(file: File): Promise<MapLayout> {
   const buf = await file.arrayBuffer();
+  const XLSX = await getXLSX();
   const wb = XLSX.read(buf, { type: "array" });
   const out: MapLayout = {};
   for (const sheetName of wb.SheetNames) {

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounced } from "@/hooks/use-debounced";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -364,7 +364,7 @@ function ReconcilePage() {
 
   const counts = results ? bucketCounts(results) : { must_terminate: 0, rehire_suspect: 0, missing_from_hr: 0, ok_current: 0 };
 
-  const exportAll = (fmt: "xlsx" | "csv") => {
+  const exportAll = async (fmt: "xlsx" | "csv") => {
     if (!results) return;
     if (!confirmNidExport()) return;
     const byBucket = (b: Bucket) =>
@@ -385,6 +385,7 @@ function ReconcilePage() {
       const csv = Papa.unparse(flat);
       downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `reconcile-${stamp}.csv`);
     } else {
+      const XLSX = await getXLSX();
       const wb = XLSX.utils.book_new();
       for (const [name, rows] of Object.entries(sheets)) {
         const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ note: "(empty)" }]);
@@ -956,6 +957,7 @@ async function parseHr(f: File, filename?: string): Promise<HrPerson[]> {
     });
   } else {
     const buf = await f.arrayBuffer();
+    const XLSX = await getXLSX();
     const wb = XLSX.read(buf, { type: "array", cellDates: false });
     // pick the sheet with the most rows (handles "grddyn" + hidden helper sheets)
     let bestSheet = wb.SheetNames[0];
@@ -1136,9 +1138,10 @@ function MednefitsSection({ navigate }: { navigate: ReturnType<typeof useNavigat
     return hay.includes(q);
   });
 
-  const exportXlsx = () => {
+  const exportXlsx = async () => {
     if (!results) return;
     if (!confirmNidExport()) return;
+    const XLSX = await getXLSX();
     const wb = XLSX.utils.book_new();
     const matchedRows = matched.map((r) => ({
       locker_number: r.db.locker_number,
@@ -1320,6 +1323,7 @@ async function parseMednefits(f: File): Promise<MedRow[]> {
     raw = parsed.data as unknown[][];
   } else {
     const buf = await f.arrayBuffer();
+    const XLSX = await getXLSX();
     const wb = XLSX.read(buf, { type: "array", cellDates: false });
     // Prefer the "List" sheet if present; else the sheet with the most rows.
     let bestSheet = wb.SheetNames[0];

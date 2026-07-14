@@ -1,7 +1,7 @@
 // Bulk Status Update tab — updates ONLY locker_number + status.
 // Never touches employee_name, badge_number, or national_id.
 import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
@@ -83,6 +83,7 @@ export function BulkStatusUpdateTab() {
     setParsing(true);
     try {
       const buf = await f.arrayBuffer();
+      const XLSX = await getXLSX();
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null, raw: true });
@@ -197,6 +198,7 @@ export function BulkStatusUpdateTab() {
       all.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
       const aoa: (string | null)[][] = [["Locker Number", "New Status"]];
       for (const r of all) aoa.push([r.locker_number, r.status ?? ""]);
+      const XLSX = await getXLSX();
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws["!cols"] = [{ wch: 18 }, { wch: 18 }];
       const wb = XLSX.utils.book_new();

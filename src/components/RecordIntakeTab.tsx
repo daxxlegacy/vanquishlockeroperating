@@ -2,7 +2,7 @@
 // (e.g. "Locker_List_at_09_June_2026__FW__128_.xlsx") and applies them to
 // the lockers table. Self-contained; pulled in by /upload.
 import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
@@ -95,6 +95,7 @@ export function RecordIntakeTab() {
     setParsing(true);
     try {
       const buf = await f.arrayBuffer();
+      const XLSX = await getXLSX();
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const sheetName = wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -543,6 +543,7 @@ function UploadPage() {
         const csv = Papa.unparse(cleaned);
         downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `lockers-${stamp}.csv`);
       } else {
+        const XLSX = await getXLSX();
         const ws = XLSX.utils.json_to_sheet(cleaned);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Lockers");
@@ -560,6 +561,7 @@ function UploadPage() {
     if (!apply) setSpareResult(null);
     try {
       const buf = await f.arrayBuffer();
+      const XLSX = await getXLSX();
       const wb = XLSX.read(buf, { type: "array", cellDates: false });
       const allRows: Record<string, unknown>[] = [];
       for (const sn of wb.SheetNames) {
@@ -796,7 +798,7 @@ function UploadPage() {
     setCheckBusy(false);
   };
 
-  const exportRosterCheck = (fmt: "xlsx" | "csv") => {
+  const exportRosterCheck = async (fmt: "xlsx" | "csv") => {
     if (!checkResult) return;
     const sheets: Record<string, Record<string, unknown>[]> = {
       "In file NOT in DB": checkResult.inFileNotInDb.map((p) => ({ badge: p.badge ?? "", name: p.name ?? "" })),
@@ -816,6 +818,7 @@ function UploadPage() {
       ]);
       downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `roster-check-${stamp}.csv`);
     } else {
+      const XLSX = await getXLSX();
       const wb = XLSX.utils.book_new();
       for (const [name, rows] of Object.entries(sheets)) {
         const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ note: "(empty)" }]);
@@ -1981,6 +1984,7 @@ async function parseFileAllSheets(f: File): Promise<{ sheet: string; rows: Recor
     return [{ sheet: "csv", rows }];
   }
   const buf = await f.arrayBuffer();
+  const XLSX = await getXLSX();
   const wb = XLSX.read(buf, { type: "array", cellDates: false });
   return wb.SheetNames.map((sn) => ({
     sheet: sn,
@@ -2000,6 +2004,7 @@ async function parseFileWithHeaderDetection(f: File, markerTokens: string[]): Pr
     return await parseFile(f);
   }
   const buf = await f.arrayBuffer();
+  const XLSX = await getXLSX();
   const wb = XLSX.read(buf, { type: "array", cellDates: false });
   const out: Record<string, unknown>[] = [];
   for (const sn of wb.SheetNames) {
@@ -2008,12 +2013,12 @@ async function parseFileWithHeaderDetection(f: File, markerTokens: string[]): Pr
     if (!aoa.length) continue;
     let headerIdx = 0;
     for (let i = 0; i < Math.min(aoa.length, 20); i++) {
-      const row = aoa[i] ?? [];
+      const row: unknown[] = aoa[i] ?? [];
       const tokens = row.map(normTok).filter(Boolean);
       const hits = tokens.filter((t) => markers.has(t)).length;
       if (hits >= 2) { headerIdx = i; break; }
     }
-    const headers = (aoa[headerIdx] ?? []).map((h) => String(h ?? "").trim());
+    const headers = ((aoa[headerIdx] ?? []) as unknown[]).map((h) => String(h ?? "").trim());
     for (let i = headerIdx + 1; i < aoa.length; i++) {
       const row = aoa[i] ?? [];
       const rec: Record<string, unknown> = {};

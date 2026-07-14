@@ -1,75 +1,34 @@
-# Support Requests — /find-locker help flow + admin review
+## Goal
+Cut initial JS payload across every page. Two levers matter here — TanStack Router auto code-splitting is already active (route components are not exported), so the real wins are (a) lazy-loading `xlsx` (SheetJS is the single largest dependency and is currently imported at module scope in 11 files) and (b) a shell-level prefetch + skeleton pending UI.
 
-Extends /find-locker with a button-driven help menu, adds a lightweight support-ticket table, and gives admins (and holders of a new `manage_support_requests` permission) a place to review and resolve them.
+## Findings from audit
 
-## 1. Database migration
+- **Route splitting**: `autoCodeSplitting` is on by default in `@lovable.dev/vite-tanstack-config`. Every route file already keeps its component un-exported, so per-route component chunks are already produced. No `.lazy.tsx` split needed — that would only be marginal noise. Confirmed by grepping every `src/routes/*.tsx`.
+- **`recharts`**: only imported by `src/components/ui/chart.tsx`, which no component in the app imports. It is already tree-shaken out. No change needed.
+- **`xlsx`**: statically imported in 11 files — `routes/lockers.tsx`, `routes/occupancy.tsx`, `routes/reconcile.tsx`, `routes/spare-keys.tsx`, `routes/upload.tsx`, `components/BulkStatusUpdateTab.tsx`, `components/RecordIntakeTab.tsx`, `components/operations/AutomationPanel.tsx`, `components/operations/DeletionsPanel.tsx`, `components/reconcile/DuplicatesSection.tsx`, `lib/map-layout.ts`. This is the biggest fix.
+- **No PDF, QR, or date-picker heavy libs found** at module scope.
+- **Virtualization**: lockers/occupancy already use `react-window`. Terminations panel uses a normal table but is bounded (limit 200); leave as-is unless it grows.
+- **Column selection**: lockers-cache / occupancy-cache already select `*` from views; changing this is a data-layer refactor outside the scope of a bundling pass, so I'll leave it. Full-detail fetch already happens only in edit dialogs.
 
-New enums:
-- `support_request_type`: `transfer_locker`, `cant_find_locker`, `other`
-- `support_request_status`: `new`, `in_progress`, `resolved` (default `new`)
+## Changes
 
-Add to existing `app_permission` enum: `manage_support_requests`.
-
-New table `public.support_requests`:
-- request_type, name, badge_number, locker_number (nullable), contact_number, message, status, resolved_by (uuid → auth.users), resolved_at, plus id/created_at/updated_at.
-
-Grants + RLS:
-- `GRANT INSERT ON public.support_requests TO anon, authenticated` is NOT given — writes only via RPC.
-- `GRANT SELECT, UPDATE ON public.support_requests TO authenticated` (RLS still gates it).
-- `GRANT ALL ... TO service_role`.
-- RLS enabled. Policies:
-  - SELECT: `has_role(auth.uid(),'admin') OR has_permission(auth.uid(),'manage_support_requests')`
-  - UPDATE: same predicate, `WITH CHECK` same.
-  - No INSERT/DELETE policies (RPC bypasses via SECURITY DEFINER; deletes forbidden).
-
-New RPC `public.submit_support_request(...)` — SECURITY DEFINER, returns the new row's id:
-- Validates lengths (name ≤ 120, badge ≤ 60, locker ≤ 60, contact ≤ 40, message ≤ 2000, request_type in enum).
-- Rate limit reusing the existing `locker_lookup_attempts` pattern: max 5 rows inserted into `support_requests` for the same client IP in the last 10 minutes (record IP via `request.headers` inside the edge function that calls the RPC — see below).
-- Inserts the row and returns id.
-
-Because Postgres can't read the caller's IP directly on the browser publishable path, the RPC accepts an `_ip text` argument and is only exposed through a thin **`submit-support-request` edge function** that resolves the IP (`x-forwarded-for` / `cf-connecting-ip`) and forwards it to the RPC. Anon calls to the RPC without going through the function are still blocked because we do NOT `GRANT EXECUTE ... TO anon` on the RPC — only `service_role` can execute it, which the edge function uses via `SUPABASE_SERVICE_ROLE_KEY`. This matches the existing `locker-lookup` function's pattern.
-
-## 2. `/find-locker` UI
-
-Keep the existing badge-number lookup form. Below it add a "How can we help you?" card with four buttons that swap the panel below:
-
-- **Find my locker** — no-op (already the form above).
-- **I want to transfer my locker** — scripted preamble + short form (name, badge number, current locker number, reason) → submit.
-- **I can't find my locker number** — scripted guidance + "Still can't find it — contact us" button → same short form (locker_number optional, message = "Can't find locker").
-- **Something else** — free-text textarea + name/contact + "Send to support" button → submits with `request_type='other'`.
-
-All three submission paths call the new `submit-support-request` edge function with `{ request_type, name, badge_number, locker_number?, contact_number, message }`, then show:
-
-> Your request has been received. Reference #{id}. Our team will contact you at {contact_number} shortly.
-
-Client-side zod validation before calling. Errors return generic message ("Couldn't submit right now — please try again or contact the admin office.") without leaking rate-limit vs validation details.
-
-## 3. Admin panel
-
-- Add `manage_support_requests` permission to `src/lib/permissions.ts` with label "Manage Support Requests".
-- New route `src/routes/support-requests.tsx` guarded by `PageGuard permission="manage_support_requests"`. (Simpler than shoehorning into `operations.tsx` — operations was just trimmed.)
-- Nav item in `AppHeader.tsx` with a red badge showing the count of `status='new'` requests. Uses a small `useSupportRequestsCount()` hook that subscribes via Supabase realtime.
-- Page: filter tabs (New / In progress / Resolved / All), card list sorted by `created_at desc`. Each card shows type, name, badge, locker, contact, message, timestamps. Actions: **Mark in progress**, **Mark resolved**, with `resolved_by = auth.uid()` and `resolved_at = now()` set on resolve.
-
-## Files to add / modify
-
-Add:
-- `supabase/functions/submit-support-request/index.ts` — validates payload, resolves IP, calls RPC, returns `{ id }` or 429/400.
-- `src/routes/support-requests.tsx` — admin list & actions.
-- `src/components/support/HelpMenu.tsx` — the four-button help section for /find-locker.
-- `src/components/support/SupportRequestForm.tsx` — shared short form.
-- `src/lib/support-requests.ts` — small typed wrapper + realtime count hook.
-
-Modify:
-- `src/routes/find-locker.tsx` — mount `<HelpMenu />` below the existing form.
-- `src/lib/permissions.ts` — add `manage_support_requests`.
-- `src/components/AppHeader.tsx` — add nav item + count badge.
-- `supabase/config.toml` — register the new edge function (no JWT verification, matches `locker-lookup`).
+1. **Add `src/lib/xlsx-lazy.ts`** — one helper exporting `getXLSX(): Promise<typeof import("xlsx")>` with a module-scope memoised promise so the chunk downloads once.
+2. **Rewrite each of the 11 files** to remove `import * as XLSX from "xlsx"` and instead `const XLSX = await getXLSX()` inside each handler (upload parse, export, template download). Keeps every existing behaviour; the click-to-download path adds one microtask before the first file open on a given session.
+3. **Route pending UI**: register a `defaultPendingComponent` in `src/router.tsx` that renders a lightweight `<Skeleton>`-based shell so first-visit to a lazy chunk shows structure instead of a blank screen.
+4. **Shell prefetch**: in `src/routes/__root.tsx` (after auth resolves), fire `prefetchLockers()` and `prefetchOccupancy()` once. Both are already implemented and no-op if warm.
+5. **Do not touch**: RLS, business logic, route paths, cache column selection, `terminations` table structure.
 
 ## Technical notes
 
-- Rate-limit query counts rows in `support_requests` by `created_at > now() - interval '10 minutes' AND client_ip = _ip` (we add a private `client_ip inet` column, not exposed in the app types beyond admin view). Insert then re-check count and raise `rate limit exceeded` on the 6th hit.
-- The `submit_support_request` RPC only accepts the enum type (Postgres enforces), and normalises string trims + length caps server-side too.
-- The AI fallback flow mentioned for "Something else" is left as a placeholder button on the UI — it will be wired to the AI gateway in the follow-up step.
-- No joins to `lockers` / `locker_occupancy`. `locker_number` is stored as plain text exactly as typed.
-- The AppHeader badge uses the `useSupportRequestsCount` hook, which returns 0 for users without the permission (guarded by RLS — the SELECT count query simply returns 0 rows).
+- `xlsx` writeFile paths (`XLSX.writeFile`) all live inside click/submit handlers already — they become `async` (most already are). No React render paths call `xlsx`.
+- `src/lib/map-layout.ts` has one xlsx read function; converting its inner function to async is safe since only upload paths call it.
+- `prefetchLockers` / `prefetchOccupancy` are best-effort, guarded, and idempotent — safe to call unconditionally on root mount for signed-in users.
+
+## Verification
+- Run production build; capture chunk sizes before/after with `du -b dist/**/*.js | sort -n | tail`. Confirm `xlsx` no longer appears in the initial `_root`/`index` chunk and lives in its own on-demand chunk.
+- Load `/find-locker` in a fresh session and confirm no xlsx chunk in the network trace.
+
+## Out of scope
+- Column-narrowing in lockers/occupancy caches (data-layer, needs its own pass).
+- `.lazy.tsx` split files (auto-splitting already gives us this).
+- Recharts (already tree-shaken).

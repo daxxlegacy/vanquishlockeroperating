@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useEffect, useMemo, useRef, useState, memo } from "react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import { List, type RowComponentProps } from "react-window";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -435,6 +435,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
     if (!confirmNidExport()) return;
     const rows = await buildExportRows();
+    const XLSX = await getXLSX();
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Occupancy");
@@ -474,6 +475,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     setImporting(true);
     try {
       const buf = await file.arrayBuffer();
+      const XLSX = await getXLSX();
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const targetSheet =
         category === "main" ? "Occupied + Vacant" :

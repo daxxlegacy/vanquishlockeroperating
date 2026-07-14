@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -56,7 +56,7 @@ export function DeletionsPanel() {
     );
   }), [items, q, fromDate, toDate]);
 
-  const exportDeletions = (fmt: "xlsx" | "csv") => {
+  const exportDeletions = async (fmt: "xlsx" | "csv") => {
     const rows = filteredItems.map((a) => ({
       kind: a.deletion_kind, locker_number: a.locker_number ?? "", location: a.location,
       affected_count: a.affected_count, affected_lockers: (a.affected_locker_numbers ?? []).join(", "),
@@ -75,6 +75,7 @@ export function DeletionsPanel() {
     if (fmt === "csv") {
       dl(new Blob([Papa.unparse(rows)], { type: "text/csv;charset=utf-8;" }), `deletions-${stamp}.csv`);
     } else {
+      const XLSX = await getXLSX();
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Deletions");
       const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });

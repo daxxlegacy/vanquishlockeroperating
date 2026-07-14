@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Search, Key, Plus, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import { List, type RowComponentProps } from "react-window";
 import { compareLockerNumbers } from "@/lib/locker-utils";
@@ -256,13 +256,14 @@ function SpareKeysPage() {
   );
 }
 
-function exportSpareKeysToExcel(rows: Locker[]) {
+async function exportSpareKeysToExcel(rows: Locker[]) {
   const data = rows.map((l) => ({
     "Locker #": l.locker_number,
     Location: l.location,
     Row: l.row_label && l.row_label !== l.location ? l.row_label : "",
     "Spare Key Status": (l.spare_key_status ?? "unknown").replace(/_/g, " "),
   }));
+  const XLSX = await getXLSX();
   const ws = XLSX.utils.json_to_sheet(data);
   ws["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 22 }];
   const wb = XLSX.utils.book_new();

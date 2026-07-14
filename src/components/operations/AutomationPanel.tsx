@@ -1,6 +1,6 @@
 // Automation — dry-run preview + bulk auto-terminate.
 import { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/lib/xlsx-lazy";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -41,6 +41,7 @@ async function parseRoster(f: File): Promise<Record<string, unknown>[]> {
     });
   }
   const buf = await f.arrayBuffer();
+  const XLSX = await getXLSX();
   const wb = XLSX.read(buf, { type: "array" });
   return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
 }
