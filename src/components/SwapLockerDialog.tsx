@@ -196,6 +196,15 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
                     <KeyBadge status={locker.spare_key_status} />
                   </div>
+                  <Link
+                    to="/spare-keys"
+                    search={{ search: locker.locker_number }}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    View spare key details <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
                 <div className="space-y-1">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Locker B</div>
@@ -206,6 +215,15 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
                     <KeyBadge status={target?.spare_key_status ?? null} />
                   </div>
+                  <Link
+                    to="/spare-keys"
+                    search={{ search: target?.locker_number ?? "" }}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    View spare key details <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
               </div>
               {(SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") ||
