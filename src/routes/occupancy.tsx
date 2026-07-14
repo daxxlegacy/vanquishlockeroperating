@@ -60,6 +60,7 @@ const COLS = [
   { key: "reason", w: 180 },
   { key: "work", w: 140 },
   { key: "history", w: 90 },
+  { key: "actions", w: 90 },
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
 const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
