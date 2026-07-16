@@ -10,12 +10,11 @@ export type AppPermission =
   | "run_automation"
   | "view_national_id"
   | "manage_support_requests"
+  | "manage_locker_claims"
   | "page_map"
   | "page_lockers"
   | "page_spare_keys"
   | "page_occupancy"
-  | "page_duplicates"
-  | "page_operations"
   | "page_reconcile"
   | "page_support_requests"
   | "page_upload";
@@ -27,12 +26,11 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   run_automation: "Run automation tasks",
   view_national_id: "View full National ID (bypass masking)",
   manage_support_requests: "Manage Support Requests (view & resolve)",
+  manage_locker_claims: "Manage Locker Identity Claims (review & resolve)",
   page_map: "View Map page",
   page_lockers: "View Lockers page",
   page_spare_keys: "View Spare Keys page",
   page_occupancy: "View Occupancy page",
-  page_duplicates: "View Duplicates page",
-  page_operations: "View Operations page",
   page_reconcile: "View Reconcile page",
   page_support_requests: "View Support Requests page",
   page_upload: "View Upload page",
@@ -45,8 +43,6 @@ export const PAGE_PERMISSIONS: AppPermission[] = [
   "page_lockers",
   "page_spare_keys",
   "page_occupancy",
-  "page_duplicates",
-  "page_operations",
   "page_reconcile",
   "page_support_requests",
   "page_upload",
@@ -59,6 +55,7 @@ export const ACTION_PERMISSIONS: AppPermission[] = [
   "run_automation",
   "view_national_id",
   "manage_support_requests",
+  "manage_locker_claims",
 ];
 
 
