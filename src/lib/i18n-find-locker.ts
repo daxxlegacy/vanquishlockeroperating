@@ -54,6 +54,7 @@ type Dict = {
     noMatch: string;
     tooMany: string;
     cantFindCta: string;
+    multipleHeading: (n: number) => string;
   };
   helpMenu: {
     heading: string;
@@ -158,6 +159,7 @@ export const t: Record<Lang, Dict> = {
       noMatch: "No matching record found. Please check your details or contact the admin office.",
       tooMany: "Too many attempts. Please try again in a few minutes.",
       cantFindCta: "Can't find your locker? Contact us",
+      multipleHeading: (n: number) => `You have ${n} lockers assigned:`,
     },
     helpMenu: {
       heading: "How can we help you?",
@@ -260,6 +262,7 @@ export const t: Record<Lang, Dict> = {
       noMatch: "Tiada rekod dijumpai. Sila semak maklumat atau hubungi pejabat pentadbir.",
       tooMany: "Terlalu banyak cubaan. Sila cuba semula beberapa minit lagi.",
       cantFindCta: "Tidak jumpa loker anda? Hubungi kami",
+      multipleHeading: (n: number) => `Anda mempunyai ${n} loker yang ditugaskan:`,
     },
     helpMenu: {
       heading: "Bagaimana kami boleh bantu?",

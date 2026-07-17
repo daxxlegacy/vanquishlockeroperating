@@ -65,16 +65,16 @@ function LockerInquiryPage() {
   const [badgeNumber, setBadgeNumber] = useState("");
   
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<Result | null>(null);
+  const [results, setResults] = useState<Result[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferOpenIdx, setTransferOpenIdx] = useState<number | null>(null);
   const [showCantFind, setShowCantFind] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setResult(null);
-    setShowTransfer(false);
+    setResults(null);
+    setTransferOpenIdx(null);
     setShowCantFind(false);
     setLoading(true);
     try {
@@ -93,7 +93,17 @@ function LockerInquiryPage() {
         }
         return;
       }
-      setResult(data as Result);
+      const payload = data as { results?: Result[] } & Partial<Result>;
+      const list = Array.isArray(payload.results)
+        ? payload.results
+        : payload.locker_number !== undefined
+          ? [{ employee_name: payload.employee_name ?? null, badge_number: payload.badge_number ?? null, locker_number: payload.locker_number ?? null }]
+          : [];
+      if (list.length === 0) {
+        setError(tr.lookup.noMatch);
+        return;
+      }
+      setResults(list);
     } catch {
       setError(tr.lookup.noMatch);
     } finally {
@@ -203,54 +213,61 @@ function LockerInquiryPage() {
                 </div>
               )}
 
-              {result && (
+              {results && results.length > 0 && (
                 <div className="mt-6 space-y-4">
-                  <div className="rounded-lg border border-border bg-muted/40 p-4">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-                      {tr.lookup.resultTitle}
-                    </p>
-                    <dl className="space-y-1.5 text-sm">
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-muted-foreground">{tr.lookup.resultName}</dt>
-                        <dd className="font-medium text-right break-words">{result.employee_name ?? "—"}</dd>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-muted-foreground">{tr.lookup.resultBadge}</dt>
-                        <dd className="font-medium text-right break-words">{result.badge_number ?? "—"}</dd>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-muted-foreground">{tr.lookup.resultLocker}</dt>
-                        <dd className="font-mono font-semibold text-right">{result.locker_number ?? "—"}</dd>
-                      </div>
-                    </dl>
-                  </div>
-
-                  {!showTransfer ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full h-12 text-base"
-                      onClick={() => setShowTransfer(true)}
-                    >
-                      <ArrowRightLeft className="h-4 w-4 mr-2" />
-                      {tr.lookup.requestTransfer}
-                    </Button>
-                  ) : (
-                    <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                      <p className="text-sm">{tr.transferPanel.intro}</p>
-                      <SupportRequestForm
-                        lang={lang}
-                        requestType="transfer_locker"
-                        showLockerField
-                        initialName={result.employee_name ?? ""}
-                        initialBadge={result.badge_number ?? ""}
-                        initialLocker={result.locker_number ?? ""}
-                        messageLabel={tr.transferPanel.messageLabel}
-                        messagePlaceholder={tr.transferPanel.messagePlaceholder}
-                        submitLabel={tr.transferPanel.submitLabel}
-                      />
-                    </div>
+                  {results.length > 1 && (
+                    <p className="text-sm font-medium">{tr.lookup.multipleHeading(results.length)}</p>
                   )}
+                  {results.map((result, idx) => (
+                    <div key={`${result.locker_number ?? "l"}-${idx}`} className="space-y-3">
+                      <div className="rounded-lg border border-border bg-muted/40 p-4">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                          {tr.lookup.resultTitle}
+                        </p>
+                        <dl className="space-y-1.5 text-sm">
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">{tr.lookup.resultName}</dt>
+                            <dd className="font-medium text-right break-words">{result.employee_name ?? "—"}</dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">{tr.lookup.resultBadge}</dt>
+                            <dd className="font-medium text-right break-words">{result.badge_number ?? "—"}</dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">{tr.lookup.resultLocker}</dt>
+                            <dd className="font-mono font-semibold text-right">{result.locker_number ?? "—"}</dd>
+                          </div>
+                        </dl>
+                      </div>
+
+                      {transferOpenIdx !== idx ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full h-12 text-base"
+                          onClick={() => setTransferOpenIdx(idx)}
+                        >
+                          <ArrowRightLeft className="h-4 w-4 mr-2" />
+                          {tr.lookup.requestTransfer}
+                        </Button>
+                      ) : (
+                        <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                          <p className="text-sm">{tr.transferPanel.intro}</p>
+                          <SupportRequestForm
+                            lang={lang}
+                            requestType="transfer_locker"
+                            showLockerField
+                            initialName={result.employee_name ?? ""}
+                            initialBadge={result.badge_number ?? ""}
+                            initialLocker={result.locker_number ?? ""}
+                            messageLabel={tr.transferPanel.messageLabel}
+                            messagePlaceholder={tr.transferPanel.messagePlaceholder}
+                            submitLabel={tr.transferPanel.submitLabel}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
