@@ -54,6 +54,7 @@ type Dict = {
     noMatch: string;
     tooMany: string;
     cantFindCta: string;
+    multipleHeading: (n: number) => string;
   };
   helpMenu: {
     heading: string;
