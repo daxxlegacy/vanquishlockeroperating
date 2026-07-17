@@ -262,6 +262,7 @@ export const t: Record<Lang, Dict> = {
       noMatch: "Tiada rekod dijumpai. Sila semak maklumat atau hubungi pejabat pentadbir.",
       tooMany: "Terlalu banyak cubaan. Sila cuba semula beberapa minit lagi.",
       cantFindCta: "Tidak jumpa loker anda? Hubungi kami",
+      multipleHeading: (n: number) => `Anda mempunyai ${n} loker yang ditugaskan:`,
     },
     helpMenu: {
       heading: "Bagaimana kami boleh bantu?",
