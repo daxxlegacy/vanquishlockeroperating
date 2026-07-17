@@ -65,16 +65,16 @@ function LockerInquiryPage() {
   const [badgeNumber, setBadgeNumber] = useState("");
   
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<Result | null>(null);
+  const [results, setResults] = useState<Result[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferOpenIdx, setTransferOpenIdx] = useState<number | null>(null);
   const [showCantFind, setShowCantFind] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setResult(null);
-    setShowTransfer(false);
+    setResults(null);
+    setTransferOpenIdx(null);
     setShowCantFind(false);
     setLoading(true);
     try {
@@ -93,7 +93,17 @@ function LockerInquiryPage() {
         }
         return;
       }
-      setResult(data as Result);
+      const payload = data as { results?: Result[] } & Partial<Result>;
+      const list = Array.isArray(payload.results)
+        ? payload.results
+        : payload.locker_number !== undefined
+          ? [{ employee_name: payload.employee_name ?? null, badge_number: payload.badge_number ?? null, locker_number: payload.locker_number ?? null }]
+          : [];
+      if (list.length === 0) {
+        setError(tr.lookup.noMatch);
+        return;
+      }
+      setResults(list);
     } catch {
       setError(tr.lookup.noMatch);
     } finally {
