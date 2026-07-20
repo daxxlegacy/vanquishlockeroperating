@@ -81,10 +81,26 @@ function SupportRequestsPage() {
   const [filter, setFilter] = useState<SupportRequestStatus | "all">("new");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [highlightTicket, setHighlightTicket] = useState<string | null>(null);
+
+  useFocusListener("ticket", (ticketNumber) => {
+    setFilter("all");
+    setHighlightTicket(ticketNumber);
+    // Scroll after the list has a chance to re-render.
+    setTimeout(() => {
+      const el = document.getElementById(`ticket-${ticketNumber}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      // Clear highlight after a moment.
+      setTimeout(() => setHighlightTicket((h) => (h === ticketNumber ? null : h)), 2500);
+    }, 150);
+  });
 
   useEffect(() => {
     setSelected(new Set());
   }, [filter]);
+
 
   useEffect(() => {
     if (!user) return;
