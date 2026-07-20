@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Ticket, Send, ArrowLeft, User, Shield, Bell } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Loader2, Ticket, Send, ArrowLeft, User, Shield, Bell, Search, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
@@ -21,6 +22,8 @@ import { formatDateTime } from "@/lib/format-date";
 import { ReplyAttachment } from "@/components/support/ReplyAttachment";
 import { ImagePreviewModal, type ImagePreviewItem } from "@/components/ImagePreviewModal";
 import { signTicketAttachment } from "@/lib/ticket-attachment";
+import { useLang, t as i18n } from "@/lib/i18n-find-locker";
+
 
 const searchSchema = z.object({
   t: z.string().optional(),
