@@ -18,6 +18,7 @@ import {
   type SupportRequestType,
 } from "@/lib/support-requests";
 import { formatDateTime } from "@/lib/format-date";
+import { ReplyAttachment } from "@/components/support/ReplyAttachment";
 
 const searchSchema = z.object({
   t: z.string().optional(),
