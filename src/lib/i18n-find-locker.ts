@@ -229,6 +229,8 @@ export const t: Record<Lang, Dict> = {
       okTicket: "Ticket number:",
       okSaveNumber: "Save this number. Our team will contact you at",
       okCheckStatus: "Check ticket status",
+      copyReference: "Copy reference number",
+      copiedReference: "Copied!",
       submitting: "Submitting…",
     },
     faq: {
