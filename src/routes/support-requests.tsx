@@ -39,8 +39,10 @@ import {
   QrCode,
   ClipboardCheck,
   Paperclip,
+  MessageCircle,
   X as XIcon,
 } from "lucide-react";
+import { normalizeWhatsAppNumber, buildWhatsAppLink } from "@/lib/whatsapp";
 import { compressImage } from "@/lib/image-compress";
 import { ReplyAttachment } from "@/components/support/ReplyAttachment";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
@@ -408,6 +410,36 @@ function SupportCard({
     if (row.status === "new") onUpdate(row.id, "in_progress");
   };
 
+  const waNumber = normalizeWhatsAppNumber(row.contact_number);
+
+  const sendViaWhatsApp = async () => {
+    if (!waNumber) return;
+    const typed = reply.trim();
+    const fallback = `Hi ${row.name}, regarding your ${REQUEST_TYPE_LABEL[row.request_type]} request (Ref #${row.ticket_number})...`;
+    const message = typed || fallback;
+    const link = buildWhatsAppLink(waNumber, message);
+    // Open first so it counts as a user gesture.
+    window.open(link, "_blank", "noopener,noreferrer");
+
+    const { error } = await supabase.from("support_request_replies").insert({
+      request_id: row.id,
+      author_role: "admin",
+      author_id: user?.id ?? null,
+      author_name: user?.email ?? "Admin",
+      message,
+      channel: "whatsapp_outbound",
+    });
+    if (error) {
+      toast.error(`Logged locally but not saved: ${error.message}`);
+      return;
+    }
+    setReply("");
+    toast.success("Opened WhatsApp and logged the message");
+    loadReplies();
+    if (row.status === "new") onUpdate(row.id, "in_progress");
+  };
+
+
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -452,27 +484,44 @@ function SupportCard({
             <p className="text-xs text-muted-foreground">No replies yet.</p>
           ) : (
             <div className="space-y-2">
-              {replies.map((r) => (
-                <div
-                  key={r.id}
-                  className={`rounded-lg border p-2.5 text-sm ${
-                    r.author_role === "admin" ? "bg-primary/5 border-primary/20" : "bg-muted/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                    {r.author_role === "admin" ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                    <span className="font-medium">
-                      {r.author_role === "admin" ? "Admin" : "User"}
-                      {r.author_name ? ` · ${r.author_name}` : ""}
-                    </span>
-                    <span>· {formatDateTime(r.created_at)}</span>
+              {replies.map((r) => {
+                const isWa = r.channel === "whatsapp_outbound";
+                return (
+                  <div
+                    key={r.id}
+                    className={`rounded-lg border p-2.5 text-sm ${
+                      isWa
+                        ? "bg-muted/60 border-dashed text-muted-foreground"
+                        : r.author_role === "admin"
+                          ? "bg-primary/5 border-primary/20"
+                          : "bg-muted/40"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      {isWa ? (
+                        <MessageCircle className="h-3 w-3 text-emerald-600" />
+                      ) : r.author_role === "admin" ? (
+                        <Shield className="h-3 w-3" />
+                      ) : (
+                        <User className="h-3 w-3" />
+                      )}
+                      <span className="font-medium">
+                        {isWa
+                          ? "Admin sent via WhatsApp"
+                          : r.author_role === "admin"
+                            ? "Admin"
+                            : "User"}
+                        {r.author_name ? ` · ${r.author_name}` : ""}
+                      </span>
+                      <span>· {formatDateTime(r.created_at)}</span>
+                    </div>
+                    <div className="whitespace-pre-wrap">{r.message}</div>
+                    {r.attachment_path && !isWa && (
+                      <ReplyAttachment path={r.attachment_path} mode="admin" />
+                    )}
                   </div>
-                  <div className="whitespace-pre-wrap">{r.message}</div>
-                  {r.attachment_path && (
-                    <ReplyAttachment path={r.attachment_path} mode="admin" />
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -515,7 +564,7 @@ function SupportCard({
                 </button>
               </div>
             )}
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-2 flex-wrap">
               <Button
                 size="sm"
                 variant="outline"
@@ -526,10 +575,32 @@ function SupportCard({
                 <Paperclip className="h-4 w-4 mr-1" />
                 {attachment ? "Change photo" : "Attach photo"}
               </Button>
-              <Button size="sm" onClick={sendReply} disabled={sending || (!reply.trim() && !attachment)}>
-                {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
-                Send reply
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex gap-2 flex-wrap justify-end">
+                  {waNumber && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      type="button"
+                      onClick={sendViaWhatsApp}
+                      disabled={sending}
+                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      Reply via WhatsApp
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={sendReply} disabled={sending || (!reply.trim() && !attachment)}>
+                    {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+                    Send reply
+                  </Button>
+                </div>
+                {waNumber && (
+                  <p className="text-[11px] text-muted-foreground max-w-xs text-right leading-snug">
+                    Opens WhatsApp to send manually. Their reply won't appear here — check WhatsApp directly.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
