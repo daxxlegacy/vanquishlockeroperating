@@ -369,9 +369,94 @@ function SupportRequestsPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {selected.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur px-4 py-3 shadow-lg">
+          <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-3">
+            <div className="text-sm font-medium">
+              {selected.size} selected
+            </div>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+              <Checkbox
+                checked={notifyBulk}
+                onCheckedChange={(v) => setNotifyBulk(v === true)}
+                aria-label="Also notify these employees"
+              />
+              <span>Also notify these employees</span>
+            </label>
+            <div className="flex-1" />
+            {bulkBusy ? (
+              <div className="flex items-center gap-2 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>
+                  {bulkBusy.action === "resolved" ? "Marking resolved" : bulkBusy.action === "new" ? "Reopening" : "Working"} · {bulkBusy.done}/{bulkBusy.total}
+                </span>
+              </div>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => bulkSetStatus("resolved")}
+                  disabled={selected.size === 0}
+                >
+                  Mark Resolved ({selected.size})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => bulkSetStatus("new")}
+                  disabled={selected.size === 0}
+                >
+                  Back to New ({selected.size})
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={!canBulkDelete || deleting}
+                      title={canBulkDelete ? "" : "Only resolved tickets can be deleted"}
+                    >
+                      {deleting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                      Delete ({selectedResolvedCount})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Delete {selected.size} resolved ticket{selected.size === 1 ? "" : "s"}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes the tickets and all their replies. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button size="sm" variant="ghost" onClick={clearSelection}>
+                  <XIcon className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+          {bulkBusy && bulkBusy.total > 20 && (
+            <div className="max-w-4xl mx-auto mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${Math.round((bulkBusy.done / bulkBusy.total) * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
 
 const TYPE_ICON: Record<SupportRequestType, React.ComponentType<{ className?: string }>> = {
   transfer_locker: ArrowRightLeft,
