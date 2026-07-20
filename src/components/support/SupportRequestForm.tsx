@@ -61,6 +61,7 @@ export function SupportRequestForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setOpenTicket(null);
 
     const n = name.trim();
     const b = badge.trim();
