@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
+import { useFocusListener } from "@/lib/global-focus";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
