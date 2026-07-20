@@ -326,6 +326,8 @@ function SupportCard({
   const [expanded, setExpanded] = useState(false);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadReplies = async () => {
     const { data, error } = await (
