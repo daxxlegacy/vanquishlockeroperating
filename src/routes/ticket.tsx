@@ -19,6 +19,8 @@ import {
 } from "@/lib/support-requests";
 import { formatDateTime } from "@/lib/format-date";
 import { ReplyAttachment } from "@/components/support/ReplyAttachment";
+import { ImagePreviewModal, type ImagePreviewItem } from "@/components/ImagePreviewModal";
+import { signTicketAttachment } from "@/lib/ticket-attachment";
 
 const searchSchema = z.object({
   t: z.string().optional(),
