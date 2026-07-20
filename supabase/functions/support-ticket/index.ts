@@ -31,7 +31,43 @@ Deno.serve(async (req) => {
   const ticket = String(body.ticket_number ?? "").trim();
   const badge = String(body.badge_number ?? "").trim();
 
+  // Alternate lookup: list all tickets for a badge, rate-limited per IP.
+  if (action === "list_by_badge") {
+    if (!badge) return json({ error: "Enter your badge number." }, 400);
+
+    const fwd = req.headers.get("x-forwarded-for") ?? "";
+    const ip = (fwd.split(",")[0] || req.headers.get("cf-connecting-ip") || "unknown").trim();
+    const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("locker_lookup_attempts")
+      .select("*", { count: "exact", head: true })
+      .eq("ip_address", ip)
+      .eq("success", false)
+      .gte("attempted_at", since);
+    if ((count ?? 0) >= 10) {
+      return json({ error: "Too many attempts, try again later" }, 429);
+    }
+
+    const { data: rows, error: lErr } = await supabase
+      .from("support_requests")
+      .select("ticket_number, request_type, status, created_at")
+      .ilike("badge_number", badge)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (lErr) {
+      console.error("list_by_badge failed:", lErr.message);
+      return json({ error: "Could not load tickets." }, 400);
+    }
+    const list = rows ?? [];
+    await supabase.from("locker_lookup_attempts").insert({
+      ip_address: ip, locker_number: null, success: list.length > 0,
+    });
+    if (list.length === 0) return json({ error: "No matching record found" }, 404);
+    return json({ tickets: list });
+  }
+
   if (!ticket || !badge) return json({ error: "Enter ticket number and badge number." }, 400);
+
 
   // Verify caller owns this ticket (used before any operation)
   const { data: ownData, error: ownErr } = await supabase.rpc("get_support_ticket_public", {
