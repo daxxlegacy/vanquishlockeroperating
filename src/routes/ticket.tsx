@@ -322,8 +322,16 @@ function TicketPage() {
 }
 
 function Bubble({
-  role, name, text, time,
-}: { role: "admin" | "user"; name: string; text: string; time: string }) {
+  role, name, text, time, attachmentPath, ticketNumber, badgeNumber,
+}: {
+  role: "admin" | "user";
+  name: string;
+  text: string;
+  time: string;
+  attachmentPath?: string | null;
+  ticketNumber?: string;
+  badgeNumber?: string;
+}) {
   const isAdmin = role === "admin";
   return (
     <div className={`flex ${isAdmin ? "" : "justify-end"}`}>
@@ -339,6 +347,14 @@ function Bubble({
           {name} · {formatDateTime(time)}
         </div>
         {text}
+        {attachmentPath && (
+          <ReplyAttachment
+            path={attachmentPath}
+            mode="public"
+            ticketNumber={ticketNumber}
+            badgeNumber={badgeNumber}
+          />
+        )}
       </div>
     </div>
   );
