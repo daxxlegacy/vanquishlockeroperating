@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
+import { useFocusListener } from "@/lib/global-focus";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
@@ -122,6 +123,7 @@ function LockersPage() {
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  useFocusListener("locker", (id) => setSelected(id));
   
   const [addOpen, setAddOpen] = useState(false);
   const isMobile = useIsMobile();

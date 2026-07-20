@@ -31,6 +31,7 @@ import {
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
 import { useOccupancy, invalidateOccupancyCache, type OccupancyRow, type OccCategory } from "@/lib/occupancy-cache";
+import { useFocusListener } from "@/lib/global-focus";
 import { useLockers } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
 import type { Database } from "@/integrations/supabase/types";
@@ -118,6 +119,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [importing, setImporting] = useState(false);
   const [importCat, setImportCat] = useState<OccCategory | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
+  useFocusListener("occupancy", (lockerNumber) => setHistoryFor(lockerNumber));
   const [syncOpen, setSyncOpen] = useState(false);
   const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);

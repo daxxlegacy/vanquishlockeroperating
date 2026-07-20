@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useNewSupportRequestsCount } from "@/lib/support-requests";
 import { BackgroundRefreshIndicator } from "@/components/BackgroundRefreshIndicator";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 
 export function AppHeader() {
@@ -152,7 +153,9 @@ export function AppHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3 min-w-0">
+          <GlobalSearch />
           <BackgroundRefreshIndicator />
+
 
           <Badge variant="outline" className="border-sidebar-border text-sidebar-foreground/90 gap-1 shrink-0">
             <Shield className="h-3 w-3" />
