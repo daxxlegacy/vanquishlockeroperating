@@ -523,6 +523,7 @@ export type Database = {
           author_id: string | null
           author_name: string | null
           author_role: string
+          channel: string
           created_at: string
           id: string
           message: string
@@ -533,6 +534,7 @@ export type Database = {
           author_id?: string | null
           author_name?: string | null
           author_role: string
+          channel?: string
           created_at?: string
           id?: string
           message: string
@@ -543,6 +545,7 @@ export type Database = {
           author_id?: string | null
           author_name?: string | null
           author_role?: string
+          channel?: string
           created_at?: string
           id?: string
           message?: string
