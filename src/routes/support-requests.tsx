@@ -157,8 +157,16 @@ function SupportRequestsPage() {
     else toast.success(`Marked as ${STATUS_LABEL[status].toLowerCase()}`);
   };
 
-  const selectableIds = useMemo(() => filtered.filter((r) => r.status === "resolved").map((r) => r.id), [filtered]);
-  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+  // Selection now spans all visible rows (delete stays limited to resolved).
+  const visibleIds = useMemo(() => filtered.map((r) => r.id), [filtered]);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+
+  const selectedRows = useMemo(
+    () => (rows ?? []).filter((r) => selected.has(r.id)),
+    [rows, selected],
+  );
+  const selectedResolvedCount = selectedRows.filter((r) => r.status === "resolved").length;
+  const canBulkDelete = selectedRows.length > 0 && selectedRows.every((r) => r.status === "resolved");
 
   const toggleOne = (id: string, on: boolean) => {
     setSelected((prev) => {
@@ -169,12 +177,87 @@ function SupportRequestsPage() {
     });
   };
   const toggleAll = (on: boolean) => {
-    setSelected(on ? new Set(selectableIds) : new Set());
+    setSelected(on ? new Set(visibleIds) : new Set());
+  };
+  const clearSelection = () => setSelected(new Set());
+
+  const [notifyBulk, setNotifyBulk] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState<null | { action: string; done: number; total: number }>(null);
+
+  const logBulkAction = async (params: {
+    action: "mark_resolved" | "back_to_new" | "delete";
+    tickets: SupportRequest[];
+    previousStatus: string | null;
+    newStatus: string | null;
+    notifyRequested: boolean;
+  }) => {
+    if (!user) return;
+    // One grouped audit row — never one per ticket.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("support_bulk_actions").insert({
+      action: params.action,
+      ticket_ids: params.tickets.map((t) => t.id),
+      ticket_numbers: params.tickets.map((t) => t.ticket_number),
+      affected_count: params.tickets.length,
+      previous_status: params.previousStatus,
+      new_status: params.newStatus,
+      notify_requested: params.notifyRequested,
+      performed_by: user.id,
+      performed_by_email: user.email ?? null,
+    });
+    if (error) console.warn("Bulk audit log failed:", error.message);
+  };
+
+  const bulkSetStatus = async (target: "resolved" | "new") => {
+    const tickets = selectedRows;
+    if (tickets.length === 0) return;
+    setBulkBusy({ action: target, done: 0, total: tickets.length });
+
+    const patch =
+      target === "resolved"
+        ? { status: target, resolved_by: user?.id ?? null, resolved_at: new Date().toISOString() }
+        : { status: target, resolved_by: null, resolved_at: null };
+
+    // Chunk in batches of 100 to keep the .in() list reasonable and give progress ticks.
+    const ids = tickets.map((t) => t.id);
+    const CHUNK = 100;
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const { error } = await supabase.from("support_requests").update(patch).in("id", chunk);
+      if (error) failed += chunk.length;
+      setBulkBusy({ action: target, done: Math.min(i + chunk.length, ids.length), total: ids.length });
+    }
+
+    const succeeded = tickets.length - failed;
+    await logBulkAction({
+      action: target === "resolved" ? "mark_resolved" : "back_to_new",
+      tickets,
+      previousStatus: "mixed",
+      newStatus: target,
+      notifyRequested: notifyBulk,
+    });
+
+    setBulkBusy(null);
+    if (failed > 0) {
+      toast.error(`${succeeded} updated, ${failed} failed`);
+    } else if (target === "resolved") {
+      toast.success(`${succeeded} ticket${succeeded === 1 ? "" : "s"} marked resolved`);
+    } else {
+      toast.success(`${succeeded} ticket${succeeded === 1 ? "" : "s"} moved back to New`);
+    }
+    if (notifyBulk && succeeded > 0) {
+      toast.message("Notifications not sent", {
+        description: "SMS/WhatsApp bulk notifications aren't configured yet. Only the audit log records that you requested them.",
+      });
+    }
+    setSelected(new Set());
   };
 
   const deleteSelected = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
+    const tickets = selectedRows;
     setDeleting(true);
     const { error } = await supabase.from("support_requests").delete().in("id", ids);
     setDeleting(false);
@@ -182,10 +265,18 @@ function SupportRequestsPage() {
       toast.error(error.message);
       return;
     }
+    await logBulkAction({
+      action: "delete",
+      tickets,
+      previousStatus: "resolved",
+      newStatus: null,
+      notifyRequested: false,
+    });
     toast.success(`Deleted ${ids.length} ticket${ids.length === 1 ? "" : "s"}`);
     setSelected(new Set());
     setRows((prev) => (prev ? prev.filter((r) => !selected.has(r.id)) : prev));
   };
+
 
   return (
     <div className="min-h-screen bg-background">
