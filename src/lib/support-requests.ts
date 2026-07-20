@@ -30,6 +30,7 @@ export type SupportRequestReply = {
   author_id: string | null;
   author_name: string | null;
   message: string;
+  attachment_path: string | null;
   created_at: string;
 };
 

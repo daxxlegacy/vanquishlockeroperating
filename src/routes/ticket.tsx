@@ -18,6 +18,7 @@ import {
   type SupportRequestType,
 } from "@/lib/support-requests";
 import { formatDateTime } from "@/lib/format-date";
+import { ReplyAttachment } from "@/components/support/ReplyAttachment";
 
 const searchSchema = z.object({
   t: z.string().optional(),
@@ -40,6 +41,7 @@ type Reply = {
   author_role: "admin" | "user";
   author_name: string | null;
   message: string;
+  attachment_path: string | null;
   created_at: string;
 };
 type TicketData = {
@@ -262,6 +264,9 @@ function TicketPage() {
                   name={r.author_name ?? (r.author_role === "admin" ? "Admin office" : data.name)}
                   text={r.message}
                   time={r.created_at}
+                  attachmentPath={r.attachment_path}
+                  ticketNumber={data.ticket_number}
+                  badgeNumber={data.badge_number}
                 />
               ))}
 
@@ -317,8 +322,16 @@ function TicketPage() {
 }
 
 function Bubble({
-  role, name, text, time,
-}: { role: "admin" | "user"; name: string; text: string; time: string }) {
+  role, name, text, time, attachmentPath, ticketNumber, badgeNumber,
+}: {
+  role: "admin" | "user";
+  name: string;
+  text: string;
+  time: string;
+  attachmentPath?: string | null;
+  ticketNumber?: string;
+  badgeNumber?: string;
+}) {
   const isAdmin = role === "admin";
   return (
     <div className={`flex ${isAdmin ? "" : "justify-end"}`}>
@@ -334,6 +347,14 @@ function Bubble({
           {name} · {formatDateTime(time)}
         </div>
         {text}
+        {attachmentPath && (
+          <ReplyAttachment
+            path={attachmentPath}
+            mode="public"
+            ticketNumber={ticketNumber}
+            badgeNumber={badgeNumber}
+          />
+        )}
       </div>
     </div>
   );

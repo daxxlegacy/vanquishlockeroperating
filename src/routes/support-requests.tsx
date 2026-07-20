@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
@@ -38,7 +38,11 @@ import {
   Trash2,
   QrCode,
   ClipboardCheck,
+  Paperclip,
+  X as XIcon,
 } from "lucide-react";
+import { compressImage } from "@/lib/image-compress";
+import { ReplyAttachment } from "@/components/support/ReplyAttachment";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { IdentityUpdatePanel } from "@/components/support/IdentityUpdatePanel";
 import { toast } from "sonner";
@@ -322,6 +326,8 @@ function SupportCard({
   const [expanded, setExpanded] = useState(false);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadReplies = async () => {
     const { data, error } = await (
@@ -355,14 +361,39 @@ function SupportCard({
 
   const sendReply = async () => {
     const m = reply.trim();
-    if (!m) return;
+    if (!m && !attachment) return;
     setSending(true);
+
+    let attachmentPath: string | null = null;
+    if (attachment) {
+      try {
+        const blob = await compressImage(attachment);
+        const ext = attachment.name.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() || "jpg";
+        const safeExt = blob.type === "image/jpeg" ? "jpg" : ext;
+        const path = `${row.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
+        const { error: uErr } = await supabase.storage
+          .from("ticket-attachments")
+          .upload(path, blob, { contentType: blob.type || attachment.type, upsert: false });
+        if (uErr) {
+          setSending(false);
+          toast.error(uErr.message);
+          return;
+        }
+        attachmentPath = path;
+      } catch (e) {
+        setSending(false);
+        toast.error(e instanceof Error ? e.message : "Could not upload attachment");
+        return;
+      }
+    }
+
     const { error } = await supabase.from("support_request_replies").insert({
       request_id: row.id,
       author_role: "admin",
       author_id: user?.id ?? null,
       author_name: user?.email ?? "Admin",
-      message: m,
+      message: m || "(photo attached)",
+      attachment_path: attachmentPath,
     });
     setSending(false);
     if (error) {
@@ -370,6 +401,8 @@ function SupportCard({
       return;
     }
     setReply("");
+    setAttachment(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     toast.success("Reply sent");
     loadReplies();
     if (row.status === "new") onUpdate(row.id, "in_progress");
@@ -435,6 +468,9 @@ function SupportCard({
                     <span>· {formatDateTime(r.created_at)}</span>
                   </div>
                   <div className="whitespace-pre-wrap">{r.message}</div>
+                  {r.attachment_path && (
+                    <ReplyAttachment path={r.attachment_path} mode="admin" />
+                  )}
                 </div>
               ))}
             </div>
@@ -448,8 +484,49 @@ function SupportCard({
               placeholder="Write a reply — the user will see this when they check their ticket status."
               maxLength={4000}
             />
-            <div className="flex justify-end">
-              <Button size="sm" onClick={sendReply} disabled={sending || !reply.trim()}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                if (f && f.size > 20 * 1024 * 1024) {
+                  toast.error("Photo must be under 20MB");
+                  return;
+                }
+                setAttachment(f);
+              }}
+            />
+            {attachment && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md border bg-muted/30 px-2 py-1.5">
+                <Paperclip className="h-3.5 w-3.5" />
+                <span className="truncate flex-1">{attachment.name}</span>
+                <button
+                  type="button"
+                  className="hover:text-foreground"
+                  onClick={() => {
+                    setAttachment(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  aria-label="Remove attachment"
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            <div className="flex justify-between gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sending}
+              >
+                <Paperclip className="h-4 w-4 mr-1" />
+                {attachment ? "Change photo" : "Attach photo"}
+              </Button>
+              <Button size="sm" onClick={sendReply} disabled={sending || (!reply.trim() && !attachment)}>
                 {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
                 Send reply
               </Button>
