@@ -232,14 +232,13 @@ function TicketPage() {
   };
 
   const openTicketFromList = (ticketNumber: string) => {
+    const bd = badgeOnly.trim();
     setMode("ref");
     setTicket(ticketNumber);
-    setBadge(badgeOnly.trim());
-    // Trigger lookup on next tick, once state has flushed.
-    setTimeout(() => {
-      void lookup();
-    }, 0);
+    setBadge(bd);
+    void lookup(undefined, { ticket: ticketNumber, badge: bd });
   };
+
 
 
 
