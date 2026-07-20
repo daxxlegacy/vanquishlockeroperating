@@ -220,7 +220,31 @@ export function SupportRequestForm({
         />
       </div>
 
-      {error && (
+      {openTicket && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            <div>
+              {tr.form.errOpenTicket(
+                openTicket.ticket,
+                openTicket.status === "in_progress"
+                  ? tr.form.statusInProgress
+                  : tr.form.statusNew,
+              )}
+            </div>
+            <div className="mt-3">
+              <Link
+                to="/ticket"
+                search={{ t: openTicket.ticket, b: badge.trim() }}
+                className="inline-flex items-center justify-center gap-1 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+              >
+                {tr.form.errOpenTicketCta} <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {error && !openTicket && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
