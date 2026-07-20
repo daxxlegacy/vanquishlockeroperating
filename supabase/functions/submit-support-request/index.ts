@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       return json({
         error: "open_ticket_exists",
         existing: { ticket_number: openMatch[1], status: openMatch[2] },
-      }, 409);
+      });
     }
     if (lower.includes("rate limit")) {
       return json({ error: "Too many requests. Please try again in a few minutes." }, 429);
