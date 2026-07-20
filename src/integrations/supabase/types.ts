@@ -519,6 +519,7 @@ export type Database = {
       }
       support_request_replies: {
         Row: {
+          attachment_path: string | null
           author_id: string | null
           author_name: string | null
           author_role: string
@@ -528,6 +529,7 @@ export type Database = {
           request_id: string
         }
         Insert: {
+          attachment_path?: string | null
           author_id?: string | null
           author_name?: string | null
           author_role: string
@@ -537,6 +539,7 @@ export type Database = {
           request_id: string
         }
         Update: {
+          attachment_path?: string | null
           author_id?: string | null
           author_name?: string | null
           author_role?: string
