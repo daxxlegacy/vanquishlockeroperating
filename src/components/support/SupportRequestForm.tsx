@@ -87,8 +87,16 @@ export function SupportRequestForm({
         },
       });
       if (err || !data || (data as { error?: string }).error) {
-        const msg = (data as { error?: string } | null)?.error ?? err?.message ?? "";
-        if (msg.toLowerCase().includes("too many")) {
+        const payload = data as
+          | { error?: string; existing?: { ticket_number?: string; status?: string } }
+          | null;
+        const msg = payload?.error ?? err?.message ?? "";
+        if (msg === "open_ticket_exists" && payload?.existing?.ticket_number) {
+          setOpenTicket({
+            ticket: payload.existing.ticket_number,
+            status: payload.existing.status ?? "new",
+          });
+        } else if (msg.toLowerCase().includes("too many")) {
           setError(tr.form.errTooMany);
         } else {
           setError(tr.form.errGeneric);
