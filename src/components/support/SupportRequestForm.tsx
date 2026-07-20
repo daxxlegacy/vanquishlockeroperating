@@ -140,11 +140,26 @@ export function SupportRequestForm({
         <CheckCircle2 className="h-4 w-4" />
         <AlertDescription>
           <div className="font-medium">{tr.form.okHeading}</div>
-          <div className="text-sm mt-1 break-words">
-            {tr.form.okTicket}{" "}
-            <span className="font-mono font-semibold">
-              {okTicket ?? `#${okId.slice(0, 8).toUpperCase()}`}
-            </span>
+          <div className="text-sm mt-1 break-words flex items-center gap-2 flex-wrap">
+            <span>{tr.form.okTicket}</span>
+            <span className="font-mono font-semibold">{displayReference}</span>
+            {statusUrl && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={copyReference}
+                aria-label={tr.form.copyReference}
+                className="h-7 px-2 gap-1.5 text-xs"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                {copied ? tr.form.copiedReference : tr.form.copyReference}
+              </Button>
+            )}
           </div>
           <div className="text-xs mt-1 break-words">
             {tr.form.okSaveNumber}{" "}
