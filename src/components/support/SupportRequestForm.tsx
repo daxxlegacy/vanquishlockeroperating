@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, ExternalLink } from "lucide-react";
+import { Loader2, CheckCircle2, ExternalLink, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import type { SupportRequestType } from "@/lib/support-requests";
 import { t, type Lang } from "@/lib/i18n-find-locker";
 
