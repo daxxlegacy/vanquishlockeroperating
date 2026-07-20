@@ -122,6 +122,7 @@ function LockersPage() {
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  useFocusListener("locker", (id) => setSelected(id));
   
   const [addOpen, setAddOpen] = useState(false);
   const isMobile = useIsMobile();
