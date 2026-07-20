@@ -332,6 +332,20 @@ function SupportCard({
   const [sending, setSending] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [composerPreviewUrl, setComposerPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!attachment) {
+      setComposerPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(attachment);
+    setComposerPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [attachment]);
+
 
   const loadReplies = async () => {
     const { data, error } = await (
