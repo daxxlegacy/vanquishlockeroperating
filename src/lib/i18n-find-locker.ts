@@ -326,6 +326,11 @@ export const t: Record<Lang, Dict> = {
       errLocker: "Nombor loker terlalu panjang.",
       errTooMany: "Terlalu banyak permintaan. Sila cuba semula beberapa minit lagi.",
       errGeneric: "Tidak dapat hantar sekarang — sila cuba semula atau hubungi pejabat pentadbir.",
+      errOpenTicket: (ref, status) =>
+        `Anda sudah mempunyai permintaan yang belum selesai (Rujukan #${ref}, status: ${status}). Sila tunggu pasukan kami menyelesaikannya sebelum menghantar permintaan baharu. Anda boleh semak status menggunakan nombor rujukan anda.`,
+      errOpenTicketCta: "Semak status tiket saya",
+      statusNew: "Baharu",
+      statusInProgress: "Dalam proses",
       okHeading: "Permintaan anda telah diterima.",
       okTicket: "Nombor tiket:",
       okSaveNumber: "Simpan nombor ini. Pasukan kami akan hubungi anda di",
