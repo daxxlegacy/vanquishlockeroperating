@@ -50,6 +50,7 @@ export function SupportRequestForm({
   const [okId, setOkId] = useState<string | null>(null);
   const [okTicket, setOkTicket] = useState<string | null>(null);
   const [okBadge, setOkBadge] = useState<string>("");
+  const [copied, setCopied] = useState(false);
 
   const scrollFocusIntoView = (
     e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
