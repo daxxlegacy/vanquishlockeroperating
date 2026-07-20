@@ -218,6 +218,11 @@ export const t: Record<Lang, Dict> = {
       errLocker: "Locker number is too long.",
       errTooMany: "Too many requests. Please try again in a few minutes.",
       errGeneric: "Couldn't submit right now — please try again or contact the admin office.",
+      errOpenTicket: (ref, status) =>
+        `You already have an open request (Ref #${ref}, status: ${status}). Please wait for our team to resolve it before submitting a new one. You can check its status using your reference number.`,
+      errOpenTicketCta: "Check my ticket status",
+      statusNew: "New",
+      statusInProgress: "In progress",
       okHeading: "Your request has been received.",
       okTicket: "Ticket number:",
       okSaveNumber: "Save this number. Our team will contact you at",
