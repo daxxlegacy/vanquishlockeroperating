@@ -307,8 +307,58 @@ function TicketPage() {
   );
 }
 
+function TicketConversation({ data }: { data: TicketData }) {
+  const attachments = data.replies.filter((r) => !!r.attachment_path);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+
+  const items: ImagePreviewItem[] = attachments.map((r) => ({
+    key: r.id,
+    alt: `Attachment from ${r.author_name ?? r.author_role}`,
+    sign: () =>
+      signTicketAttachment(r.attachment_path!, {
+        mode: "public",
+        ticketNumber: data.ticket_number,
+        badgeNumber: data.badge_number,
+      }),
+  }));
+
+  const openAttachment = (replyId: string) => {
+    const i = attachments.findIndex((a) => a.id === replyId);
+    if (i < 0) return;
+    setPreviewIndex(i);
+    setPreviewOpen(true);
+  };
+
+  return (
+    <>
+      <Bubble role="user" name={data.name} text={data.message} time={data.created_at} />
+      {data.replies.map((r) => (
+        <Bubble
+          key={r.id}
+          role={r.author_role}
+          name={r.author_name ?? (r.author_role === "admin" ? "Admin office" : data.name)}
+          text={r.message}
+          time={r.created_at}
+          attachmentPath={r.attachment_path}
+          ticketNumber={data.ticket_number}
+          badgeNumber={data.badge_number}
+          onOpenAttachment={() => openAttachment(r.id)}
+        />
+      ))}
+      <ImagePreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        items={items}
+        index={previewIndex}
+        onIndexChange={setPreviewIndex}
+      />
+    </>
+  );
+}
+
 function Bubble({
-  role, name, text, time, attachmentPath, ticketNumber, badgeNumber,
+  role, name, text, time, attachmentPath, ticketNumber, badgeNumber, onOpenAttachment,
 }: {
   role: "admin" | "user";
   name: string;
@@ -317,6 +367,7 @@ function Bubble({
   attachmentPath?: string | null;
   ticketNumber?: string;
   badgeNumber?: string;
+  onOpenAttachment?: () => void;
 }) {
   const isAdmin = role === "admin";
   return (
@@ -339,9 +390,11 @@ function Bubble({
             mode="public"
             ticketNumber={ticketNumber}
             badgeNumber={badgeNumber}
+            onOpen={onOpenAttachment}
           />
         )}
       </div>
     </div>
   );
 }
+
