@@ -361,15 +361,25 @@ function SupportRequestsPage() {
                       </div>
                     )}
                     {filtered.map((r) => (
-                      <SupportCard
+                      <div
                         key={r.id}
-                        row={r}
-                        onUpdate={updateStatus}
-                        selectable
-                        selected={selected.has(r.id)}
-                        onSelectedChange={(on) => toggleOne(r.id, on)}
-                      />
+                        id={`ticket-${r.ticket_number}`}
+                        className={
+                          highlightTicket === r.ticket_number
+                            ? "ring-2 ring-primary rounded-lg transition-shadow"
+                            : ""
+                        }
+                      >
+                        <SupportCard
+                          row={r}
+                          onUpdate={updateStatus}
+                          selectable
+                          selected={selected.has(r.id)}
+                          onSelectedChange={(on) => toggleOne(r.id, on)}
+                        />
+                      </div>
                     ))}
+
                   </>
 
                 )}
