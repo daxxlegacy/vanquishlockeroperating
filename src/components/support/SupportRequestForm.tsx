@@ -45,6 +45,7 @@ export function SupportRequestForm({
   const [message, setMessage] = useState(defaultMessage);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openTicket, setOpenTicket] = useState<{ ticket: string; status: string } | null>(null);
   const [okId, setOkId] = useState<string | null>(null);
   const [okTicket, setOkTicket] = useState<string | null>(null);
   const [okBadge, setOkBadge] = useState<string>("");
