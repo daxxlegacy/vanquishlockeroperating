@@ -410,6 +410,36 @@ function SupportCard({
     if (row.status === "new") onUpdate(row.id, "in_progress");
   };
 
+  const waNumber = normalizeWhatsAppNumber(row.contact_number);
+
+  const sendViaWhatsApp = async () => {
+    if (!waNumber) return;
+    const typed = reply.trim();
+    const fallback = `Hi ${row.name}, regarding your ${REQUEST_TYPE_LABEL[row.request_type]} request (Ref #${row.ticket_number})...`;
+    const message = typed || fallback;
+    const link = buildWhatsAppLink(waNumber, message);
+    // Open first so it counts as a user gesture.
+    window.open(link, "_blank", "noopener,noreferrer");
+
+    const { error } = await supabase.from("support_request_replies").insert({
+      request_id: row.id,
+      author_role: "admin",
+      author_id: user?.id ?? null,
+      author_name: user?.email ?? "Admin",
+      message,
+      channel: "whatsapp_outbound",
+    });
+    if (error) {
+      toast.error(`Logged locally but not saved: ${error.message}`);
+      return;
+    }
+    setReply("");
+    toast.success("Opened WhatsApp and logged the message");
+    loadReplies();
+    if (row.status === "new") onUpdate(row.id, "in_progress");
+  };
+
+
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
