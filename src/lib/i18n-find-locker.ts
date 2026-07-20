@@ -339,6 +339,8 @@ export const t: Record<Lang, Dict> = {
       okTicket: "Nombor tiket:",
       okSaveNumber: "Simpan nombor ini. Pasukan kami akan hubungi anda di",
       okCheckStatus: "Semak status tiket",
+      copyReference: "Salin nombor rujukan",
+      copiedReference: "Disalin!",
       submitting: "Menghantar…",
     },
     faq: {
