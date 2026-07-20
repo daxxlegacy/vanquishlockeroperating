@@ -60,6 +60,24 @@ export function SupportRequestForm({
     }, 250);
   };
 
+  const displayReference = okTicket ?? `#${okId?.slice(0, 8).toUpperCase()}`;
+  const statusUrl =
+    typeof window !== "undefined" && okTicket
+      ? `${window.location.origin}/ticket?t=${encodeURIComponent(okTicket)}&b=${encodeURIComponent(okBadge)}`
+      : "";
+
+  const copyReference = async () => {
+    if (!statusUrl) return;
+    try {
+      await navigator.clipboard.writeText(statusUrl);
+      setCopied(true);
+      toast.success(tr.form.copiedReference);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(lang === "bm" ? "Gagal menyalin." : "Could not copy.");
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
