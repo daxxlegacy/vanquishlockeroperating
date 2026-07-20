@@ -33,6 +33,35 @@ Deno.serve(async (req) => {
 
   if (!ticket || !badge) return json({ error: "Enter ticket number and badge number." }, 400);
 
+  // Verify caller owns this ticket (used before any operation)
+  const { data: ownData, error: ownErr } = await supabase.rpc("get_support_ticket_public", {
+    _ticket: ticket,
+    _badge: badge,
+  });
+  if (ownErr) {
+    console.error("lookup failed:", ownErr.message);
+    return json({ error: "Could not load ticket." }, 400);
+  }
+  if (!ownData) return json({ error: "Ticket not found. Check your ticket number and badge." }, 404);
+
+  if (action === "sign_attachment") {
+    const path = String(body.attachment_path ?? "").trim();
+    if (!path) return json({ error: "Missing attachment_path." }, 400);
+    // Verify the path belongs to a reply on this ticket
+    const replies = (ownData as any).replies as Array<{ attachment_path?: string | null }>;
+    const owned = replies.some((r) => r.attachment_path === path);
+    if (!owned) return json({ error: "Attachment not found on this ticket." }, 404);
+
+    const { data: signed, error: sErr } = await supabase.storage
+      .from("ticket-attachments")
+      .createSignedUrl(path, 300);
+    if (sErr || !signed) {
+      console.error("sign failed:", sErr?.message);
+      return json({ error: "Could not sign attachment." }, 400);
+    }
+    return json({ url: signed.signedUrl });
+  }
+
   if (action === "reply") {
     const message = String(body.message ?? "").trim();
     if (!message) return json({ error: "Please type a message." }, 400);
