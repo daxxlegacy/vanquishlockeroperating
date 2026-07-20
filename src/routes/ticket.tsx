@@ -93,16 +93,21 @@ function TicketPage() {
 
   const lastAdminReplyIdRef = useRef<string | null>(null);
 
-  const lookup = async (e?: React.FormEvent, opts?: { message?: string }) => {
+  const lookup = async (
+    e?: React.FormEvent,
+    opts?: { message?: string; ticket?: string; badge?: string },
+  ) => {
     e?.preventDefault();
+    const tk = (opts?.ticket ?? ticket).trim();
+    const bd = (opts?.badge ?? badge).trim();
     if (opts?.message) setSending(true); else setLoading(true);
     setError(null);
     try {
       const { data: res, error: err } = await supabase.functions.invoke("support-ticket", {
         body: {
           action: opts?.message ? "reply" : "lookup",
-          ticket_number: ticket.trim(),
-          badge_number: badge.trim(),
+          ticket_number: tk,
+          badge_number: bd,
           message: opts?.message,
         },
       });
@@ -119,6 +124,7 @@ function TicketPage() {
       setSending(false);
     }
   };
+
 
   // Auto-lookup if both query params present
   useEffect(() => {
