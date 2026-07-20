@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Ticket, Send, ArrowLeft, User, Shield, Bell } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Loader2, Ticket, Send, ArrowLeft, User, Shield, Bell, Search, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
@@ -21,6 +22,8 @@ import { formatDateTime } from "@/lib/format-date";
 import { ReplyAttachment } from "@/components/support/ReplyAttachment";
 import { ImagePreviewModal, type ImagePreviewItem } from "@/components/ImagePreviewModal";
 import { signTicketAttachment } from "@/lib/ticket-attachment";
+import { useLang, t as i18n } from "@/lib/i18n-find-locker";
+
 
 const searchSchema = z.object({
   t: z.string().optional(),
@@ -61,7 +64,16 @@ type TicketData = {
   replies: Reply[];
 };
 
+type BadgeTicketSummary = {
+  ticket_number: string;
+  request_type: SupportRequestType;
+  status: SupportRequestStatus;
+  created_at: string;
+};
+
 function TicketPage() {
+  const [lang] = useLang();
+  const tt = i18n[lang].ticket;
   const { t: qt, b: qb } = Route.useSearch();
   const [ticket, setTicket] = useState(qt ?? "");
   const [badge, setBadge] = useState(qb ?? "");
@@ -70,21 +82,32 @@ function TicketPage() {
   const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [mode, setMode] = useState<"ref" | "badge">("ref");
+  const [badgeOnly, setBadgeOnly] = useState("");
+  const [badgeLoading, setBadgeLoading] = useState(false);
+  const [badgeError, setBadgeError] = useState<string | null>(null);
+  const [badgeResults, setBadgeResults] = useState<BadgeTicketSummary[] | null>(null);
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "denied"
   );
+
   const lastAdminReplyIdRef = useRef<string | null>(null);
 
-  const lookup = async (e?: React.FormEvent, opts?: { message?: string }) => {
+  const lookup = async (
+    e?: React.FormEvent,
+    opts?: { message?: string; ticket?: string; badge?: string },
+  ) => {
     e?.preventDefault();
+    const tk = (opts?.ticket ?? ticket).trim();
+    const bd = (opts?.badge ?? badge).trim();
     if (opts?.message) setSending(true); else setLoading(true);
     setError(null);
     try {
       const { data: res, error: err } = await supabase.functions.invoke("support-ticket", {
         body: {
           action: opts?.message ? "reply" : "lookup",
-          ticket_number: ticket.trim(),
-          badge_number: badge.trim(),
+          ticket_number: tk,
+          badge_number: bd,
           message: opts?.message,
         },
       });
@@ -101,6 +124,7 @@ function TicketPage() {
       setSending(false);
     }
   };
+
 
   // Auto-lookup if both query params present
   useEffect(() => {
@@ -184,6 +208,39 @@ function TicketPage() {
     lookup(undefined, { message: m });
   };
 
+  const lookupByBadge = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const b = badgeOnly.trim();
+    if (!b) return;
+    setBadgeLoading(true);
+    setBadgeError(null);
+    setBadgeResults(null);
+    try {
+      const { data: res, error: err } = await supabase.functions.invoke("support-ticket", {
+        body: { action: "list_by_badge", badge_number: b },
+      });
+      if (err || !res || (res as { error?: string }).error) {
+        setBadgeError((res as { error?: string } | null)?.error ?? err?.message ?? tt.noneFound);
+        return;
+      }
+      setBadgeResults((res as { tickets: BadgeTicketSummary[] }).tickets);
+    } catch {
+      setBadgeError(tt.noneFound);
+    } finally {
+      setBadgeLoading(false);
+    }
+  };
+
+  const openTicketFromList = (ticketNumber: string) => {
+    const bd = badgeOnly.trim();
+    setMode("ref");
+    setTicket(ticketNumber);
+    setBadge(bd);
+    void lookup(undefined, { ticket: ticketNumber, badge: bd });
+  };
+
+
+
 
   return (
     <div className="min-h-screen bg-background px-4 py-10">
@@ -201,27 +258,89 @@ function TicketPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={lookup} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
-              <div>
-                <Label htmlFor="tk">Ticket number</Label>
-                <Input id="tk" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="e.g. 00042" inputMode="numeric" />
-              </div>
-              <div>
-                <Label htmlFor="bd">Badge number</Label>
-                <Input id="bd" value={badge} onChange={(e) => setBadge(e.target.value)} />
-              </div>
-              <div className="flex items-end">
-                <Button type="submit" disabled={loading || !ticket.trim() || !badge.trim()}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "View"}
-                </Button>
-              </div>
-            </form>
-            {error && (
-              <Alert variant="destructive" className="mt-3">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <Tabs value={mode} onValueChange={(v) => setMode(v as "ref" | "badge")}>
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="ref">{tt.tabWithRef}</TabsTrigger>
+                <TabsTrigger value="badge">{tt.tabWithoutRef}</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="ref" className="mt-0">
+                <form onSubmit={lookup} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                  <div>
+                    <Label htmlFor="tk">{tt.ticketNumber}</Label>
+                    <Input id="tk" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder={tt.ticketPlaceholder} inputMode="numeric" />
+                  </div>
+                  <div>
+                    <Label htmlFor="bd">{tt.badge}</Label>
+                    <Input id="bd" value={badge} onChange={(e) => setBadge(e.target.value)} />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="submit" disabled={loading || !ticket.trim() || !badge.trim()}>
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "View"}
+                    </Button>
+                  </div>
+                </form>
+                {error && (
+                  <Alert variant="destructive" className="mt-3">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+              </TabsContent>
+
+              <TabsContent value="badge" className="mt-0 space-y-3">
+                <p className="text-sm text-muted-foreground">{tt.lookupByBadgeIntro}</p>
+                <form onSubmit={lookupByBadge} className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                  <div>
+                    <Label htmlFor="bdonly">{tt.badge}</Label>
+                    <Input
+                      id="bdonly"
+                      value={badgeOnly}
+                      onChange={(e) => setBadgeOnly(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="submit" disabled={badgeLoading || !badgeOnly.trim()}>
+                      {badgeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Search className="h-4 w-4 mr-1" /> {tt.lookupByBadgeSubmit}</>}
+                    </Button>
+                  </div>
+                </form>
+                {badgeError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{badgeError}</AlertDescription>
+                  </Alert>
+                )}
+                {badgeResults && badgeResults.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">{tt.lookupByBadgeHeading(badgeResults.length)}</div>
+                    <ul className="divide-y rounded-md border">
+                      {badgeResults.map((r) => (
+                        <li key={r.ticket_number}>
+                          <button
+                            type="button"
+                            onClick={() => openTicketFromList(r.ticket_number)}
+                            className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-accent transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-sm font-medium">#{r.ticket_number}</span>
+                                <Badge variant="outline" className="text-xs">{STATUS_LABEL[r.status]}</Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                {REQUEST_TYPE_LABEL[r.request_type]} · {tt.submittedOn} {formatDateTime(r.created_at)}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
+
         </Card>
 
         {data && (

@@ -70,7 +70,15 @@ type Dict = {
     badge: string;
     ticketPlaceholder: string;
     submit: string;
+    tabWithRef: string;
+    tabWithoutRef: string;
+    lookupByBadgeIntro: string;
+    lookupByBadgeSubmit: string;
+    lookupByBadgeHeading: (n: number) => string;
+    noneFound: string;
+    submittedOn: string;
   };
+
   transferPanel: {
     intro: string;
     submitLabel: string;
@@ -181,7 +189,15 @@ export const t: Record<Lang, Dict> = {
       badge: "Badge number",
       ticketPlaceholder: "e.g. 00042",
       submit: "View my ticket",
+      tabWithRef: "I have my reference number",
+      tabWithoutRef: "I don't have my reference number",
+      lookupByBadgeIntro: "Don't have your reference number? Look up by Badge Number instead.",
+      lookupByBadgeSubmit: "Find my tickets",
+      lookupByBadgeHeading: (n: number) => `Found ${n} ticket${n === 1 ? "" : "s"} for this badge:`,
+      noneFound: "No matching record found. Please check your badge number.",
+      submittedOn: "Submitted",
     },
+
     transferPanel: {
       intro: "Locker transfers must be approved by the admin office. Please submit your details below and we'll process it within 1 business day.",
       submitLabel: "Submit transfer request",
@@ -291,7 +307,15 @@ export const t: Record<Lang, Dict> = {
       badge: "Nombor badge",
       ticketPlaceholder: "cth. 00042",
       submit: "Lihat tiket saya",
+      tabWithRef: "Saya ada nombor rujukan",
+      tabWithoutRef: "Saya tiada nombor rujukan",
+      lookupByBadgeIntro: "Tiada nombor rujukan? Cari menggunakan Nombor Badge.",
+      lookupByBadgeSubmit: "Cari tiket saya",
+      lookupByBadgeHeading: (n: number) => `${n} tiket dijumpai untuk badge ini:`,
+      noneFound: "Tiada rekod dijumpai. Sila semak nombor badge anda.",
+      submittedOn: "Dihantar",
     },
+
     transferPanel: {
       intro: "Pertukaran loker perlu diluluskan oleh pejabat pentadbir. Sila hantar maklumat di bawah dan kami akan uruskan dalam 1 hari bekerja.",
       submitLabel: "Hantar permohonan tukar",
