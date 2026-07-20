@@ -408,6 +408,7 @@ function SupportCard({
     if (row.status === "new") onUpdate(row.id, "in_progress");
   };
 
+  return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
