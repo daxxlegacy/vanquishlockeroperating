@@ -592,23 +592,48 @@ function SupportCard({
                 setAttachment(f);
               }}
             />
-            {attachment && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md border bg-muted/30 px-2 py-1.5">
-                <Paperclip className="h-3.5 w-3.5" />
-                <span className="truncate flex-1">{attachment.name}</span>
+            {attachment && composerPreviewUrl && (
+              <div className="flex items-start gap-2 rounded-md border bg-muted/30 p-2">
                 <button
                   type="button"
-                  className="hover:text-foreground"
+                  onClick={() => setComposerPreviewOpen(true)}
+                  className="shrink-0 rounded-md overflow-hidden border cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Preview attachment"
+                >
+                  <img
+                    src={composerPreviewUrl}
+                    alt="Attachment preview"
+                    className="h-16 w-16 object-cover"
+                  />
+                </button>
+                <div className="flex-1 min-w-0 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Paperclip className="h-3.5 w-3.5" />
+                    <span className="truncate">{attachment.name}</span>
+                  </div>
+                  <div className="text-[11px] opacity-80">Click the thumbnail to preview.</div>
+                </div>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground p-1"
                   onClick={() => {
                     setAttachment(null);
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
                   aria-label="Remove attachment"
                 >
-                  <XIcon className="h-3.5 w-3.5" />
+                  <XIcon className="h-4 w-4" />
                 </button>
               </div>
             )}
+            <ImagePreviewModal
+              open={composerPreviewOpen}
+              onOpenChange={setComposerPreviewOpen}
+              items={composerPreviewUrl ? [{ url: composerPreviewUrl, alt: attachment?.name }] : []}
+              index={0}
+              onIndexChange={() => {}}
+            />
+
             <div className="flex justify-between gap-2 flex-wrap">
               <Button
                 size="sm"
