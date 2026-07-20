@@ -27,6 +27,8 @@ import {
 } from "@/lib/map-layout";
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { DashboardSummary } from "@/components/DashboardSummary";
+
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
