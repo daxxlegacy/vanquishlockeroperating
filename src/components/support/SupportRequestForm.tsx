@@ -45,6 +45,7 @@ export function SupportRequestForm({
   const [message, setMessage] = useState(defaultMessage);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openTicket, setOpenTicket] = useState<{ ticket: string; status: string } | null>(null);
   const [okId, setOkId] = useState<string | null>(null);
   const [okTicket, setOkTicket] = useState<string | null>(null);
   const [okBadge, setOkBadge] = useState<string>("");
@@ -60,6 +61,7 @@ export function SupportRequestForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setOpenTicket(null);
 
     const n = name.trim();
     const b = badge.trim();
@@ -85,8 +87,16 @@ export function SupportRequestForm({
         },
       });
       if (err || !data || (data as { error?: string }).error) {
-        const msg = (data as { error?: string } | null)?.error ?? err?.message ?? "";
-        if (msg.toLowerCase().includes("too many")) {
+        const payload = data as
+          | { error?: string; existing?: { ticket_number?: string; status?: string } }
+          | null;
+        const msg = payload?.error ?? err?.message ?? "";
+        if (msg === "open_ticket_exists" && payload?.existing?.ticket_number) {
+          setOpenTicket({
+            ticket: payload.existing.ticket_number,
+            status: payload.existing.status ?? "new",
+          });
+        } else if (msg.toLowerCase().includes("too many")) {
           setError(tr.form.errTooMany);
         } else {
           setError(tr.form.errGeneric);
@@ -210,7 +220,31 @@ export function SupportRequestForm({
         />
       </div>
 
-      {error && (
+      {openTicket && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            <div>
+              {tr.form.errOpenTicket(
+                openTicket.ticket,
+                openTicket.status === "in_progress"
+                  ? tr.form.statusInProgress
+                  : tr.form.statusNew,
+              )}
+            </div>
+            <div className="mt-3">
+              <Link
+                to="/ticket"
+                search={{ t: openTicket.ticket, b: badge.trim() }}
+                className="inline-flex items-center justify-center gap-1 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+              >
+                {tr.form.errOpenTicketCta} <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {error && !openTicket && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
