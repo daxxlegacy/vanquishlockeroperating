@@ -202,6 +202,40 @@ function TicketPage() {
     lookup(undefined, { message: m });
   };
 
+  const lookupByBadge = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const b = badgeOnly.trim();
+    if (!b) return;
+    setBadgeLoading(true);
+    setBadgeError(null);
+    setBadgeResults(null);
+    try {
+      const { data: res, error: err } = await supabase.functions.invoke("support-ticket", {
+        body: { action: "list_by_badge", badge_number: b },
+      });
+      if (err || !res || (res as { error?: string }).error) {
+        setBadgeError((res as { error?: string } | null)?.error ?? err?.message ?? tt.noneFound);
+        return;
+      }
+      setBadgeResults((res as { tickets: BadgeTicketSummary[] }).tickets);
+    } catch {
+      setBadgeError(tt.noneFound);
+    } finally {
+      setBadgeLoading(false);
+    }
+  };
+
+  const openTicketFromList = (ticketNumber: string) => {
+    setMode("ref");
+    setTicket(ticketNumber);
+    setBadge(badgeOnly.trim());
+    // Trigger lookup on next tick, once state has flushed.
+    setTimeout(() => {
+      void lookup();
+    }, 0);
+  };
+
+
 
   return (
     <div className="min-h-screen bg-background px-4 py-10">
