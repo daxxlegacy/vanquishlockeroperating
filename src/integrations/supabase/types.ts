@@ -517,6 +517,48 @@ export type Database = {
         }
         Relationships: []
       }
+      support_bulk_actions: {
+        Row: {
+          action: string
+          affected_count: number
+          created_at: string
+          id: string
+          new_status: string | null
+          notify_requested: boolean
+          performed_by: string
+          performed_by_email: string | null
+          previous_status: string | null
+          ticket_ids: string[]
+          ticket_numbers: string[]
+        }
+        Insert: {
+          action: string
+          affected_count?: number
+          created_at?: string
+          id?: string
+          new_status?: string | null
+          notify_requested?: boolean
+          performed_by: string
+          performed_by_email?: string | null
+          previous_status?: string | null
+          ticket_ids?: string[]
+          ticket_numbers?: string[]
+        }
+        Update: {
+          action?: string
+          affected_count?: number
+          created_at?: string
+          id?: string
+          new_status?: string | null
+          notify_requested?: boolean
+          performed_by?: string
+          performed_by_email?: string | null
+          previous_status?: string | null
+          ticket_ids?: string[]
+          ticket_numbers?: string[]
+        }
+        Relationships: []
+      }
       support_request_replies: {
         Row: {
           attachment_path: string | null

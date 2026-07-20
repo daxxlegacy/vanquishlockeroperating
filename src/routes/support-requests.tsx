@@ -157,8 +157,16 @@ function SupportRequestsPage() {
     else toast.success(`Marked as ${STATUS_LABEL[status].toLowerCase()}`);
   };
 
-  const selectableIds = useMemo(() => filtered.filter((r) => r.status === "resolved").map((r) => r.id), [filtered]);
-  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+  // Selection now spans all visible rows (delete stays limited to resolved).
+  const visibleIds = useMemo(() => filtered.map((r) => r.id), [filtered]);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+
+  const selectedRows = useMemo(
+    () => (rows ?? []).filter((r) => selected.has(r.id)),
+    [rows, selected],
+  );
+  const selectedResolvedCount = selectedRows.filter((r) => r.status === "resolved").length;
+  const canBulkDelete = selectedRows.length > 0 && selectedRows.every((r) => r.status === "resolved");
 
   const toggleOne = (id: string, on: boolean) => {
     setSelected((prev) => {
@@ -169,12 +177,87 @@ function SupportRequestsPage() {
     });
   };
   const toggleAll = (on: boolean) => {
-    setSelected(on ? new Set(selectableIds) : new Set());
+    setSelected(on ? new Set(visibleIds) : new Set());
+  };
+  const clearSelection = () => setSelected(new Set());
+
+  const [notifyBulk, setNotifyBulk] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState<null | { action: string; done: number; total: number }>(null);
+
+  const logBulkAction = async (params: {
+    action: "mark_resolved" | "back_to_new" | "delete";
+    tickets: SupportRequest[];
+    previousStatus: string | null;
+    newStatus: string | null;
+    notifyRequested: boolean;
+  }) => {
+    if (!user) return;
+    // One grouped audit row — never one per ticket.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("support_bulk_actions").insert({
+      action: params.action,
+      ticket_ids: params.tickets.map((t) => t.id),
+      ticket_numbers: params.tickets.map((t) => t.ticket_number),
+      affected_count: params.tickets.length,
+      previous_status: params.previousStatus,
+      new_status: params.newStatus,
+      notify_requested: params.notifyRequested,
+      performed_by: user.id,
+      performed_by_email: user.email ?? null,
+    });
+    if (error) console.warn("Bulk audit log failed:", error.message);
+  };
+
+  const bulkSetStatus = async (target: "resolved" | "new") => {
+    const tickets = selectedRows;
+    if (tickets.length === 0) return;
+    setBulkBusy({ action: target, done: 0, total: tickets.length });
+
+    const patch =
+      target === "resolved"
+        ? { status: target, resolved_by: user?.id ?? null, resolved_at: new Date().toISOString() }
+        : { status: target, resolved_by: null, resolved_at: null };
+
+    // Chunk in batches of 100 to keep the .in() list reasonable and give progress ticks.
+    const ids = tickets.map((t) => t.id);
+    const CHUNK = 100;
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const { error } = await supabase.from("support_requests").update(patch).in("id", chunk);
+      if (error) failed += chunk.length;
+      setBulkBusy({ action: target, done: Math.min(i + chunk.length, ids.length), total: ids.length });
+    }
+
+    const succeeded = tickets.length - failed;
+    await logBulkAction({
+      action: target === "resolved" ? "mark_resolved" : "back_to_new",
+      tickets,
+      previousStatus: "mixed",
+      newStatus: target,
+      notifyRequested: notifyBulk,
+    });
+
+    setBulkBusy(null);
+    if (failed > 0) {
+      toast.error(`${succeeded} updated, ${failed} failed`);
+    } else if (target === "resolved") {
+      toast.success(`${succeeded} ticket${succeeded === 1 ? "" : "s"} marked resolved`);
+    } else {
+      toast.success(`${succeeded} ticket${succeeded === 1 ? "" : "s"} moved back to New`);
+    }
+    if (notifyBulk && succeeded > 0) {
+      toast.message("Notifications not sent", {
+        description: "SMS/WhatsApp bulk notifications aren't configured yet. Only the audit log records that you requested them.",
+      });
+    }
+    setSelected(new Set());
   };
 
   const deleteSelected = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
+    const tickets = selectedRows;
     setDeleting(true);
     const { error } = await supabase.from("support_requests").delete().in("id", ids);
     setDeleting(false);
@@ -182,10 +265,18 @@ function SupportRequestsPage() {
       toast.error(error.message);
       return;
     }
+    await logBulkAction({
+      action: "delete",
+      tickets,
+      previousStatus: "resolved",
+      newStatus: null,
+      notifyRequested: false,
+    });
     toast.success(`Deleted ${ids.length} ticket${ids.length === 1 ? "" : "s"}`);
     setSelected(new Set());
     setRows((prev) => (prev ? prev.filter((r) => !selected.has(r.id)) : prev));
   };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -232,41 +323,24 @@ function SupportRequestsPage() {
                   </Card>
                 ) : (
                   <>
-                    {selectableIds.length > 0 && (
+                    {visibleIds.length > 0 && (
                       <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
                         <label className="flex items-center gap-2 text-sm cursor-pointer">
-                          <Checkbox checked={allSelected} onCheckedChange={(v) => toggleAll(v === true)} />
+                          <Checkbox
+                            checked={allVisibleSelected}
+                            onCheckedChange={(v) => toggleAll(v === true)}
+                            aria-label="Select all visible tickets"
+                          />
                           <span>
-                            Select all resolved ({selectableIds.length})
+                            Select all visible ({visibleIds.length})
                             {selected.size > 0 ? ` · ${selected.size} selected` : ""}
                           </span>
                         </label>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive" disabled={selected.size === 0 || deleting}>
-                              {deleting ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4 mr-1" />
-                              )}
-                              Delete selected
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Delete {selected.size} resolved ticket{selected.size === 1 ? "" : "s"}?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This permanently removes the tickets and all their replies. This cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {selected.size > 0 && (
+                          <Button size="sm" variant="ghost" onClick={clearSelection}>
+                            <XIcon className="h-4 w-4 mr-1" /> Clear
+                          </Button>
+                        )}
                       </div>
                     )}
                     {filtered.map((r) => (
@@ -274,12 +348,13 @@ function SupportRequestsPage() {
                         key={r.id}
                         row={r}
                         onUpdate={updateStatus}
-                        selectable={r.status === "resolved"}
+                        selectable
                         selected={selected.has(r.id)}
                         onSelectedChange={(on) => toggleOne(r.id, on)}
                       />
                     ))}
                   </>
+
                 )}
               </TabsContent>
             </Tabs>
@@ -294,9 +369,94 @@ function SupportRequestsPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {selected.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur px-4 py-3 shadow-lg">
+          <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-3">
+            <div className="text-sm font-medium">
+              {selected.size} selected
+            </div>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+              <Checkbox
+                checked={notifyBulk}
+                onCheckedChange={(v) => setNotifyBulk(v === true)}
+                aria-label="Also notify these employees"
+              />
+              <span>Also notify these employees</span>
+            </label>
+            <div className="flex-1" />
+            {bulkBusy ? (
+              <div className="flex items-center gap-2 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>
+                  {bulkBusy.action === "resolved" ? "Marking resolved" : bulkBusy.action === "new" ? "Reopening" : "Working"} · {bulkBusy.done}/{bulkBusy.total}
+                </span>
+              </div>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => bulkSetStatus("resolved")}
+                  disabled={selected.size === 0}
+                >
+                  Mark Resolved ({selected.size})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => bulkSetStatus("new")}
+                  disabled={selected.size === 0}
+                >
+                  Back to New ({selected.size})
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={!canBulkDelete || deleting}
+                      title={canBulkDelete ? "" : "Only resolved tickets can be deleted"}
+                    >
+                      {deleting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                      Delete ({selectedResolvedCount})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Delete {selected.size} resolved ticket{selected.size === 1 ? "" : "s"}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes the tickets and all their replies. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button size="sm" variant="ghost" onClick={clearSelection}>
+                  <XIcon className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+          {bulkBusy && bulkBusy.total > 20 && (
+            <div className="max-w-4xl mx-auto mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${Math.round((bulkBusy.done / bulkBusy.total) * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
 
 const TYPE_ICON: Record<SupportRequestType, React.ComponentType<{ className?: string }>> = {
   transfer_locker: ArrowRightLeft,
