@@ -41,6 +41,7 @@ type Reply = {
   author_role: "admin" | "user";
   author_name: string | null;
   message: string;
+  attachment_path: string | null;
   created_at: string;
 };
 type TicketData = {
