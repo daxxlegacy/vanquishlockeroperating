@@ -258,27 +258,89 @@ function TicketPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={lookup} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
-              <div>
-                <Label htmlFor="tk">Ticket number</Label>
-                <Input id="tk" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder="e.g. 00042" inputMode="numeric" />
-              </div>
-              <div>
-                <Label htmlFor="bd">Badge number</Label>
-                <Input id="bd" value={badge} onChange={(e) => setBadge(e.target.value)} />
-              </div>
-              <div className="flex items-end">
-                <Button type="submit" disabled={loading || !ticket.trim() || !badge.trim()}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "View"}
-                </Button>
-              </div>
-            </form>
-            {error && (
-              <Alert variant="destructive" className="mt-3">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <Tabs value={mode} onValueChange={(v) => setMode(v as "ref" | "badge")}>
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="ref">{tt.tabWithRef}</TabsTrigger>
+                <TabsTrigger value="badge">{tt.tabWithoutRef}</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="ref" className="mt-0">
+                <form onSubmit={lookup} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                  <div>
+                    <Label htmlFor="tk">{tt.ticketNumber}</Label>
+                    <Input id="tk" value={ticket} onChange={(e) => setTicket(e.target.value)} placeholder={tt.ticketPlaceholder} inputMode="numeric" />
+                  </div>
+                  <div>
+                    <Label htmlFor="bd">{tt.badge}</Label>
+                    <Input id="bd" value={badge} onChange={(e) => setBadge(e.target.value)} />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="submit" disabled={loading || !ticket.trim() || !badge.trim()}>
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "View"}
+                    </Button>
+                  </div>
+                </form>
+                {error && (
+                  <Alert variant="destructive" className="mt-3">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+              </TabsContent>
+
+              <TabsContent value="badge" className="mt-0 space-y-3">
+                <p className="text-sm text-muted-foreground">{tt.lookupByBadgeIntro}</p>
+                <form onSubmit={lookupByBadge} className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                  <div>
+                    <Label htmlFor="bdonly">{tt.badge}</Label>
+                    <Input
+                      id="bdonly"
+                      value={badgeOnly}
+                      onChange={(e) => setBadgeOnly(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="submit" disabled={badgeLoading || !badgeOnly.trim()}>
+                      {badgeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Search className="h-4 w-4 mr-1" /> {tt.lookupByBadgeSubmit}</>}
+                    </Button>
+                  </div>
+                </form>
+                {badgeError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{badgeError}</AlertDescription>
+                  </Alert>
+                )}
+                {badgeResults && badgeResults.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">{tt.lookupByBadgeHeading(badgeResults.length)}</div>
+                    <ul className="divide-y rounded-md border">
+                      {badgeResults.map((r) => (
+                        <li key={r.ticket_number}>
+                          <button
+                            type="button"
+                            onClick={() => openTicketFromList(r.ticket_number)}
+                            className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-accent transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-sm font-medium">#{r.ticket_number}</span>
+                                <Badge variant="outline" className="text-xs">{STATUS_LABEL[r.status]}</Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                {REQUEST_TYPE_LABEL[r.request_type]} · {tt.submittedOn} {formatDateTime(r.created_at)}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
+
         </Card>
 
         {data && (
