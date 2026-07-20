@@ -564,7 +564,7 @@ function SupportCard({
                 </button>
               </div>
             )}
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-2 flex-wrap">
               <Button
                 size="sm"
                 variant="outline"
@@ -575,10 +575,32 @@ function SupportCard({
                 <Paperclip className="h-4 w-4 mr-1" />
                 {attachment ? "Change photo" : "Attach photo"}
               </Button>
-              <Button size="sm" onClick={sendReply} disabled={sending || (!reply.trim() && !attachment)}>
-                {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
-                Send reply
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex gap-2 flex-wrap justify-end">
+                  {waNumber && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      type="button"
+                      onClick={sendViaWhatsApp}
+                      disabled={sending}
+                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      Reply via WhatsApp
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={sendReply} disabled={sending || (!reply.trim() && !attachment)}>
+                    {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+                    Send reply
+                  </Button>
+                </div>
+                {waNumber && (
+                  <p className="text-[11px] text-muted-foreground max-w-xs text-right leading-snug">
+                    Opens WhatsApp to send manually. Their reply won't appear here — check WhatsApp directly.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
