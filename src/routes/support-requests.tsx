@@ -361,14 +361,39 @@ function SupportCard({
 
   const sendReply = async () => {
     const m = reply.trim();
-    if (!m) return;
+    if (!m && !attachment) return;
     setSending(true);
+
+    let attachmentPath: string | null = null;
+    if (attachment) {
+      try {
+        const blob = await compressImage(attachment);
+        const ext = attachment.name.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() || "jpg";
+        const safeExt = blob.type === "image/jpeg" ? "jpg" : ext;
+        const path = `${row.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
+        const { error: uErr } = await supabase.storage
+          .from("ticket-attachments")
+          .upload(path, blob, { contentType: blob.type || attachment.type, upsert: false });
+        if (uErr) {
+          setSending(false);
+          toast.error(uErr.message);
+          return;
+        }
+        attachmentPath = path;
+      } catch (e) {
+        setSending(false);
+        toast.error(e instanceof Error ? e.message : "Could not upload attachment");
+        return;
+      }
+    }
+
     const { error } = await supabase.from("support_request_replies").insert({
       request_id: row.id,
       author_role: "admin",
       author_id: user?.id ?? null,
       author_name: user?.email ?? "Admin",
-      message: m,
+      message: m || "(photo attached)",
+      attachment_path: attachmentPath,
     });
     setSending(false);
     if (error) {
@@ -376,12 +401,13 @@ function SupportCard({
       return;
     }
     setReply("");
+    setAttachment(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     toast.success("Reply sent");
     loadReplies();
     if (row.status === "new") onUpdate(row.id, "in_progress");
   };
 
-  return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
