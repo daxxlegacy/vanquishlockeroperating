@@ -554,7 +554,7 @@ function SupportCard({
                     );
                   })}
                   <ImagePreviewModal
-                    open={previewOpen && !composerPreviewOpenRef.current}
+                    open={previewOpen}
                     onOpenChange={setPreviewOpen}
                     items={attachmentReplies.map((r) => ({
                       key: r.id,
