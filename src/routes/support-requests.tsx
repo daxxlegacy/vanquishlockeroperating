@@ -468,6 +468,9 @@ function SupportCard({
                     <span>· {formatDateTime(r.created_at)}</span>
                   </div>
                   <div className="whitespace-pre-wrap">{r.message}</div>
+                  {r.attachment_path && (
+                    <ReplyAttachment path={r.attachment_path} mode="admin" />
+                  )}
                 </div>
               ))}
             </div>
@@ -481,8 +484,49 @@ function SupportCard({
               placeholder="Write a reply — the user will see this when they check their ticket status."
               maxLength={4000}
             />
-            <div className="flex justify-end">
-              <Button size="sm" onClick={sendReply} disabled={sending || !reply.trim()}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                if (f && f.size > 20 * 1024 * 1024) {
+                  toast.error("Photo must be under 20MB");
+                  return;
+                }
+                setAttachment(f);
+              }}
+            />
+            {attachment && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md border bg-muted/30 px-2 py-1.5">
+                <Paperclip className="h-3.5 w-3.5" />
+                <span className="truncate flex-1">{attachment.name}</span>
+                <button
+                  type="button"
+                  className="hover:text-foreground"
+                  onClick={() => {
+                    setAttachment(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  aria-label="Remove attachment"
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            <div className="flex justify-between gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sending}
+              >
+                <Paperclip className="h-4 w-4 mr-1" />
+                {attachment ? "Change photo" : "Attach photo"}
+              </Button>
+              <Button size="sm" onClick={sendReply} disabled={sending || (!reply.trim() && !attachment)}>
                 {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
                 Send reply
               </Button>
