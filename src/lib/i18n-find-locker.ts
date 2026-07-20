@@ -117,6 +117,8 @@ type Dict = {
     okTicket: string;
     okSaveNumber: string;
     okCheckStatus: string;
+    copyReference: string;
+    copiedReference: string;
     submitting: string;
   };
   faq: {
