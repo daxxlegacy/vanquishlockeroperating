@@ -45,6 +45,8 @@ import {
 import { normalizeWhatsAppNumber, buildWhatsAppLink } from "@/lib/whatsapp";
 import { compressImage } from "@/lib/image-compress";
 import { ReplyAttachment } from "@/components/support/ReplyAttachment";
+import { ImagePreviewModal, type ImagePreviewItem } from "@/components/ImagePreviewModal";
+import { signTicketAttachment } from "@/lib/ticket-attachment";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { IdentityUpdatePanel } from "@/components/support/IdentityUpdatePanel";
 import { toast } from "sonner";
@@ -330,6 +332,21 @@ function SupportCard({
   const [sending, setSending] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [composerPreviewUrl, setComposerPreviewUrl] = useState<string | null>(null);
+  const [composerPreviewOpen, setComposerPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    if (!attachment) {
+      setComposerPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(attachment);
+    setComposerPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [attachment]);
+
 
   const loadReplies = async () => {
     const { data, error } = await (
@@ -483,47 +500,76 @@ function SupportCard({
           ) : replies.length === 0 ? (
             <p className="text-xs text-muted-foreground">No replies yet.</p>
           ) : (
-            <div className="space-y-2">
-              {replies.map((r) => {
-                const isWa = r.channel === "whatsapp_outbound";
-                return (
-                  <div
-                    key={r.id}
-                    className={`rounded-lg border p-2.5 text-sm ${
-                      isWa
-                        ? "bg-muted/60 border-dashed text-muted-foreground"
-                        : r.author_role === "admin"
-                          ? "bg-primary/5 border-primary/20"
-                          : "bg-muted/40"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      {isWa ? (
-                        <MessageCircle className="h-3 w-3 text-emerald-600" />
-                      ) : r.author_role === "admin" ? (
-                        <Shield className="h-3 w-3" />
-                      ) : (
-                        <User className="h-3 w-3" />
-                      )}
-                      <span className="font-medium">
-                        {isWa
-                          ? "Admin sent via WhatsApp"
-                          : r.author_role === "admin"
-                            ? "Admin"
-                            : "User"}
-                        {r.author_name ? ` · ${r.author_name}` : ""}
-                      </span>
-                      <span>· {formatDateTime(r.created_at)}</span>
-                    </div>
-                    <div className="whitespace-pre-wrap">{r.message}</div>
-                    {r.attachment_path && !isWa && (
-                      <ReplyAttachment path={r.attachment_path} mode="admin" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            (() => {
+              const attachmentReplies = (replies ?? []).filter(
+                (r) => r.attachment_path && r.channel !== "whatsapp_outbound",
+              );
+              const openThreadAttachment = (id: string) => {
+                const i = attachmentReplies.findIndex((r) => r.id === id);
+                if (i < 0) return;
+                setPreviewIndex(i);
+                setPreviewOpen(true);
+              };
+              return (
+                <div className="space-y-2">
+                  {replies!.map((r) => {
+                    const isWa = r.channel === "whatsapp_outbound";
+                    return (
+                      <div
+                        key={r.id}
+                        className={`rounded-lg border p-2.5 text-sm ${
+                          isWa
+                            ? "bg-muted/60 border-dashed text-muted-foreground"
+                            : r.author_role === "admin"
+                              ? "bg-primary/5 border-primary/20"
+                              : "bg-muted/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                          {isWa ? (
+                            <MessageCircle className="h-3 w-3 text-emerald-600" />
+                          ) : r.author_role === "admin" ? (
+                            <Shield className="h-3 w-3" />
+                          ) : (
+                            <User className="h-3 w-3" />
+                          )}
+                          <span className="font-medium">
+                            {isWa
+                              ? "Admin sent via WhatsApp"
+                              : r.author_role === "admin"
+                                ? "Admin"
+                                : "User"}
+                            {r.author_name ? ` · ${r.author_name}` : ""}
+                          </span>
+                          <span>· {formatDateTime(r.created_at)}</span>
+                        </div>
+                        <div className="whitespace-pre-wrap">{r.message}</div>
+                        {r.attachment_path && !isWa && (
+                          <ReplyAttachment
+                            path={r.attachment_path}
+                            mode="admin"
+                            onOpen={() => openThreadAttachment(r.id)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                  <ImagePreviewModal
+                    open={previewOpen}
+                    onOpenChange={setPreviewOpen}
+                    items={attachmentReplies.map((r) => ({
+                      key: r.id,
+                      alt: "Reply attachment",
+                      sign: () => signTicketAttachment(r.attachment_path!, { mode: "admin" }),
+                    }))}
+                    index={previewIndex}
+                    onIndexChange={setPreviewIndex}
+                  />
+                </div>
+              );
+            })()
           )}
+
 
           <div className="space-y-2">
             <Textarea
@@ -547,23 +593,48 @@ function SupportCard({
                 setAttachment(f);
               }}
             />
-            {attachment && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md border bg-muted/30 px-2 py-1.5">
-                <Paperclip className="h-3.5 w-3.5" />
-                <span className="truncate flex-1">{attachment.name}</span>
+            {attachment && composerPreviewUrl && (
+              <div className="flex items-start gap-2 rounded-md border bg-muted/30 p-2">
                 <button
                   type="button"
-                  className="hover:text-foreground"
+                  onClick={() => setComposerPreviewOpen(true)}
+                  className="shrink-0 rounded-md overflow-hidden border cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Preview attachment"
+                >
+                  <img
+                    src={composerPreviewUrl}
+                    alt="Attachment preview"
+                    className="h-16 w-16 object-cover"
+                  />
+                </button>
+                <div className="flex-1 min-w-0 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Paperclip className="h-3.5 w-3.5" />
+                    <span className="truncate">{attachment.name}</span>
+                  </div>
+                  <div className="text-[11px] opacity-80">Click the thumbnail to preview.</div>
+                </div>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground p-1"
                   onClick={() => {
                     setAttachment(null);
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
                   aria-label="Remove attachment"
                 >
-                  <XIcon className="h-3.5 w-3.5" />
+                  <XIcon className="h-4 w-4" />
                 </button>
               </div>
             )}
+            <ImagePreviewModal
+              open={composerPreviewOpen}
+              onOpenChange={setComposerPreviewOpen}
+              items={composerPreviewUrl ? [{ url: composerPreviewUrl, alt: attachment?.name }] : []}
+              index={0}
+              onIndexChange={() => {}}
+            />
+
             <div className="flex justify-between gap-2 flex-wrap">
               <Button
                 size="sm"
