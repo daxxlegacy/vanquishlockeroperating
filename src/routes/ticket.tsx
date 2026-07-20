@@ -64,7 +64,16 @@ type TicketData = {
   replies: Reply[];
 };
 
+type BadgeTicketSummary = {
+  ticket_number: string;
+  request_type: SupportRequestType;
+  status: SupportRequestStatus;
+  created_at: string;
+};
+
 function TicketPage() {
+  const [lang] = useLang();
+  const tt = i18n[lang].ticket;
   const { t: qt, b: qb } = Route.useSearch();
   const [ticket, setTicket] = useState(qt ?? "");
   const [badge, setBadge] = useState(qb ?? "");
@@ -73,9 +82,15 @@ function TicketPage() {
   const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [mode, setMode] = useState<"ref" | "badge">("ref");
+  const [badgeOnly, setBadgeOnly] = useState("");
+  const [badgeLoading, setBadgeLoading] = useState(false);
+  const [badgeError, setBadgeError] = useState<string | null>(null);
+  const [badgeResults, setBadgeResults] = useState<BadgeTicketSummary[] | null>(null);
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "denied"
   );
+
   const lastAdminReplyIdRef = useRef<string | null>(null);
 
   const lookup = async (e?: React.FormEvent, opts?: { message?: string }) => {
