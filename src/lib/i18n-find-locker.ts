@@ -109,6 +109,10 @@ type Dict = {
     errLocker: string;
     errTooMany: string;
     errGeneric: string;
+    errOpenTicket: (ref: string, status: string) => string;
+    errOpenTicketCta: string;
+    statusNew: string;
+    statusInProgress: string;
     okHeading: string;
     okTicket: string;
     okSaveNumber: string;
