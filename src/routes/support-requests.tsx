@@ -335,6 +335,7 @@ function SupportCard({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [composerPreviewUrl, setComposerPreviewUrl] = useState<string | null>(null);
+  const [composerPreviewOpen, setComposerPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!attachment) {
