@@ -39,8 +39,10 @@ import {
   QrCode,
   ClipboardCheck,
   Paperclip,
+  MessageCircle,
   X as XIcon,
 } from "lucide-react";
+import { normalizeWhatsAppNumber, buildWhatsAppLink } from "@/lib/whatsapp";
 import { compressImage } from "@/lib/image-compress";
 import { ReplyAttachment } from "@/components/support/ReplyAttachment";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
