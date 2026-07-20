@@ -183,7 +183,9 @@ function MapPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8">
+        <DashboardSummary />
         <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
+
           <div>
             <h1 className="font-display text-3xl font-bold">Locker Map</h1>
             <p className="text-muted-foreground text-sm mt-1">
