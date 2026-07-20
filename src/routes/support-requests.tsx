@@ -38,7 +38,11 @@ import {
   Trash2,
   QrCode,
   ClipboardCheck,
+  Paperclip,
+  X as XIcon,
 } from "lucide-react";
+import { compressImage } from "@/lib/image-compress";
+import { ReplyAttachment } from "@/components/support/ReplyAttachment";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { IdentityUpdatePanel } from "@/components/support/IdentityUpdatePanel";
 import { toast } from "sonner";
