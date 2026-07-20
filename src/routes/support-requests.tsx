@@ -484,27 +484,44 @@ function SupportCard({
             <p className="text-xs text-muted-foreground">No replies yet.</p>
           ) : (
             <div className="space-y-2">
-              {replies.map((r) => (
-                <div
-                  key={r.id}
-                  className={`rounded-lg border p-2.5 text-sm ${
-                    r.author_role === "admin" ? "bg-primary/5 border-primary/20" : "bg-muted/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                    {r.author_role === "admin" ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                    <span className="font-medium">
-                      {r.author_role === "admin" ? "Admin" : "User"}
-                      {r.author_name ? ` · ${r.author_name}` : ""}
-                    </span>
-                    <span>· {formatDateTime(r.created_at)}</span>
+              {replies.map((r) => {
+                const isWa = r.channel === "whatsapp_outbound";
+                return (
+                  <div
+                    key={r.id}
+                    className={`rounded-lg border p-2.5 text-sm ${
+                      isWa
+                        ? "bg-muted/60 border-dashed text-muted-foreground"
+                        : r.author_role === "admin"
+                          ? "bg-primary/5 border-primary/20"
+                          : "bg-muted/40"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      {isWa ? (
+                        <MessageCircle className="h-3 w-3 text-emerald-600" />
+                      ) : r.author_role === "admin" ? (
+                        <Shield className="h-3 w-3" />
+                      ) : (
+                        <User className="h-3 w-3" />
+                      )}
+                      <span className="font-medium">
+                        {isWa
+                          ? "Admin sent via WhatsApp"
+                          : r.author_role === "admin"
+                            ? "Admin"
+                            : "User"}
+                        {r.author_name ? ` · ${r.author_name}` : ""}
+                      </span>
+                      <span>· {formatDateTime(r.created_at)}</span>
+                    </div>
+                    <div className="whitespace-pre-wrap">{r.message}</div>
+                    {r.attachment_path && !isWa && (
+                      <ReplyAttachment path={r.attachment_path} mode="admin" />
+                    )}
                   </div>
-                  <div className="whitespace-pre-wrap">{r.message}</div>
-                  {r.attachment_path && (
-                    <ReplyAttachment path={r.attachment_path} mode="admin" />
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
