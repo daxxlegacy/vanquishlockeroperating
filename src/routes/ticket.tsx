@@ -264,6 +264,9 @@ function TicketPage() {
                   name={r.author_name ?? (r.author_role === "admin" ? "Admin office" : data.name)}
                   text={r.message}
                   time={r.created_at}
+                  attachmentPath={r.attachment_path}
+                  ticketNumber={data.ticket_number}
+                  badgeNumber={data.badge_number}
                 />
               ))}
 
