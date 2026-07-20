@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, ExternalLink } from "lucide-react";
+import { Loader2, CheckCircle2, ExternalLink, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import type { SupportRequestType } from "@/lib/support-requests";
 import { t, type Lang } from "@/lib/i18n-find-locker";
 
@@ -49,6 +50,7 @@ export function SupportRequestForm({
   const [okId, setOkId] = useState<string | null>(null);
   const [okTicket, setOkTicket] = useState<string | null>(null);
   const [okBadge, setOkBadge] = useState<string>("");
+  const [copied, setCopied] = useState(false);
 
   const scrollFocusIntoView = (
     e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -56,6 +58,24 @@ export function SupportRequestForm({
     setTimeout(() => {
       e.target.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 250);
+  };
+
+  const displayReference = okTicket ?? `#${okId?.slice(0, 8).toUpperCase()}`;
+  const statusUrl =
+    typeof window !== "undefined" && okTicket
+      ? `${window.location.origin}/ticket?t=${encodeURIComponent(okTicket)}&b=${encodeURIComponent(okBadge)}`
+      : "";
+
+  const copyReference = async () => {
+    if (!statusUrl) return;
+    try {
+      await navigator.clipboard.writeText(statusUrl);
+      setCopied(true);
+      toast.success(tr.form.copiedReference);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(lang === "bm" ? "Gagal menyalin." : "Could not copy.");
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -120,11 +140,26 @@ export function SupportRequestForm({
         <CheckCircle2 className="h-4 w-4" />
         <AlertDescription>
           <div className="font-medium">{tr.form.okHeading}</div>
-          <div className="text-sm mt-1 break-words">
-            {tr.form.okTicket}{" "}
-            <span className="font-mono font-semibold">
-              {okTicket ?? `#${okId.slice(0, 8).toUpperCase()}`}
-            </span>
+          <div className="text-sm mt-1 break-words flex items-center gap-2 flex-wrap">
+            <span>{tr.form.okTicket}</span>
+            <span className="font-mono font-semibold">{displayReference}</span>
+            {statusUrl && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={copyReference}
+                aria-label={tr.form.copyReference}
+                className="h-7 px-2 gap-1.5 text-xs"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                {copied ? tr.form.copiedReference : tr.form.copyReference}
+              </Button>
+            )}
           </div>
           <div className="text-xs mt-1 break-words">
             {tr.form.okSaveNumber}{" "}

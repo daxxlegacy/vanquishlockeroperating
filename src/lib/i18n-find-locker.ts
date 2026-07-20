@@ -117,6 +117,8 @@ type Dict = {
     okTicket: string;
     okSaveNumber: string;
     okCheckStatus: string;
+    copyReference: string;
+    copiedReference: string;
     submitting: string;
   };
   faq: {
@@ -227,6 +229,8 @@ export const t: Record<Lang, Dict> = {
       okTicket: "Ticket number:",
       okSaveNumber: "Save this number. Our team will contact you at",
       okCheckStatus: "Check ticket status",
+      copyReference: "Copy reference number",
+      copiedReference: "Copied!",
       submitting: "Submitting…",
     },
     faq: {
@@ -335,6 +339,8 @@ export const t: Record<Lang, Dict> = {
       okTicket: "Nombor tiket:",
       okSaveNumber: "Simpan nombor ini. Pasukan kami akan hubungi anda di",
       okCheckStatus: "Semak status tiket",
+      copyReference: "Salin nombor rujukan",
+      copiedReference: "Disalin!",
       submitting: "Menghantar…",
     },
     faq: {
