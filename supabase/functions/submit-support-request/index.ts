@@ -62,11 +62,20 @@ Deno.serve(async (req) => {
   });
 
   if (error) {
-    const msg = (error.message || "").toLowerCase();
-    if (msg.includes("rate limit")) {
+    const msg = error.message || "";
+    const lower = msg.toLowerCase();
+    // open_ticket_exists:<ticket>:<status>
+    const openMatch = msg.match(/open_ticket_exists:([^:]+):([a-z_]+)/i);
+    if (openMatch) {
+      return json({
+        error: "open_ticket_exists",
+        existing: { ticket_number: openMatch[1], status: openMatch[2] },
+      }, 409);
+    }
+    if (lower.includes("rate limit")) {
       return json({ error: "Too many requests. Please try again in a few minutes." }, 429);
     }
-    console.error("submit_support_request failed:", error.message);
+    console.error("submit_support_request failed:", msg);
     return json({ error: "Could not submit your request. Please try again shortly." }, 400);
   }
 
