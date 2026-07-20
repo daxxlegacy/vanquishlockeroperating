@@ -45,6 +45,8 @@ import {
 import { normalizeWhatsAppNumber, buildWhatsAppLink } from "@/lib/whatsapp";
 import { compressImage } from "@/lib/image-compress";
 import { ReplyAttachment } from "@/components/support/ReplyAttachment";
+import { ImagePreviewModal, type ImagePreviewItem } from "@/components/ImagePreviewModal";
+import { signTicketAttachment } from "@/lib/ticket-attachment";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { IdentityUpdatePanel } from "@/components/support/IdentityUpdatePanel";
 import { toast } from "sonner";
