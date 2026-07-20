@@ -253,24 +253,8 @@ function TicketPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              <Bubble
-                role="user"
-                name={data.name}
-                text={data.message}
-                time={data.created_at}
-              />
-              {data.replies.map((r) => (
-                <Bubble
-                  key={r.id}
-                  role={r.author_role}
-                  name={r.author_name ?? (r.author_role === "admin" ? "Admin office" : data.name)}
-                  text={r.message}
-                  time={r.created_at}
-                  attachmentPath={r.attachment_path}
-                  ticketNumber={data.ticket_number}
-                  badgeNumber={data.badge_number}
-                />
-              ))}
+              <TicketConversation data={data} />
+
 
               {data.status !== "resolved" ? (
                 <div className="pt-2 border-t space-y-2">
