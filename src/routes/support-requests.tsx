@@ -323,41 +323,24 @@ function SupportRequestsPage() {
                   </Card>
                 ) : (
                   <>
-                    {selectableIds.length > 0 && (
+                    {visibleIds.length > 0 && (
                       <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
                         <label className="flex items-center gap-2 text-sm cursor-pointer">
-                          <Checkbox checked={allSelected} onCheckedChange={(v) => toggleAll(v === true)} />
+                          <Checkbox
+                            checked={allVisibleSelected}
+                            onCheckedChange={(v) => toggleAll(v === true)}
+                            aria-label="Select all visible tickets"
+                          />
                           <span>
-                            Select all resolved ({selectableIds.length})
+                            Select all visible ({visibleIds.length})
                             {selected.size > 0 ? ` · ${selected.size} selected` : ""}
                           </span>
                         </label>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive" disabled={selected.size === 0 || deleting}>
-                              {deleting ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4 mr-1" />
-                              )}
-                              Delete selected
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Delete {selected.size} resolved ticket{selected.size === 1 ? "" : "s"}?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This permanently removes the tickets and all their replies. This cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={deleteSelected}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {selected.size > 0 && (
+                          <Button size="sm" variant="ghost" onClick={clearSelection}>
+                            <XIcon className="h-4 w-4 mr-1" /> Clear
+                          </Button>
+                        )}
                       </div>
                     )}
                     {filtered.map((r) => (
@@ -365,12 +348,13 @@ function SupportRequestsPage() {
                         key={r.id}
                         row={r}
                         onUpdate={updateStatus}
-                        selectable={r.status === "resolved"}
+                        selectable
                         selected={selected.has(r.id)}
                         onSelectedChange={(on) => toggleOne(r.id, on)}
                       />
                     ))}
                   </>
+
                 )}
               </TabsContent>
             </Tabs>
