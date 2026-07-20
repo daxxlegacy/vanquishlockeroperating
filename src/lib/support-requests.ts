@@ -31,6 +31,7 @@ export type SupportRequestReply = {
   author_name: string | null;
   message: string;
   attachment_path: string | null;
+  channel?: string | null;
   created_at: string;
 };
 
