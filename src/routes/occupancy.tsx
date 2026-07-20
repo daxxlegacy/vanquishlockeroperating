@@ -31,6 +31,7 @@ import {
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
 import { useOccupancy, invalidateOccupancyCache, type OccupancyRow, type OccCategory } from "@/lib/occupancy-cache";
+import { useFocusListener } from "@/lib/global-focus";
 import { useLockers } from "@/lib/lockers-cache";
 import { useDebounced } from "@/hooks/use-debounced";
 import type { Database } from "@/integrations/supabase/types";
