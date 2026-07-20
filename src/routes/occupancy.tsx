@@ -118,6 +118,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [importing, setImporting] = useState(false);
   const [importCat, setImportCat] = useState<OccCategory | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
+  useFocusListener("occupancy", (lockerNumber) => setHistoryFor(lockerNumber));
   const [syncOpen, setSyncOpen] = useState(false);
   const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
