@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,10 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   const [oldAction, setOldAction] = useState<LockerStatus>("empty");
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (open) invalidateLockersCache();
+  }, [open]);
 
   const locations = useMemo(() => {
     if (!lockers) return [];
@@ -104,6 +108,28 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
     onTransferred?.();
 
     void (async () => {
+      // Re-fetch the target from DB to avoid stale-cache "already occupied" errors.
+      const { data: fresh, error: freshErr } = await supabase
+        .from("lockers")
+        .select("id, status, employee_name, badge_number, locker_number, deleted_at")
+        .eq("id", to.id)
+        .maybeSingle();
+      if (freshErr) {
+        toast.error(`Transfer failed: ${freshErr.message}`);
+        invalidateLockersCache();
+        return;
+      }
+      if (!fresh || fresh.deleted_at) {
+        toast.error("Target locker no longer exists");
+        invalidateLockersCache();
+        return;
+      }
+      if (fresh.status === "active" || fresh.employee_name || fresh.badge_number) {
+        toast.error(`Target ${fresh.locker_number} is now occupied — pick another locker`);
+        invalidateLockersCache();
+        return;
+      }
+
       const { data, error } = await supabase.rpc("transfer_locker" as never, {
         _from_id: from.id,
         _to_id: to.id,
