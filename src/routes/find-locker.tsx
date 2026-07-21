@@ -61,8 +61,8 @@ function LockerInquiryPage() {
   const [lang, setLang] = useLang();
   const tr = t[lang];
 
-  const [lockerNumber, setLockerNumber] = useState("");
   const [badgeNumber, setBadgeNumber] = useState("");
+
   
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Result[] | null>(null);
