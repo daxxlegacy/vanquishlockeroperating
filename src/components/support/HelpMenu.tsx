@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HelpCircle, MessageSquare, Ticket, ChevronLeft, Search } from "lucide-react";
+import { HelpCircle, MessageSquare, Ticket, ChevronLeft } from "lucide-react";
 import { SupportRequestForm } from "./SupportRequestForm";
 import { FaqAssistant } from "./FaqAssistant";
 import { t, type Lang } from "@/lib/i18n-find-locker";
 
-type Panel = "menu" | "inquiry" | "cant_find" | "cant_find_form" | "other" | "ticket";
+type Panel = "menu" | "other" | "ticket";
+
 
 export function HelpMenu({
   onPickInquiry,
