@@ -141,19 +141,6 @@ function LockerInquiryPage() {
             <CardContent>
               <form onSubmit={submit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="locker" className="text-sm">{tr.lookup.lockerNumber}</Label>
-                  <Input
-                    id="locker"
-                    value={lockerNumber}
-                    onChange={(e) => setLockerNumber(e.target.value)}
-                    onFocus={scrollFocusIntoView}
-                    autoComplete="off"
-                    inputMode="text"
-                    placeholder={tr.lookup.lockerNumberHint}
-                    className="h-12 text-base"
-                  />
-                </div>
-                <div className="space-y-1.5">
                   <Label htmlFor="badge" className="text-sm">{tr.lookup.badge}</Label>
                   <Input
                     id="badge"
@@ -166,6 +153,7 @@ function LockerInquiryPage() {
                     className="h-12 text-base"
                   />
                 </div>
+
                 <Button
                   type="submit"
                   className="w-full h-12 text-base"
