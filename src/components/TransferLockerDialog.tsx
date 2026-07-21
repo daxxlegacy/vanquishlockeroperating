@@ -40,6 +40,10 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
+  useEffect(() => {
+    if (open) invalidateLockersCache();
+  }, [open]);
+
   const locations = useMemo(() => {
     if (!lockers) return [];
     return Array.from(new Set(lockers.map((l) => l.location))).sort();
