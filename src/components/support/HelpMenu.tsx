@@ -103,40 +103,8 @@ export function HelpMenu({
           </div>
         )}
 
-        {panel === "cant_find" && (
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <div className="space-y-2 text-sm">
-              <p className="font-medium">{tr.cantFindPanel.tryFirst}</p>
-              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                <li>{tr.cantFindPanel.tip1}</li>
-                <li>{tr.cantFindPanel.tip2}</li>
-                <li>{tr.cantFindPanel.tip3}</li>
-              </ul>
-            </div>
-            <Button
-              variant="outline"
-              className="w-full h-12 text-base"
-              onClick={() => setPanel("cant_find_form")}
-            >
-              {tr.cantFindPanel.contactCta}
-            </Button>
-          </div>
-        )}
 
-        {panel === "cant_find_form" && (
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <p className="text-sm text-muted-foreground">{tr.cantFindPanel.formIntro}</p>
-            <SupportRequestForm
-              lang={lang}
-              requestType="cant_find_locker"
-              showLockerField={false}
-              defaultMessage={tr.cantFindPanel.defaultMessage}
-              messageLabel={tr.cantFindPanel.messageLabel}
-              messagePlaceholder={tr.cantFindPanel.messagePlaceholder}
-              submitLabel={tr.cantFindPanel.submitLabel}
-            />
-          </div>
-        )}
+
 
         {panel === "other" && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
