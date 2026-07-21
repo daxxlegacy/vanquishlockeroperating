@@ -19,7 +19,7 @@ function detectDefaultLang(): Lang {
 
 /** Small hook: current language + setter that persists to localStorage. */
 export function useLang(): [Lang, (l: Lang) => void] {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("bm");
   useEffect(() => { setLang(detectDefaultLang()); }, []);
   const set = (l: Lang) => {
     setLang(l);
