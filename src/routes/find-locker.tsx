@@ -81,9 +81,9 @@ function LockerInquiryPage() {
       const { data, error } = await supabase.functions.invoke("locker-lookup", {
         body: {
           badge_number: badgeNumber.trim(),
-          locker_number: lockerNumber.trim() || undefined,
         },
       });
+
       if (error || !data || (data as { error?: string }).error) {
         const msg = (data as { error?: string } | null)?.error ?? error?.message ?? "";
         if (msg.toLowerCase().includes("too many")) {
