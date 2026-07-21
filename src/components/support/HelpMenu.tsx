@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HelpCircle, MessageSquare, Ticket, ChevronLeft, Search } from "lucide-react";
+import { HelpCircle, MessageSquare, Ticket, ChevronLeft } from "lucide-react";
 import { SupportRequestForm } from "./SupportRequestForm";
 import { FaqAssistant } from "./FaqAssistant";
 import { t, type Lang } from "@/lib/i18n-find-locker";
 
-type Panel = "menu" | "inquiry" | "cant_find" | "cant_find_form" | "other" | "ticket";
+type Panel = "menu" | "other" | "ticket";
+
 
 export function HelpMenu({
   onPickInquiry,
@@ -41,20 +42,6 @@ export function HelpMenu({
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-2">
           <MenuButton
-            active={panel === "inquiry"}
-            onClick={() => { setPanel("inquiry"); onPickInquiry(); }}
-            icon={<Search className="h-5 w-5" />}
-            label={tr.helpMenu.lockerInquiry.label}
-            sub={tr.helpMenu.lockerInquiry.sub}
-          />
-          <MenuButton
-            active={panel === "cant_find" || panel === "cant_find_form"}
-            onClick={() => setPanel("cant_find")}
-            icon={<HelpCircle className="h-5 w-5" />}
-            label={tr.helpMenu.cantFind.label}
-            sub={tr.helpMenu.cantFind.sub}
-          />
-          <MenuButton
             active={panel === "other"}
             onClick={() => setPanel("other")}
             icon={<MessageSquare className="h-5 w-5" />}
@@ -69,6 +56,7 @@ export function HelpMenu({
             sub={tr.helpMenu.ticket.sub}
           />
         </div>
+
 
         {panel !== "menu" && (
           <button
@@ -115,40 +103,8 @@ export function HelpMenu({
           </div>
         )}
 
-        {panel === "cant_find" && (
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <div className="space-y-2 text-sm">
-              <p className="font-medium">{tr.cantFindPanel.tryFirst}</p>
-              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                <li>{tr.cantFindPanel.tip1}</li>
-                <li>{tr.cantFindPanel.tip2}</li>
-                <li>{tr.cantFindPanel.tip3}</li>
-              </ul>
-            </div>
-            <Button
-              variant="outline"
-              className="w-full h-12 text-base"
-              onClick={() => setPanel("cant_find_form")}
-            >
-              {tr.cantFindPanel.contactCta}
-            </Button>
-          </div>
-        )}
 
-        {panel === "cant_find_form" && (
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-            <p className="text-sm text-muted-foreground">{tr.cantFindPanel.formIntro}</p>
-            <SupportRequestForm
-              lang={lang}
-              requestType="cant_find_locker"
-              showLockerField={false}
-              defaultMessage={tr.cantFindPanel.defaultMessage}
-              messageLabel={tr.cantFindPanel.messageLabel}
-              messagePlaceholder={tr.cantFindPanel.messagePlaceholder}
-              submitLabel={tr.cantFindPanel.submitLabel}
-            />
-          </div>
-        )}
+
 
         {panel === "other" && (
           <div className="rounded-lg border bg-muted/30 p-4 space-y-3">

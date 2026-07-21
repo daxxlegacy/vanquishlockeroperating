@@ -8,18 +8,18 @@ export type Lang = "en" | "bm";
 const STORAGE_KEY = "locker-inquiry-lang";
 
 function detectDefaultLang(): Lang {
-  if (typeof window === "undefined") return "en";
+  if (typeof window === "undefined") return "bm";
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored === "en" || stored === "bm") return stored;
   } catch { /* ignore */ }
-  const nav = (typeof navigator !== "undefined" && navigator.language) || "";
-  return /^ms\b|^id\b/i.test(nav) ? "bm" : "en";
+  return "bm";
 }
+
 
 /** Small hook: current language + setter that persists to localStorage. */
 export function useLang(): [Lang, (l: Lang) => void] {
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("bm");
   useEffect(() => { setLang(detectDefaultLang()); }, []);
   const set = (l: Lang) => {
     setLang(l);

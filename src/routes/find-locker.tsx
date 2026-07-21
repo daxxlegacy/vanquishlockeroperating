@@ -61,8 +61,8 @@ function LockerInquiryPage() {
   const [lang, setLang] = useLang();
   const tr = t[lang];
 
-  const [lockerNumber, setLockerNumber] = useState("");
   const [badgeNumber, setBadgeNumber] = useState("");
+
   
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Result[] | null>(null);
@@ -81,9 +81,9 @@ function LockerInquiryPage() {
       const { data, error } = await supabase.functions.invoke("locker-lookup", {
         body: {
           badge_number: badgeNumber.trim(),
-          locker_number: lockerNumber.trim() || undefined,
         },
       });
+
       if (error || !data || (data as { error?: string }).error) {
         const msg = (data as { error?: string } | null)?.error ?? error?.message ?? "";
         if (msg.toLowerCase().includes("too many")) {
@@ -141,19 +141,6 @@ function LockerInquiryPage() {
             <CardContent>
               <form onSubmit={submit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="locker" className="text-sm">{tr.lookup.lockerNumber}</Label>
-                  <Input
-                    id="locker"
-                    value={lockerNumber}
-                    onChange={(e) => setLockerNumber(e.target.value)}
-                    onFocus={scrollFocusIntoView}
-                    autoComplete="off"
-                    inputMode="text"
-                    placeholder={tr.lookup.lockerNumberHint}
-                    className="h-12 text-base"
-                  />
-                </div>
-                <div className="space-y-1.5">
                   <Label htmlFor="badge" className="text-sm">{tr.lookup.badge}</Label>
                   <Input
                     id="badge"
@@ -166,6 +153,7 @@ function LockerInquiryPage() {
                     className="h-12 text-base"
                   />
                 </div>
+
                 <Button
                   type="submit"
                   className="w-full h-12 text-base"
