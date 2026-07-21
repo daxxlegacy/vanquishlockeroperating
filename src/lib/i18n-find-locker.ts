@@ -66,13 +66,7 @@ type Dict = {
   };
   ticket: {
     intro: string;
-    ticketNumber: string;
     badge: string;
-    ticketPlaceholder: string;
-    submit: string;
-    tabWithRef: string;
-    tabWithoutRef: string;
-    lookupByBadgeIntro: string;
     lookupByBadgeSubmit: string;
     lookupByBadgeHeading: (n: number) => string;
     noneFound: string;
@@ -184,14 +178,8 @@ export const t: Record<Lang, Dict> = {
       ticket: { label: "Check ticket status", sub: "View replies from admin" },
     },
     ticket: {
-      intro: "Enter your ticket number and badge number to view updates or reply.",
-      ticketNumber: "Ticket number",
+      intro: "Enter your badge number to view your tickets and replies from admin.",
       badge: "Badge number",
-      ticketPlaceholder: "e.g. 00042",
-      submit: "View my ticket",
-      tabWithRef: "I have my reference number",
-      tabWithoutRef: "I don't have my reference number",
-      lookupByBadgeIntro: "Don't have your reference number? Look up by Badge Number instead.",
       lookupByBadgeSubmit: "Find my tickets",
       lookupByBadgeHeading: (n: number) => `Found ${n} ticket${n === 1 ? "" : "s"} for this badge:`,
       noneFound: "No matching record found. Please check your badge number.",
@@ -302,14 +290,8 @@ export const t: Record<Lang, Dict> = {
       ticket: { label: "Semak status tiket", sub: "Lihat maklum balas admin" },
     },
     ticket: {
-      intro: "Masukkan nombor tiket dan nombor badge untuk lihat kemas kini atau balas.",
-      ticketNumber: "Nombor tiket",
+      intro: "Masukkan nombor badge anda untuk lihat tiket dan maklum balas daripada admin.",
       badge: "Nombor badge",
-      ticketPlaceholder: "cth. 00042",
-      submit: "Lihat tiket saya",
-      tabWithRef: "Saya ada nombor rujukan",
-      tabWithoutRef: "Saya tiada nombor rujukan",
-      lookupByBadgeIntro: "Tiada nombor rujukan? Cari menggunakan Nombor Badge.",
       lookupByBadgeSubmit: "Cari tiket saya",
       lookupByBadgeHeading: (n: number) => `${n} tiket dijumpai untuk badge ini:`,
       noneFound: "Tiada rekod dijumpai. Sila semak nombor badge anda.",
