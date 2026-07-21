@@ -62,8 +62,8 @@ export function SupportRequestForm({
 
   const displayReference = okTicket ?? `#${okId?.slice(0, 8).toUpperCase()}`;
   const statusUrl =
-    typeof window !== "undefined" && okTicket
-      ? `${window.location.origin}/ticket?t=${encodeURIComponent(okTicket)}&b=${encodeURIComponent(okBadge)}`
+    typeof window !== "undefined" && okBadge
+      ? `${window.location.origin}/ticket?b=${encodeURIComponent(okBadge)}`
       : "";
 
   const copyReference = async () => {
@@ -165,11 +165,11 @@ export function SupportRequestForm({
             {tr.form.okSaveNumber}{" "}
             <span className="font-mono">{contact}</span>.
           </div>
-          {okTicket && (
+          {okBadge && (
             <div className="mt-3">
               <Link
                 to="/ticket"
-                search={{ t: okTicket, b: okBadge }}
+                search={{ b: okBadge }}
                 className="inline-flex items-center justify-center gap-1 h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium w-full"
               >
                 {tr.form.okCheckStatus} <ExternalLink className="h-3.5 w-3.5" />
@@ -269,7 +269,7 @@ export function SupportRequestForm({
             <div className="mt-3">
               <Link
                 to="/ticket"
-                search={{ t: openTicket.ticket, b: badge.trim() }}
+                search={{ b: badge.trim() }}
                 className="inline-flex items-center justify-center gap-1 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium"
               >
                 {tr.form.errOpenTicketCta} <ExternalLink className="h-3.5 w-3.5" />

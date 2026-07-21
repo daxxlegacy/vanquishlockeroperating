@@ -20,7 +20,6 @@ export function HelpMenu({
 }) {
   const tr = t[lang];
   const [panel, setPanel] = useState<Panel>("menu");
-  const [tk, setTk] = useState("");
   const [tb, setTb] = useState("");
   const navigate = useNavigate();
 
@@ -87,48 +86,30 @@ export function HelpMenu({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const val = tk.trim();
                 const b = tb.trim();
-                if (!val || !b) return;
-                navigate({ to: "/ticket", search: { t: val, b } });
+                if (!b) return;
+                navigate({ to: "/ticket", search: { b } });
               }}
               className="space-y-3"
             >
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="tk-num" className="text-sm">{tr.ticket.ticketNumber}</Label>
-                  <Input
-                    id="tk-num"
-                    value={tk}
-                    onChange={(e) => setTk(e.target.value)}
-                    onFocus={scrollFocusIntoView}
-                    placeholder={tr.ticket.ticketPlaceholder}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={5}
-                    autoComplete="off"
-                    className="h-12 text-base"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="tk-badge" className="text-sm">{tr.ticket.badge}</Label>
-                  <Input
-                    id="tk-badge"
-                    value={tb}
-                    onChange={(e) => setTb(e.target.value)}
-                    onFocus={scrollFocusIntoView}
-                    autoComplete="off"
-                    inputMode="text"
-                    className="h-12 text-base"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tk-badge" className="text-sm">{tr.ticket.badge}</Label>
+                <Input
+                  id="tk-badge"
+                  value={tb}
+                  onChange={(e) => setTb(e.target.value)}
+                  onFocus={scrollFocusIntoView}
+                  autoComplete="off"
+                  inputMode="text"
+                  className="h-12 text-base"
+                />
               </div>
               <Button
                 type="submit"
                 className="w-full h-12 text-base"
-                disabled={!tk.trim() || !tb.trim()}
+                disabled={!tb.trim()}
               >
-                <Ticket className="h-4 w-4 mr-2" /> {tr.ticket.submit}
+                <Ticket className="h-4 w-4 mr-2" /> {tr.ticket.lookupByBadgeSubmit}
               </Button>
             </form>
           </div>

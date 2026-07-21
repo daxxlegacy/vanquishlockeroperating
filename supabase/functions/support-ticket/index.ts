@@ -1,5 +1,8 @@
-// Public ticket lookup + user reply. Keyed by ticket_number + badge_number
-// (the "auth" for public users who don't have an account).
+// Public ticket lookup + user reply. Primary entry is `list_by_badge`
+// (rate-limited by IP). `lookup` fetches a specific ticket's full conversation
+// by ticket_number+badge (used after the user picks a ticket from the list
+// and by the polling loop). `reply` and `sign_attachment` operate on a
+// specific ticket the caller has proven ownership of via ticket_number+badge.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
