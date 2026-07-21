@@ -41,20 +41,6 @@ export function HelpMenu({
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-2">
           <MenuButton
-            active={panel === "inquiry"}
-            onClick={() => { setPanel("inquiry"); onPickInquiry(); }}
-            icon={<Search className="h-5 w-5" />}
-            label={tr.helpMenu.lockerInquiry.label}
-            sub={tr.helpMenu.lockerInquiry.sub}
-          />
-          <MenuButton
-            active={panel === "cant_find" || panel === "cant_find_form"}
-            onClick={() => setPanel("cant_find")}
-            icon={<HelpCircle className="h-5 w-5" />}
-            label={tr.helpMenu.cantFind.label}
-            sub={tr.helpMenu.cantFind.sub}
-          />
-          <MenuButton
             active={panel === "other"}
             onClick={() => setPanel("other")}
             icon={<MessageSquare className="h-5 w-5" />}
@@ -69,6 +55,7 @@ export function HelpMenu({
             sub={tr.helpMenu.ticket.sub}
           />
         </div>
+
 
         {panel !== "menu" && (
           <button
