@@ -599,7 +599,7 @@ function SupportCard({
   const sendViaWhatsApp = async () => {
     if (!waNumber) return;
     const typed = reply.trim();
-    const fallback = `Hi ${row.name}, regarding your ${REQUEST_TYPE_LABEL[row.request_type]} request (Ref #${row.ticket_number})...`;
+    const fallback = `Hi ${row.name}, berkaitan loker tiket anda (Ref #${row.ticket_number})...`;
     const message = typed || fallback;
     const link = buildWhatsAppLink(waNumber, message);
     // Open first so it counts as a user gesture.
