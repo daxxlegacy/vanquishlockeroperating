@@ -39,16 +39,14 @@ function OperatingHoursNotice({ lang }: { lang: Lang }) {
 
 
 function LockerInquiryPage() {
-  const [lang, setLang] = useLang();
+  const [lang] = useLang();
   const tr = t[lang];
 
   const [badgeNumber, setBadgeNumber] = useState("");
 
-  
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Result[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [transferOpenIdx, setTransferOpenIdx] = useState<number | null>(null);
   const [showCantFind, setShowCantFind] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
