@@ -207,34 +207,8 @@ function LockerInquiryPage() {
                             <dd className="font-mono font-semibold text-right">{result.locker_number ?? "—"}</dd>
                           </div>
                         </dl>
-                      </div>
+                    </div>
 
-                      {transferOpenIdx !== idx ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full h-12 text-base"
-                          onClick={() => setTransferOpenIdx(idx)}
-                        >
-                          <ArrowRightLeft className="h-4 w-4 mr-2" />
-                          {tr.lookup.requestTransfer}
-                        </Button>
-                      ) : (
-                        <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                          <p className="text-sm">{tr.transferPanel.intro}</p>
-                          <SupportRequestForm
-                            lang={lang}
-                            requestType="transfer_locker"
-                            showLockerField
-                            initialName={result.employee_name ?? ""}
-                            initialBadge={result.badge_number ?? ""}
-                            initialLocker={result.locker_number ?? ""}
-                            messageLabel={tr.transferPanel.messageLabel}
-                            messagePlaceholder={tr.transferPanel.messagePlaceholder}
-                            submitLabel={tr.transferPanel.submitLabel}
-                          />
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
