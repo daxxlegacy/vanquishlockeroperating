@@ -37,25 +37,6 @@ function OperatingHoursNotice({ lang }: { lang: Lang }) {
   );
 }
 
-function LanguageToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
-  return (
-    <div className="inline-flex items-center rounded-full border bg-background p-0.5 text-xs">
-      {(["en", "bm"] as const).map((l) => (
-        <button
-          key={l}
-          type="button"
-          onClick={() => setLang(l)}
-          className={`px-3 h-7 rounded-full font-medium transition-colors ${
-            lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-          }`}
-          aria-pressed={lang === l}
-        >
-          {l === "en" ? "EN" : "BM"}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function LockerInquiryPage() {
   const [lang, setLang] = useLang();
