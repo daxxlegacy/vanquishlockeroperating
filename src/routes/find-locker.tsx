@@ -15,7 +15,7 @@ export const Route = createFileRoute("/find-locker")({
   head: () => ({
     meta: [
       { title: "Locker Inquiry" },
-      { name: "description", content: "Look up your assigned locker or request a transfer." },
+      { name: "description", content: "Look up your assigned locker." },
     ],
   }),
   component: LockerInquiryPage,
