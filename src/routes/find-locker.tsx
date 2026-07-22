@@ -102,10 +102,8 @@ function LockerInquiryPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto w-full max-w-md px-5 pt-6 pb-24 sm:pb-10">
-        <div className="flex justify-end mb-2">
-          <LanguageToggle lang={lang} setLang={setLang} />
-        </div>
+
+
 
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold tracking-tight">{tr.pageTitle}</h1>
