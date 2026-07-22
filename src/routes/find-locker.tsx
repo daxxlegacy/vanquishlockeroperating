@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ShieldCheck, Search, Clock, ArrowRightLeft, MessageSquare } from "lucide-react";
+import { Loader2, ShieldCheck, Search, Clock, MessageSquare } from "lucide-react";
 import { HelpMenu } from "@/components/support/HelpMenu";
 import { SupportRequestForm } from "@/components/support/SupportRequestForm";
 import { t, useLang, type Lang } from "@/lib/i18n-find-locker";
