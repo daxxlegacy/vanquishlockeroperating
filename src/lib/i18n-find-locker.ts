@@ -258,8 +258,8 @@ export const t: Record<Lang, Dict> = {
     pageSubtitle: "Masukkan maklumat anda untuk cari loker yang ditetapkan.",
     languageLabel: "Bahasa",
     officeHours: {
-      heading: "Waktu pejabat pentadbir",
-      hours: "Isnin – Jumaat, 8:00 pagi – 5:15 petang",
+      heading: "Waktu pejabat loker management",
+      hours: "Isnin – Jumaat, 7:00 pagi – 6:00 petang",
       outside: "Permintaan di luar waktu pejabat akan diuruskan pada hari bekerja berikutnya.",
     },
     lookup: {

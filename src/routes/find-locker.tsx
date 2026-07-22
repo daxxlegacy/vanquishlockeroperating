@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ShieldCheck, Search, Clock, ArrowRightLeft, MessageSquare } from "lucide-react";
+import { Loader2, ShieldCheck, Search, Clock, MessageSquare } from "lucide-react";
 import { HelpMenu } from "@/components/support/HelpMenu";
 import { SupportRequestForm } from "@/components/support/SupportRequestForm";
 import { t, useLang, type Lang } from "@/lib/i18n-find-locker";
@@ -37,44 +37,23 @@ function OperatingHoursNotice({ lang }: { lang: Lang }) {
   );
 }
 
-function LanguageToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
-  return (
-    <div className="inline-flex items-center rounded-full border bg-background p-0.5 text-xs">
-      {(["en", "bm"] as const).map((l) => (
-        <button
-          key={l}
-          type="button"
-          onClick={() => setLang(l)}
-          className={`px-3 h-7 rounded-full font-medium transition-colors ${
-            lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-          }`}
-          aria-pressed={lang === l}
-        >
-          {l === "en" ? "EN" : "BM"}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function LockerInquiryPage() {
-  const [lang, setLang] = useLang();
+  const [lang] = useLang();
   const tr = t[lang];
 
   const [badgeNumber, setBadgeNumber] = useState("");
 
-  
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Result[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [transferOpenIdx, setTransferOpenIdx] = useState<number | null>(null);
   const [showCantFind, setShowCantFind] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setResults(null);
-    setTransferOpenIdx(null);
+    
     setShowCantFind(false);
     setLoading(true);
     try {
@@ -122,9 +101,9 @@ function LockerInquiryPage() {
   return (
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto w-full max-w-md px-5 pt-6 pb-24 sm:pb-10">
-        <div className="flex justify-end mb-2">
-          <LanguageToggle lang={lang} setLang={setLang} />
-        </div>
+
+
+
 
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold tracking-tight">{tr.pageTitle}</h1>
@@ -226,34 +205,8 @@ function LockerInquiryPage() {
                             <dd className="font-mono font-semibold text-right">{result.locker_number ?? "—"}</dd>
                           </div>
                         </dl>
-                      </div>
+                    </div>
 
-                      {transferOpenIdx !== idx ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full h-12 text-base"
-                          onClick={() => setTransferOpenIdx(idx)}
-                        >
-                          <ArrowRightLeft className="h-4 w-4 mr-2" />
-                          {tr.lookup.requestTransfer}
-                        </Button>
-                      ) : (
-                        <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                          <p className="text-sm">{tr.transferPanel.intro}</p>
-                          <SupportRequestForm
-                            lang={lang}
-                            requestType="transfer_locker"
-                            showLockerField
-                            initialName={result.employee_name ?? ""}
-                            initialBadge={result.badge_number ?? ""}
-                            initialLocker={result.locker_number ?? ""}
-                            messageLabel={tr.transferPanel.messageLabel}
-                            messagePlaceholder={tr.transferPanel.messagePlaceholder}
-                            submitLabel={tr.transferPanel.submitLabel}
-                          />
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
