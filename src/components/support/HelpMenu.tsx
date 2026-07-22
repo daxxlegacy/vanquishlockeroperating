@@ -13,10 +13,8 @@ type Panel = "menu" | "other" | "ticket";
 
 
 export function HelpMenu({
-  onPickInquiry,
   lang = "en",
 }: {
-  onPickInquiry: () => void;
   lang?: Lang;
 }) {
   const tr = t[lang];
