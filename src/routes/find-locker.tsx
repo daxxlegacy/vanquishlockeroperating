@@ -217,10 +217,7 @@ function LockerInquiryPage() {
 
         <OperatingHoursNotice lang={lang} />
 
-        <HelpMenu
-          lang={lang}
-          onPickInquiry={() => lookupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-        />
+        <HelpMenu lang={lang} />
       </div>
     </div>
   );
