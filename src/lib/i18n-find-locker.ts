@@ -50,7 +50,7 @@ type Dict = {
     resultName: string;
     resultBadge: string;
     resultLocker: string;
-    requestTransfer: string;
+    
     noMatch: string;
     tooMany: string;
     cantFindCta: string;
@@ -163,7 +163,7 @@ export const t: Record<Lang, Dict> = {
       resultName: "Name",
       resultBadge: "Badge",
       resultLocker: "Locker",
-      requestTransfer: "Request locker transfer",
+      
       noMatch: "No matching record found. Please check your details or contact the admin office.",
       tooMany: "Too many attempts. Please try again in a few minutes.",
       cantFindCta: "Can't find your locker? Contact us",
@@ -275,7 +275,7 @@ export const t: Record<Lang, Dict> = {
       resultName: "Nama",
       resultBadge: "Badge",
       resultLocker: "Loker",
-      requestTransfer: "Mohon tukar loker",
+      
       noMatch: "Tiada rekod dijumpai. Sila semak maklumat atau hubungi pejabat pentadbir.",
       tooMany: "Terlalu banyak cubaan. Sila cuba semula beberapa minit lagi.",
       cantFindCta: "Tidak jumpa loker anda? Hubungi kami",
