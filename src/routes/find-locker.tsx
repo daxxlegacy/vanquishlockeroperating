@@ -53,7 +53,7 @@ function LockerInquiryPage() {
     e.preventDefault();
     setError(null);
     setResults(null);
-    setTransferOpenIdx(null);
+    
     setShowCantFind(false);
     setLoading(true);
     try {
