@@ -102,6 +102,8 @@ function LockerInquiryPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
+      <div className="mx-auto w-full max-w-md px-5 pt-6 pb-24 sm:pb-10">
+
 
 
 
