@@ -1157,7 +1157,9 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
                       {e.badge_number && <span className="font-mono text-xs text-muted-foreground">#{e.badge_number}</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] uppercase">{e.source}</Badge>
+                      <Badge variant="outline" className="text-[10px] uppercase">
+                        {/^\s*terminate/i.test(e.status ?? "") ? "termination" : e.source}
+                      </Badge>
                       {isAdmin && (
                         <Button
                           size="icon"
