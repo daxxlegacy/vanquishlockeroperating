@@ -305,7 +305,7 @@ function AddSpareKeyLockerDialog({
   const [form, setForm] = useState({
     locker_number: "",
     location: existingLocations[0] ?? "",
-    row_label: "",
+    
     spare_key_status: "available" as KeyStatus,
   });
   const [saving, setSaving] = useState(false);
@@ -323,7 +323,7 @@ function AddSpareKeyLockerDialog({
     const { data: inserted, error } = await supabase.from("lockers").insert({
       locker_number: trimmedNumber,
       location: form.location.trim(),
-      row_label: form.row_label.trim() || null,
+      
       status: "empty",
       spare_key_status: form.spare_key_status,
     }).select().single();
@@ -383,7 +383,6 @@ function AddSpareKeyLockerDialog({
           </datalist>
         </div>
         <div>
-
           <Label>Spare Key Status</Label>
           <Select value={form.spare_key_status} onValueChange={(v) => set("spare_key_status", v as KeyStatus)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
