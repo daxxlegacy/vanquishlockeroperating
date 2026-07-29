@@ -984,11 +984,14 @@ type HistoryEvent = {
   status: string;
   employee_name: string | null;
   badge_number: string | null;
+  national_id: string | null;
+  nid_record_id: string | null;
   date: string | null;
   date_label: string;
   remarks: string | null;
   by: string | null;
 };
+
 
 function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: string | null; isAdmin: boolean; onClose: () => void }) {
   const [events, setEvents] = useState<HistoryEvent[] | null>(null);
