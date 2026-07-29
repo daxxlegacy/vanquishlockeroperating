@@ -89,7 +89,7 @@ function SpareKeysPage() {
       if (!q) return true;
       return (
         l.locker_number.toLowerCase().includes(q) ||
-        (l.row_label ?? "").toLowerCase().includes(q) ||
+        
         l.location.toLowerCase().includes(q)
       );
     });
