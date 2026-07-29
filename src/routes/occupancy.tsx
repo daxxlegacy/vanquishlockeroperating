@@ -1076,7 +1076,15 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
       }
 
       out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-      setEvents(out);
+      // Defensive: never render an empty shell card (no name, badge, status or date).
+      const meaningful = out.filter(
+        (e) =>
+          (e.employee_name ?? "").trim() !== "" ||
+          (e.badge_number ?? "").trim() !== "" ||
+          ((e.status ?? "").trim() !== "" && (e.status ?? "").trim() !== "—") ||
+          (e.date ?? "").trim() !== "",
+      );
+      setEvents(meaningful);
     })();
   }, [lockerNumber, tick]);
 
