@@ -106,8 +106,6 @@ export async function recordSwapHistory(
     category = anyRow && anyRow.length > 0 ? anyRow[0].category : null;
   }
   category = deriveOccCategoryOr(lockerNumber, (category as OccCategory) ?? "main");
-  {
-  }
 
   const { error: insErr } = await supabase.from("locker_occupancy").insert({
     category,
