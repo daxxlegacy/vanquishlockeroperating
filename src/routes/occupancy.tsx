@@ -522,7 +522,23 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
         }))
         .filter((r) => r.locker_number);
 
-      if (records.length === 0) { toast.error("No rows found in the sheet"); return; }
+      // Guard: never import rows that carry no occupant AND no status —
+      // these produced blank "ghost" cards in the History dialog.
+      const blankRows = records.filter(
+        (r) => !(r.employee_name ?? "").trim() && !(r.badge_number ?? "").trim() && !(r.status ?? "").trim(),
+      );
+      const usableRecords = records.filter((r) => !blankRows.includes(r));
+      if (blankRows.length > 0) {
+        console.warn(
+          `[occupancy import] skipped ${blankRows.length} blank row(s) with no employee name, badge number or status:`,
+          blankRows.map((r) => r.locker_number).slice(0, 50),
+        );
+      }
+      records.length = 0;
+      records.push(...usableRecords);
+
+      if (records.length === 0) { toast.error("No usable rows found in the sheet"); return; }
+
 
       // De-duplicate Active rows within the uploaded file itself: if the same
       // locker_number appears more than once as Active, keep only the LAST
