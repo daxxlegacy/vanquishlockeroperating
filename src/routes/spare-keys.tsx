@@ -161,7 +161,7 @@ function SpareKeysPage() {
         <Card className="p-4 mt-6 flex gap-3 flex-wrap items-center">
           <div className="relative flex-1 min-w-0 sm:min-w-[240px] w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search locker number, row, location…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Search locker number, location…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={spareFilter} onValueChange={setSpareFilter}>
             <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Spare key" /></SelectTrigger>
