@@ -1019,6 +1019,13 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
         supabase.from("terminations").select("*").eq("locker_number", lockerNumber).order("termination_date", { ascending: false }),
       ]);
       const out: HistoryEvent[] = [];
+      // Map badge → occupancy row so termination events can show a masked
+      // National ID (terminations table doesn't store one).
+      const nidByBadge = new Map<string, { id: string; nid: string | null }>();
+      for (const r of occ ?? []) {
+        const b = (r.badge_number ?? "").trim().toLowerCase();
+        if (b && r.national_id && !nidByBadge.has(b)) nidByBadge.set(b, { id: r.id, nid: r.national_id });
+      }
       for (const r of occ ?? []) {
         out.push({
           id: `o-${r.id}`,
@@ -1026,6 +1033,8 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
           status: r.status ?? "—",
           employee_name: r.employee_name,
           badge_number: r.badge_number,
+          national_id: r.national_id ?? null,
+          nid_record_id: r.id,
           date: (r.status ?? "").toLowerCase() === "active" ? r.batch_intake_date : r.termination_date,
           date_label: (r.status ?? "").toLowerCase() === "active" ? "Intake" : "Terminated",
           remarks: r.remarks,
@@ -1033,18 +1042,22 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
         });
       }
       for (const t of term ?? []) {
+        const match = nidByBadge.get((t.badge_number ?? "").trim().toLowerCase());
         out.push({
           id: `t-${t.id}`,
           source: "termination",
           status: "Terminate",
           employee_name: t.employee_name,
           badge_number: t.badge_number,
+          national_id: match?.nid ?? null,
+          nid_record_id: match?.id ?? null,
           date: t.termination_date,
           date_label: "Terminated",
           remarks: t.reason,
           by: t.terminated_by_email,
         });
       }
+
       out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
       setEvents(out);
     })();
