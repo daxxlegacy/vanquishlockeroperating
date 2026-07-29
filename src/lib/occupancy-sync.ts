@@ -180,7 +180,16 @@ export async function syncTerminationToOccupancy(
     .limit(1);
   const category = anyRow && anyRow.length > 0 ? anyRow[0].category : "main";
 
+  // Guard: don't create a blank ghost row when there is no occupant data.
+  if (!(locker.employee_name ?? "").trim() && !(locker.badge_number ?? "").trim()) {
+    console.warn(
+      `[occupancy-sync] skipped termination row for ${locker.locker_number}: no employee name or badge number`,
+    );
+    return;
+  }
+
   await supabase.from("locker_occupancy").insert({
+
     category,
     locker_number: locker.locker_number,
     locker_row: locker.row_label,
