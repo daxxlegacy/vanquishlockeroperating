@@ -31,7 +31,6 @@ const VIEWPORT_HEIGHT = 600;
 const COLS = [
   { key: "num", w: 140 },
   { key: "loc", w: 200 },
-  { key: "row", w: 160 },
   { key: "spare", w: 220 },
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
@@ -90,7 +89,7 @@ function SpareKeysPage() {
       if (!q) return true;
       return (
         l.locker_number.toLowerCase().includes(q) ||
-        (l.row_label ?? "").toLowerCase().includes(q) ||
+        
         l.location.toLowerCase().includes(q)
       );
     });
@@ -162,7 +161,7 @@ function SpareKeysPage() {
         <Card className="p-4 mt-6 flex gap-3 flex-wrap items-center">
           <div className="relative flex-1 min-w-0 sm:min-w-[240px] w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search locker number, row, location…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Search locker number, location…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={spareFilter} onValueChange={setSpareFilter}>
             <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Spare key" /></SelectTrigger>
@@ -203,7 +202,7 @@ function SpareKeysPage() {
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-base truncate">{l.locker_number}</div>
                             <div className="text-xs text-muted-foreground truncate">
-                              {l.location}{l.row_label && l.row_label !== l.location ? ` · ${l.row_label}` : ""}
+                              {l.location}
                             </div>
                           </div>
                           <KeyBadge status={l.spare_key_status} />
@@ -225,7 +224,7 @@ function SpareKeysPage() {
                   <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
                     <Th>Locker #</Th>
                     <Th>Location</Th>
-                    <Th>Row</Th>
+                    
                     <Th>Spare Key Status</Th>
                   </div>
                   {filtered.length === 0 ? (
@@ -258,12 +257,11 @@ async function exportSpareKeysToExcel(rows: Locker[]) {
   const data = rows.map((l) => ({
     "Locker #": l.locker_number,
     Location: l.location,
-    Row: l.row_label && l.row_label !== l.location ? l.row_label : "",
     "Spare Key Status": (l.spare_key_status ?? "unknown").replace(/_/g, " "),
   }));
   const XLSX = await getXLSX();
   const ws = XLSX.utils.json_to_sheet(data);
-  ws["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 22 }];
+  ws["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 22 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Spare Keys");
   const stamp = new Date().toISOString().slice(0, 10);
@@ -278,7 +276,6 @@ function Th({ children }: { children: React.ReactNode }) {
 type SpareRowProps = { rows: Locker[]; onPick: (id: string) => void };
 const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowComponentProps<SpareRowProps>) {
   const l = rows[index];
-  const rowLabel = l.row_label && l.row_label !== l.location ? l.row_label : "—";
   return (
     <div
       style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
@@ -287,7 +284,6 @@ const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowCompo
     >
       <div className="px-3 truncate font-medium">{l.locker_number}</div>
       <div className="px-3 truncate">{l.location}</div>
-      <div className="px-3 truncate text-muted-foreground">{rowLabel}</div>
       <div className="px-3"><KeyBadge status={l.spare_key_status} /></div>
     </div>
   );
@@ -309,7 +305,7 @@ function AddSpareKeyLockerDialog({
   const [form, setForm] = useState({
     locker_number: "",
     location: existingLocations[0] ?? "",
-    row_label: "",
+    
     spare_key_status: "available" as KeyStatus,
   });
   const [saving, setSaving] = useState(false);
@@ -327,7 +323,7 @@ function AddSpareKeyLockerDialog({
     const { data: inserted, error } = await supabase.from("lockers").insert({
       locker_number: trimmedNumber,
       location: form.location.trim(),
-      row_label: form.row_label.trim() || null,
+      
       status: "empty",
       spare_key_status: form.spare_key_status,
     }).select().single();
@@ -385,10 +381,6 @@ function AddSpareKeyLockerDialog({
           <datalist id="spare-loc-list">
             {existingLocations.map((l) => <option key={l} value={l} />)}
           </datalist>
-        </div>
-        <div>
-          <Label>Row</Label>
-          <Input value={form.row_label} onChange={(e) => set("row_label", e.target.value)} placeholder="optional" />
         </div>
         <div>
           <Label>Spare Key Status</Label>
