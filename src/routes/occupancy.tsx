@@ -47,6 +47,7 @@ const CATEGORY_LABEL: Record<OccCategory, string> = {
   main: "Full Locker (Occupied + Vacant)",
   staff: "Staff Locker (Occupied + Staff)",
   shoe: "Shoe Locker (Occupied + Shoe)",
+  hr: "HR Locker (LK01–LK40)",
 };
 
 const ROW_HEIGHT = 44;
