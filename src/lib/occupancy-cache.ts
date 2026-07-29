@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type OccCategory = "main" | "staff" | "shoe";
+export type OccCategory = "main" | "staff" | "shoe" | "hr";
 
 export type OccupancyRow = {
   id: string;
@@ -34,10 +34,11 @@ const states: Record<OccCategory, State> = {
   main: { data: null, loading: false, refreshing: false },
   staff: { data: null, loading: false, refreshing: false },
   shoe: { data: null, loading: false, refreshing: false },
+  hr: { data: null, loading: false, refreshing: false },
 };
 
 const subs: Record<OccCategory, Set<(s: State) => void>> = {
-  main: new Set(), staff: new Set(), shoe: new Set(),
+  main: new Set(), staff: new Set(), shoe: new Set(), hr: new Set(),
 };
 const fetchPromises: Partial<Record<OccCategory, Promise<void>>> = {};
 let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -48,7 +49,7 @@ const STORAGE_PREFIX = "lockerops.occupancy.cache.v1.";
 const MAX_AGE_MS = 30 * 60 * 1000;
 // Skip silent background refetch when a category was fetched within this window.
 const FRESH_WINDOW_MS = 60 * 1000;
-const lastFetchAt: Record<OccCategory, number> = { main: 0, staff: 0, shoe: 0 };
+const lastFetchAt: Record<OccCategory, number> = { main: 0, staff: 0, shoe: 0, hr: 0 };
 function isFresh(cat: OccCategory) {
   return lastFetchAt[cat] > 0 && Date.now() - lastFetchAt[cat] < FRESH_WINDOW_MS;
 }
@@ -79,7 +80,7 @@ function clearStorage(cat?: OccCategory) {
       localStorage.removeItem(STORAGE_PREFIX + cat);
       return;
     }
-    for (const c of ["main", "staff", "shoe"] as OccCategory[]) {
+    for (const c of ["main", "staff", "shoe", "hr"] as OccCategory[]) {
       localStorage.removeItem(STORAGE_PREFIX + c);
     }
   } catch { /* ignore storage errors */ }
@@ -154,7 +155,7 @@ async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
 /** Kick off occupancy cache warm-up for one or more categories without
  *  mounting a component. Reads warm cache from localStorage first, then
  *  triggers a silent background refresh. */
-export function prefetchOccupancy(cats: OccCategory[] = ["main", "staff", "shoe"]) {
+export function prefetchOccupancy(cats: OccCategory[] = ["main", "staff", "shoe", "hr"]) {
   if (typeof window === "undefined") return;
   startAuthRefresh();
   ensureChannel();
@@ -174,7 +175,7 @@ export function prefetchOccupancy(cats: OccCategory[] = ["main", "staff", "shoe"
 
 
 async function refetchAfterAuthReady() {
-  const cats = ["main", "staff", "shoe"] as OccCategory[];
+  const cats = ["main", "staff", "shoe", "hr"] as OccCategory[];
   await Promise.all(cats.map((cat) => fetchPromises[cat]?.catch(() => {})));
   await Promise.all(
     cats
@@ -193,7 +194,7 @@ function startAuthRefresh() {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
-      for (const cat of ["main", "staff", "shoe"] as OccCategory[]) {
+      for (const cat of ["main", "staff", "shoe", "hr"] as OccCategory[]) {
         states[cat] = { data: null, loading: false, refreshing: false };
         emit(cat);
       }
@@ -229,7 +230,7 @@ function ensureChannel() {
 }
 
 export function invalidateOccupancyCache(cat?: OccCategory) {
-  const cats: OccCategory[] = cat ? [cat] : ["main", "staff", "shoe"];
+  const cats: OccCategory[] = cat ? [cat] : ["main", "staff", "shoe", "hr"];
   for (const c of cats) {
     // Silent refresh: keep existing rows visible and refetch in background,
     // so the tab doesn't flash a loading skeleton after every edit.
@@ -268,13 +269,13 @@ export function useOccupancy(cat: OccCategory) {
 /** Returns true when any occupancy category is doing a silent background
  *  refresh. Cheap subscription for header/status indicators. */
 export function useOccupancyRefreshing() {
-  const compute = () => (["main", "staff", "shoe"] as OccCategory[]).some((c) => states[c].refreshing);
+  const compute = () => (["main", "staff", "shoe", "hr"] as OccCategory[]).some((c) => states[c].refreshing);
   const [r, set] = useState(compute);
   useEffect(() => {
     const fn = () => set(compute());
-    for (const c of ["main", "staff", "shoe"] as OccCategory[]) subs[c].add(fn);
+    for (const c of ["main", "staff", "shoe", "hr"] as OccCategory[]) subs[c].add(fn);
     fn();
-    return () => { for (const c of ["main", "staff", "shoe"] as OccCategory[]) subs[c].delete(fn); };
+    return () => { for (const c of ["main", "staff", "shoe", "hr"] as OccCategory[]) subs[c].delete(fn); };
   }, []);
   return r;
 }

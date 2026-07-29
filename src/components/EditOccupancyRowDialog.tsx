@@ -154,6 +154,7 @@ export function EditOccupancyRowDialog({ row, onClose }: EditProps) {
                 <SelectItem value="main">Full Lockers</SelectItem>
                 <SelectItem value="staff">Staff Lockers</SelectItem>
                 <SelectItem value="shoe">Shoe Lockers</SelectItem>
+                <SelectItem value="hr">HR Lockers</SelectItem>
               </SelectContent>
             </Select>
           </Field>

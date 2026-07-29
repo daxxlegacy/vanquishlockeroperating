@@ -3,6 +3,8 @@
 // single locker_number can live in any category. Maintains the invariant
 // that each (locker_number, category) has AT MOST one Active row and one
 // Terminate row at any time.
+import { deriveOccCategoryOr } from "@/lib/locker-category";
+import type { OccCategory } from "@/lib/occupancy-cache";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -101,8 +103,9 @@ export async function recordSwapHistory(
       .select("category")
       .eq("locker_number", lockerNumber)
       .limit(1);
-    category = anyRow && anyRow.length > 0 ? anyRow[0].category : "main";
+    category = anyRow && anyRow.length > 0 ? anyRow[0].category : null;
   }
+  category = deriveOccCategoryOr(lockerNumber, (category as OccCategory) ?? "main");
 
   const { error: insErr } = await supabase.from("locker_occupancy").insert({
     category,
@@ -178,7 +181,10 @@ export async function syncTerminationToOccupancy(
     .select("category")
     .eq("locker_number", locker.locker_number)
     .limit(1);
-  const category = anyRow && anyRow.length > 0 ? anyRow[0].category : "main";
+  const category = deriveOccCategoryOr(
+    locker.locker_number,
+    (anyRow && anyRow.length > 0 ? (anyRow[0].category as OccCategory) : null) ?? "main",
+  );
 
   // Guard: don't create a blank ghost row when there is no occupant data.
   if (!(locker.employee_name ?? "").trim() && !(locker.badge_number ?? "").trim()) {

@@ -30,6 +30,7 @@ import {
   encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
+import { deriveOccCategoryOr } from "@/lib/locker-category";
 import { useOccupancy, invalidateOccupancyCache, type OccupancyRow, type OccCategory } from "@/lib/occupancy-cache";
 
 import { useLockers } from "@/lib/lockers-cache";
@@ -47,6 +48,7 @@ const CATEGORY_LABEL: Record<OccCategory, string> = {
   main: "Full Locker (Occupied + Vacant)",
   staff: "Staff Locker (Occupied + Staff)",
   shoe: "Shoe Locker (Occupied + Shoe)",
+  hr: "HR Locker (LK01–LK40)",
 };
 
 const ROW_HEIGHT = 44;
@@ -481,8 +483,10 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const targetSheet =
         category === "main" ? "Occupied + Vacant" :
-        category === "staff" ? "Occupied + Staff" : "Occupied + Shoe";
-      const sheet = wb.Sheets[targetSheet];
+        category === "staff" ? "Occupied + Staff" :
+        category === "shoe" ? "Occupied + Shoe" : "Occupied + HR";
+      const sheet = wb.Sheets[targetSheet]
+        ?? (category === "hr" ? wb.Sheets[wb.SheetNames[0]] : undefined);
       if (!sheet) { toast.error(`Sheet "${targetSheet}" not found in this workbook`); return; }
       const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: true });
       const norm = (v: unknown) => {
@@ -500,9 +504,13 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
         return "";
       };
       const records = json
-        .map((r) => ({
-          category,
-          locker_number: String(pick(r, "Combine Locker", "Locker Number") ?? "").trim(),
+        .map((r) => {
+          const lockerNumber = String(pick(r, "Combine Locker", "Locker Number") ?? "").trim();
+          return ({
+          // Category is always derived from the locker number pattern; the
+          // chosen import sheet is only the fallback for odd numbers.
+          category: deriveOccCategoryOr(lockerNumber, category),
+          locker_number: lockerNumber,
           locker_row: norm(pick(r, "Locker Row")),
           locker_unit: norm(pick(r, "Locker Unit")),
           locker_location_by_row: norm(pick(r, "Locker Location by Row")),
@@ -519,7 +527,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
           department: norm(pick(r, "Department")),
           remarks: norm(pick(r, "Remarks", "Remark")),
           source_filename: file.name,
-        }))
+          });
+        })
         .filter((r) => r.locker_number);
 
       // Guard: never import rows that carry no occupant AND no status —
@@ -560,6 +569,14 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
 
       const { error: delErr } = await supabase.from("locker_occupancy").delete().eq("category", category);
       if (delErr) { toast.error(`Replace failed: ${delErr.message}`); return; }
+
+      // Rows whose derived category differs from the imported sheet may still
+      // have stale copies filed under another category — clear those first.
+      const crossNums = [...new Set(dedupedRecords.filter((r) => r.category !== category).map((r) => r.locker_number))];
+      for (let i = 0; i < crossNums.length; i += 200) {
+        const { error: xErr } = await supabase.from("locker_occupancy").delete().in("locker_number", crossNums.slice(i, i + 200));
+        if (xErr) { toast.error(`Replace failed: ${xErr.message}`); return; }
+      }
 
       const CHUNK = 500;
       const crossCategoryConflicts: string[] = [];
@@ -646,6 +663,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
             <SelectItem value="main">Full Lockers</SelectItem>
             <SelectItem value="staff">Staff Lockers</SelectItem>
             <SelectItem value="shoe">Shoe Lockers</SelectItem>
+            <SelectItem value="hr">HR Lockers</SelectItem>
           </SelectContent>
         </Select>
         <Select value={locFilter} onValueChange={setLocFilter}>
@@ -676,6 +694,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                 <DropdownMenuItem onClick={() => triggerImport("main")}>Import Full Lockers (Occupied + Vacant)</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => triggerImport("staff")}>Import Staff Lockers (Occupied + Staff)</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => triggerImport("shoe")}>Import Shoe Lockers (Occupied + Shoe)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => triggerImport("hr")}>Import HR Lockers (LK01–LK40)</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
@@ -688,6 +707,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                 <DropdownMenuItem onClick={() => handleClear("main")}>Clear Full Lockers</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleClear("staff")}>Clear Staff Lockers</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleClear("shoe")}>Clear Shoe Lockers</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleClear("hr")}>Clear HR Lockers</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button
@@ -817,7 +837,7 @@ function syntheticRowFromLocker(l: Locker): Row {
   const isActive = st === "active";
   return {
     id: `synthetic-${l.id}`,
-    category: "main",
+    category: deriveOccCategoryOr(l.locker_number, "main"),
     locker_number: l.locker_number,
     locker_row: l.row_label,
     locker_unit: null,
