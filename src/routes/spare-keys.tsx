@@ -31,7 +31,6 @@ const VIEWPORT_HEIGHT = 600;
 const COLS = [
   { key: "num", w: 140 },
   { key: "loc", w: 200 },
-  { key: "row", w: 160 },
   { key: "spare", w: 220 },
 ];
 const GRID_TEMPLATE = COLS.map((c) => `${c.w}px`).join(" ");
@@ -225,7 +224,7 @@ function SpareKeysPage() {
                   <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
                     <Th>Locker #</Th>
                     <Th>Location</Th>
-                    <Th>Row</Th>
+                    
                     <Th>Spare Key Status</Th>
                   </div>
                   {filtered.length === 0 ? (
@@ -258,12 +257,11 @@ async function exportSpareKeysToExcel(rows: Locker[]) {
   const data = rows.map((l) => ({
     "Locker #": l.locker_number,
     Location: l.location,
-    Row: l.row_label && l.row_label !== l.location ? l.row_label : "",
     "Spare Key Status": (l.spare_key_status ?? "unknown").replace(/_/g, " "),
   }));
   const XLSX = await getXLSX();
   const ws = XLSX.utils.json_to_sheet(data);
-  ws["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 22 }];
+  ws["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 22 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Spare Keys");
   const stamp = new Date().toISOString().slice(0, 10);
@@ -278,7 +276,6 @@ function Th({ children }: { children: React.ReactNode }) {
 type SpareRowProps = { rows: Locker[]; onPick: (id: string) => void };
 const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowComponentProps<SpareRowProps>) {
   const l = rows[index];
-  const rowLabel = l.row_label && l.row_label !== l.location ? l.row_label : "—";
   return (
     <div
       style={{ ...style, gridTemplateColumns: GRID_TEMPLATE }}
@@ -287,7 +284,6 @@ const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowCompo
     >
       <div className="px-3 truncate font-medium">{l.locker_number}</div>
       <div className="px-3 truncate">{l.location}</div>
-      <div className="px-3 truncate text-muted-foreground">{rowLabel}</div>
       <div className="px-3"><KeyBadge status={l.spare_key_status} /></div>
     </div>
   );
