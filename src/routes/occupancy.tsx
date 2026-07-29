@@ -591,6 +591,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       const inserted = dedupedRecords.length - crossCategoryConflicts.length;
       const parts: string[] = [`Imported ${inserted.toLocaleString()} rows for ${CATEGORY_LABEL[category]}`];
       if (inFileDupSkipped > 0) parts.push(`${inFileDupSkipped} duplicate Active row${inFileDupSkipped === 1 ? "" : "s"} in the file were skipped`);
+      if (blankRows.length > 0) parts.push(`${blankRows.length} blank row${blankRows.length === 1 ? "" : "s"} (no name, badge or status) skipped`);
       if (crossCategoryConflicts.length > 0) {
         parts.push(`${crossCategoryConflicts.length} locker${crossCategoryConflicts.length === 1 ? "" : "s"} skipped — already Active in another category: ${crossCategoryConflicts.slice(0, 10).join(", ")}${crossCategoryConflicts.length > 10 ? "…" : ""}`);
         toast.warning(parts.join(" · "), { duration: 12000 });
