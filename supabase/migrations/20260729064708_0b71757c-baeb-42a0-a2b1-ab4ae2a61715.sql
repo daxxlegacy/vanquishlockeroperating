@@ -1,0 +1,2 @@
+ALTER TABLE public.locker_occupancy DROP CONSTRAINT IF EXISTS locker_occupancy_category_check;
+ALTER TABLE public.locker_occupancy ADD CONSTRAINT locker_occupancy_category_check CHECK (category = ANY (ARRAY['main'::text, 'staff'::text, 'shoe'::text, 'hr'::text]));
