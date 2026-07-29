@@ -522,7 +522,23 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
         }))
         .filter((r) => r.locker_number);
 
-      if (records.length === 0) { toast.error("No rows found in the sheet"); return; }
+      // Guard: never import rows that carry no occupant AND no status —
+      // these produced blank "ghost" cards in the History dialog.
+      const blankRows = records.filter(
+        (r) => !(r.employee_name ?? "").trim() && !(r.badge_number ?? "").trim() && !(r.status ?? "").trim(),
+      );
+      const usableRecords = records.filter((r) => !blankRows.includes(r));
+      if (blankRows.length > 0) {
+        console.warn(
+          `[occupancy import] skipped ${blankRows.length} blank row(s) with no employee name, badge number or status:`,
+          blankRows.map((r) => r.locker_number).slice(0, 50),
+        );
+      }
+      records.length = 0;
+      records.push(...usableRecords);
+
+      if (records.length === 0) { toast.error("No usable rows found in the sheet"); return; }
+
 
       // De-duplicate Active rows within the uploaded file itself: if the same
       // locker_number appears more than once as Active, keep only the LAST
@@ -575,6 +591,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       const inserted = dedupedRecords.length - crossCategoryConflicts.length;
       const parts: string[] = [`Imported ${inserted.toLocaleString()} rows for ${CATEGORY_LABEL[category]}`];
       if (inFileDupSkipped > 0) parts.push(`${inFileDupSkipped} duplicate Active row${inFileDupSkipped === 1 ? "" : "s"} in the file were skipped`);
+      if (blankRows.length > 0) parts.push(`${blankRows.length} blank row${blankRows.length === 1 ? "" : "s"} (no name, badge or status) skipped`);
       if (crossCategoryConflicts.length > 0) {
         parts.push(`${crossCategoryConflicts.length} locker${crossCategoryConflicts.length === 1 ? "" : "s"} skipped — already Active in another category: ${crossCategoryConflicts.slice(0, 10).join(", ")}${crossCategoryConflicts.length > 10 ? "…" : ""}`);
         toast.warning(parts.join(" · "), { duration: 12000 });
@@ -1059,7 +1076,15 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
       }
 
       out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-      setEvents(out);
+      // Defensive: never render an empty shell card (no name, badge, status or date).
+      const meaningful = out.filter(
+        (e) =>
+          (e.employee_name ?? "").trim() !== "" ||
+          (e.badge_number ?? "").trim() !== "" ||
+          ((e.status ?? "").trim() !== "" && (e.status ?? "").trim() !== "—") ||
+          (e.date ?? "").trim() !== "",
+      );
+      setEvents(meaningful);
     })();
   }, [lockerNumber, tick]);
 
