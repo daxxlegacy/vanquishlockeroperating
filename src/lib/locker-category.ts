@@ -1,7 +1,8 @@
 // Canonical locker category derivation from the physical numbering convention.
 //
 //  - main  (Full Locker)  : digits followed by one or more letters — 1A, 1B, 1411E
-//  - staff (Staff Locker) : 2-3 letters followed by digits          — AA01 … KKK99
+//  - staff (Staff Locker) : 2-3 letters followed by digits — ANY prefix (AA01,
+//                            MM06, ZZ18, ABC12). No alphabetical range limit.
 //  - shoe  (Shoe Locker)  : a single letter A-Y followed by digits  — B08, Y12
 //  - hr    (HR Locker)    : exactly "LK" + 2 digits, 01-40          — LK01 … LK40
 //
