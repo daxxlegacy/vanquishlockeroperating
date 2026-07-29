@@ -202,7 +202,7 @@ function SpareKeysPage() {
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-base truncate">{l.locker_number}</div>
                             <div className="text-xs text-muted-foreground truncate">
-                              {l.location}{l.row_label && l.row_label !== l.location ? ` · ${l.row_label}` : ""}
+                              {l.location}
                             </div>
                           </div>
                           <KeyBadge status={l.spare_key_status} />
@@ -383,10 +383,7 @@ function AddSpareKeyLockerDialog({
           </datalist>
         </div>
         <div>
-          <Label>Row</Label>
-          <Input value={form.row_label} onChange={(e) => set("row_label", e.target.value)} placeholder="optional" />
-        </div>
-        <div>
+
           <Label>Spare Key Status</Label>
           <Select value={form.spare_key_status} onValueChange={(v) => set("spare_key_status", v as KeyStatus)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
