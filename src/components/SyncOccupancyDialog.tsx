@@ -1,5 +1,7 @@
 // One-time reconciliation tool: fixes drift between locker_occupancy and lockers.
 // Preview → Apply pattern. Operates across ALL categories (main, staff, shoe).
+import { deriveOccCategoryOr } from "@/lib/locker-category";
+import type { OccCategory } from "@/lib/occupancy-cache";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateOccupancyCache } from "@/lib/occupancy-cache";
@@ -305,7 +307,7 @@ export function SyncOccupancyDialog({
         // Skip if any active occupancy exists (Case A already handled mismatch)
         const hasActiveAny = occ.some((o) => o.locker_number === l.locker_number);
         if (hasActiveAny) continue;
-        const category = occCategoriesByNum.get(l.locker_number) ?? "main";
+        const category = deriveOccCategoryOr(l.locker_number, (occCategoriesByNum.get(l.locker_number) as OccCategory) ?? "main");
         nextPlans.push({
           kind: "activate",
           occupancy_id: null,
