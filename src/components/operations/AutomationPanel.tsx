@@ -190,16 +190,16 @@ export function AutomationPanel() {
       try {
         let terminationId: string | null = null;
         if (!dryRun) {
-          const { data: t, error: e1 } = await supabase.from("terminations").insert([{
+          const { insertTerminationOnce } = await import("@/lib/termination-actions");
+          terminationId = await insertTerminationOnce({
             locker_id: l.id, locker_number: l.locker_number, location: l.location, row_label: l.row_label,
             employee_name: l.employee_name, badge_number: l.badge_number,
             termination_date: iso, reason: reason.trim() || null,
             terminated_by: user.id, terminated_by_email: user.email ?? null,
             prior_status: l.status as "active",
             prior_employee_name: l.employee_name, prior_badge_number: l.badge_number,
-          }]).select().single();
-          if (e1) throw e1;
-          terminationId = t?.id ?? null;
+          });
+
           const { error: e2 } = await supabase.from("lockers")
             .update({ employee_name: null, badge_number: null, status: "empty" }).eq("id", l.id);
           if (e2) throw e2;
