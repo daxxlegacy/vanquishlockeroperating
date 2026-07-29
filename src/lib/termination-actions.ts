@@ -43,6 +43,45 @@ export function buildTerminationClearPayload(
 }
 
 /**
+ * Insert a terminations row, but skip if an identical record already exists
+ * (same locker_number + badge_number + termination_date and not undone).
+ * Prevents duplicate history entries from double-clicks or re-run rosters.
+ * Returns the id of the existing or newly created row.
+ */
+export async function insertTerminationOnce(row: {
+  locker_id: string | null;
+  locker_number: string;
+  location: string | null;
+  row_label: string | null;
+  employee_name: string | null;
+  badge_number: string | null;
+  termination_date: string;
+  reason: string | null;
+  terminated_by: string;
+  terminated_by_email: string | null;
+  prior_status: LockerStatus | null;
+  prior_employee_name: string | null;
+  prior_badge_number: string | null;
+}): Promise<string | null> {
+  let dupQuery = supabase
+    .from("terminations")
+    .select("id")
+    .eq("locker_number", row.locker_number)
+    .eq("termination_date", row.termination_date)
+    .is("undone_at", null)
+    .limit(1);
+  dupQuery = row.badge_number
+    ? dupQuery.eq("badge_number", row.badge_number)
+    : dupQuery.is("badge_number", null);
+  const { data: existing } = await dupQuery.maybeSingle();
+  if (existing?.id) return existing.id;
+
+  const { data, error } = await supabase.from("terminations").insert(row).select("id").single();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
+/**
  * Terminate a single locker occupant. Inserts a terminations row (with
  * prior_* snapshot so undo works), clears occupant fields, sets the
  * post-termination status with spare-key auto-rule, and syncs occupancy.
@@ -59,7 +98,7 @@ export async function terminateLocker(
 
   const cleanReason = reason && reason.trim() ? reason.trim() : null;
 
-  const { error: e1 } = await supabase.from("terminations").insert({
+  await insertTerminationOnce({
     locker_id: locker.id,
     locker_number: locker.locker_number,
     location: locker.location,
@@ -74,7 +113,7 @@ export async function terminateLocker(
     prior_employee_name: locker.employee_name,
     prior_badge_number: locker.badge_number ?? null,
   });
-  if (e1) throw e1;
+
 
   const { error: e2 } = await supabase
     .from("lockers")
