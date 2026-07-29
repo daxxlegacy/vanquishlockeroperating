@@ -1146,11 +1146,14 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
                       )}
                     </div>
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {e.date_label}: {fmtDate(e.date)}
-                    {e.by && <span> · {e.by}</span>}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      NID:
+                      <NationalIdCell value={e.national_id} recordId={e.nid_record_id} table="locker_occupancy" />
+                    </span>
+                    <span>{e.date_label}: {fmtDate(e.date)}</span>
                   </div>
-                  {e.remarks && <div className="mt-1 text-xs italic text-muted-foreground">"{e.remarks}"</div>}
+
                 </li>
               ))}
             </ul>
