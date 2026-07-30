@@ -360,6 +360,16 @@ export function DuplicateOccupantsDialog({
                 );
               })}
           </div>
+          </TabsContent>
+
+          <TabsContent value="history" className="flex-1 flex flex-col min-h-0 mt-3">
+            <DuplicateHistorySection
+              active={tab === "history"}
+              isAdmin={isAdmin}
+              onViewHistory={onViewHistory}
+            />
+          </TabsContent>
+          </Tabs>
 
           <DialogFooter className="flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className="text-[11px] text-muted-foreground text-left">
@@ -367,6 +377,7 @@ export function DuplicateOccupantsDialog({
             </p>
             <Button variant="outline" onClick={onClose}>Close</Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
