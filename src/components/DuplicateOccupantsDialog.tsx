@@ -214,12 +214,21 @@ export function DuplicateOccupantsDialog({
               <AlertTriangle className="h-5 w-5 text-amber-500" /> Check Duplicates
             </DialogTitle>
             <DialogDescription>
-              {loading
-                ? "Scanning all active occupancy records…"
-                : `${groups.length} employee${groups.length === 1 ? "" : "s"} with duplicate active lockers (${sameCount} same-category, ${crossCount} cross-category).`}
+              {tab === "history"
+                ? "Find and clean up events recorded more than once for the same locker."
+                : loading
+                  ? "Scanning all active occupancy records…"
+                  : `${groups.length} employee${groups.length === 1 ? "" : "s"} with duplicate active lockers (${sameCount} same-category, ${crossCount} cross-category).`}
             </DialogDescription>
           </DialogHeader>
 
+          <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="self-start">
+              <TabsTrigger value="occupants">Duplicate Active Occupants</TabsTrigger>
+              <TabsTrigger value="history">Duplicate History Entries</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="occupants" className="flex-1 flex flex-col min-h-0 mt-3 gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search badge, name, or locker…"
@@ -233,6 +242,7 @@ export function DuplicateOccupantsDialog({
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+
             {error && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
