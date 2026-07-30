@@ -938,9 +938,32 @@ export type Database = {
         Args: { _badge: string; _message: string; _ticket: string }
         Returns: string
       }
+      approve_multiple_locker_exception: {
+        Args: {
+          _badge_number: string
+          _full_name: string
+          _locker_numbers: string[]
+          _notes: string
+        }
+        Returns: string
+      }
       can_access_lockers: { Args: { _user_id: string }; Returns: boolean }
       can_view_national_id: { Args: { _user_id: string }; Returns: boolean }
       count_occupancy_drift: { Args: never; Returns: Json }
+      find_duplicate_active_occupants: {
+        Args: never
+        Returns: {
+          badge_key: string
+          badge_number: string
+          batch_intake_date: string
+          category: string
+          employee_name: string
+          id: string
+          locker_number: string
+          national_id: string
+          status: string
+        }[]
+      }
       gen_support_ticket_number: { Args: never; Returns: string }
       get_support_ticket_public: {
         Args: { _badge: string; _ticket: string }
