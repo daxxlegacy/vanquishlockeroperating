@@ -101,12 +101,15 @@ export function DuplicateOccupantsDialog({
   open,
   onClose,
   isAdmin,
+  onViewHistory,
 }: {
   open: boolean;
   onClose: () => void;
   isAdmin: boolean;
+  onViewHistory?: (lockerNumber: string) => void;
 }) {
   const { user } = useAuth();
+  const [tab, setTab] = useState("occupants");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<DupRow[]>([]);
@@ -114,6 +117,7 @@ export function DuplicateOccupantsDialog({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmRow, setConfirmRow] = useState<DupRow | null>(null);
   const [reason, setReason] = useState(DEFAULT_REASON);
+
 
   const load = useCallback(async () => {
     setLoading(true);
