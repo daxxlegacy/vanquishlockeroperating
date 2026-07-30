@@ -838,7 +838,13 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       {isAdmin && <ForceTerminateDialog row={forceTerminateRow} onClose={() => setForceTerminateRow(null)} />}
       {isAdmin && <ForceActivateDialog row={forceActivateRow} onClose={() => setForceActivateRow(null)} />}
       {isAdmin && (
-        <DuplicateOccupantsDialog open={dupOpen} onClose={() => setDupOpen(false)} isAdmin={isAdmin} />
+        <DuplicateOccupantsDialog
+          open={dupOpen}
+          onClose={() => setDupOpen(false)}
+          isAdmin={isAdmin}
+          onViewHistory={(n) => setHistoryFor(n)}
+        />
+
       )}
     </div>
   );

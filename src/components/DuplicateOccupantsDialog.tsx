@@ -16,6 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DuplicateHistorySection } from "@/components/DuplicateHistorySection";
+
 import {
   AlertTriangle,
   CheckCircle2,
@@ -101,12 +104,15 @@ export function DuplicateOccupantsDialog({
   open,
   onClose,
   isAdmin,
+  onViewHistory,
 }: {
   open: boolean;
   onClose: () => void;
   isAdmin: boolean;
+  onViewHistory?: (lockerNumber: string) => void;
 }) {
   const { user } = useAuth();
+  const [tab, setTab] = useState("occupants");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<DupRow[]>([]);
@@ -114,6 +120,7 @@ export function DuplicateOccupantsDialog({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmRow, setConfirmRow] = useState<DupRow | null>(null);
   const [reason, setReason] = useState(DEFAULT_REASON);
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -210,12 +217,21 @@ export function DuplicateOccupantsDialog({
               <AlertTriangle className="h-5 w-5 text-amber-500" /> Check Duplicates
             </DialogTitle>
             <DialogDescription>
-              {loading
-                ? "Scanning all active occupancy records…"
-                : `${groups.length} employee${groups.length === 1 ? "" : "s"} with duplicate active lockers (${sameCount} same-category, ${crossCount} cross-category).`}
+              {tab === "history"
+                ? "Find and clean up events recorded more than once for the same locker."
+                : loading
+                  ? "Scanning all active occupancy records…"
+                  : `${groups.length} employee${groups.length === 1 ? "" : "s"} with duplicate active lockers (${sameCount} same-category, ${crossCount} cross-category).`}
             </DialogDescription>
           </DialogHeader>
 
+          <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="self-start">
+              <TabsTrigger value="occupants">Duplicate Active Occupants</TabsTrigger>
+              <TabsTrigger value="history">Duplicate History Entries</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="occupants" className="flex-1 flex flex-col min-h-0 mt-3 gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search badge, name, or locker…"
@@ -229,6 +245,7 @@ export function DuplicateOccupantsDialog({
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+
             {error && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -356,6 +373,16 @@ export function DuplicateOccupantsDialog({
                 );
               })}
           </div>
+          </TabsContent>
+
+          <TabsContent value="history" className="flex-1 flex flex-col min-h-0 mt-3">
+            <DuplicateHistorySection
+              active={tab === "history"}
+              isAdmin={isAdmin}
+              onViewHistory={onViewHistory}
+            />
+          </TabsContent>
+          </Tabs>
 
           <DialogFooter className="flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className="text-[11px] text-muted-foreground text-left">
@@ -363,6 +390,7 @@ export function DuplicateOccupantsDialog({
             </p>
             <Button variant="outline" onClick={onClose}>Close</Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
