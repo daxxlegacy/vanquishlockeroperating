@@ -15,10 +15,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil, MoreVertical, PlayCircle, StopCircle, CheckCircle2 } from "lucide-react";
+import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil, MoreVertical, PlayCircle, StopCircle, CheckCircle2, Users2 } from "lucide-react";
 import { SyncOccupancyDialog } from "@/components/SyncOccupancyDialog";
 import { EditOccupancyRowDialog, DeleteOccupancyRowDialog } from "@/components/EditOccupancyRowDialog";
 import { ForceTerminateDialog, ForceActivateDialog } from "@/components/ForceOccupancyDialogs";
+import { DuplicateOccupantsDialog } from "@/components/DuplicateOccupantsDialog";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
@@ -123,6 +124,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   
   const [syncOpen, setSyncOpen] = useState(false);
+  const [dupOpen, setDupOpen] = useState(false);
   const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
   const [forceTerminateRow, setForceTerminateRow] = useState<OccupancyRow | null>(null);
@@ -735,6 +737,13 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
                 <CheckCircle2 className="ml-2 h-4 w-4 text-emerald-500" aria-label="In sync" />
               )}
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setDupOpen(true)}
+              title="Find employees active in more than one locker"
+            >
+              <Users2 className="h-4 w-4 mr-1.5" /> Check Duplicates
+            </Button>
           </>
         )}
         <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
@@ -828,6 +837,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       {isAdmin && <DeleteOccupancyRowDialog row={deleteRow} onClose={() => setDeleteRow(null)} />}
       {isAdmin && <ForceTerminateDialog row={forceTerminateRow} onClose={() => setForceTerminateRow(null)} />}
       {isAdmin && <ForceActivateDialog row={forceActivateRow} onClose={() => setForceActivateRow(null)} />}
+      {isAdmin && (
+        <DuplicateOccupantsDialog open={dupOpen} onClose={() => setDupOpen(false)} isAdmin={isAdmin} />
+      )}
     </div>
   );
 }
