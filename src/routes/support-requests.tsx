@@ -497,6 +497,7 @@ function SupportCard({
   const [expanded, setExpanded] = useState(false);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -623,8 +624,47 @@ function SupportCard({
     if (row.status === "new") onUpdate(row.id, "in_progress");
   };
 
+  // Unsend: remove a wrongly attached photo (and optionally the whole message)
+  // so the employee no longer sees it on the public ticket page.
+  const removeAttachment = async (r: SupportRequestReply) => {
+    if (!r.attachment_path) return;
+    setRemovingId(r.id);
+    const { error: sErr } = await supabase.storage.from("ticket-attachments").remove([r.attachment_path]);
+    if (sErr) {
+      setRemovingId(null);
+      toast.error(sErr.message);
+      return;
+    }
+    const { error } = await supabase
+      .from("support_request_replies")
+      .update({ attachment_path: null })
+      .eq("id", r.id);
+    setRemovingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Photo removed — the user can no longer see it");
+    loadReplies();
+  };
+
+  const deleteReply = async (r: SupportRequestReply) => {
+    setRemovingId(r.id);
+    if (r.attachment_path) {
+      await supabase.storage.from("ticket-attachments").remove([r.attachment_path]);
+    }
+    const { error } = await supabase.from("support_request_replies").delete().eq("id", r.id);
+    setRemovingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Message deleted — the user can no longer see it");
+    loadReplies();
+  };
 
   return (
+
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
@@ -718,7 +758,69 @@ function SupportCard({
                             onOpen={() => openThreadAttachment(r.id)}
                           />
                         )}
+                        {r.author_role === "admin" && (
+                          <div className="mt-2 flex items-center gap-3 text-[11px]">
+                            {removingId === r.id ? (
+                              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Removing…
+                              </span>
+                            ) : (
+                              <>
+                                {r.attachment_path && !isWa && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <button type="button" className="text-muted-foreground hover:text-foreground underline underline-offset-2">
+                                        Remove photo
+                                      </button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Remove this photo?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          The photo is deleted permanently and the user will no longer see it on
+                                          their ticket page. The message text stays.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => removeAttachment(r)}>
+                                          Remove photo
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <button type="button" className="text-destructive/80 hover:text-destructive underline underline-offset-2">
+                                      Delete message
+                                    </button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete this message?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        The message{r.attachment_path ? " and its photo" : ""} will be deleted
+                                        permanently and the user will no longer see it on their ticket page.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteReply(r)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
+
                     );
                   })}
                   <ImagePreviewModal
