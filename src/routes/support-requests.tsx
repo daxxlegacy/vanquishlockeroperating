@@ -623,8 +623,47 @@ function SupportCard({
     if (row.status === "new") onUpdate(row.id, "in_progress");
   };
 
+  // Unsend: remove a wrongly attached photo (and optionally the whole message)
+  // so the employee no longer sees it on the public ticket page.
+  const removeAttachment = async (r: SupportRequestReply) => {
+    if (!r.attachment_path) return;
+    setRemovingId(r.id);
+    const { error: sErr } = await supabase.storage.from("ticket-attachments").remove([r.attachment_path]);
+    if (sErr) {
+      setRemovingId(null);
+      toast.error(sErr.message);
+      return;
+    }
+    const { error } = await supabase
+      .from("support_request_replies")
+      .update({ attachment_path: null })
+      .eq("id", r.id);
+    setRemovingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Photo removed — the user can no longer see it");
+    loadReplies();
+  };
+
+  const deleteReply = async (r: SupportRequestReply) => {
+    setRemovingId(r.id);
+    if (r.attachment_path) {
+      await supabase.storage.from("ticket-attachments").remove([r.attachment_path]);
+    }
+    const { error } = await supabase.from("support_request_replies").delete().eq("id", r.id);
+    setRemovingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Message deleted — the user can no longer see it");
+    loadReplies();
+  };
 
   return (
+
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
