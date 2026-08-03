@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HelpCircle, MessageSquare, Ticket, ChevronLeft } from "lucide-react";
+import { HelpCircle, MessageSquare, Ticket, ChevronLeft, MessageCircle } from "lucide-react";
 import { SupportRequestForm } from "./SupportRequestForm";
 import { FaqAssistant } from "./FaqAssistant";
 import { t, type Lang } from "@/lib/i18n-find-locker";
+import { buildWhatsAppLink, normalizeWhatsAppNumber } from "@/lib/whatsapp";
+
 
 type Panel = "menu" | "other" | "ticket";
 
