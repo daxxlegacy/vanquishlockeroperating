@@ -178,6 +178,8 @@ export const t: Record<Lang, Dict> = {
       cantFind: { label: "I can't find my locker number", sub: "Get help locating it" },
       other: { label: "Something else", sub: "Ask assistant or contact support" },
       ticket: { label: "Check ticket status", sub: "View replies from admin" },
+      whatsapp: { label: "Whatsapp Kami", sub: "Chat with us on WhatsApp" },
+
     },
     ticket: {
       intro: "Enter your badge number to view your tickets and replies from admin.",
