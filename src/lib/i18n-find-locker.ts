@@ -63,6 +63,8 @@ type Dict = {
     cantFind: { label: string; sub: string };
     other: { label: string; sub: string };
     ticket: { label: string; sub: string };
+    whatsapp: { label: string; sub: string };
+
   };
   ticket: {
     intro: string;
