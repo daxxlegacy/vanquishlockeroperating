@@ -63,6 +63,8 @@ type Dict = {
     cantFind: { label: string; sub: string };
     other: { label: string; sub: string };
     ticket: { label: string; sub: string };
+    whatsapp: { label: string; sub: string };
+
   };
   ticket: {
     intro: string;
@@ -176,6 +178,8 @@ export const t: Record<Lang, Dict> = {
       cantFind: { label: "I can't find my locker number", sub: "Get help locating it" },
       other: { label: "Something else", sub: "Ask assistant or contact support" },
       ticket: { label: "Check ticket status", sub: "View replies from admin" },
+      whatsapp: { label: "Whatsapp Kami", sub: "Chat with us on WhatsApp" },
+
     },
     ticket: {
       intro: "Enter your badge number to view your tickets and replies from admin.",
@@ -288,6 +292,8 @@ export const t: Record<Lang, Dict> = {
       cantFind: { label: "Saya tidak jumpa nombor loker saya", sub: "Dapatkan bantuan mencari" },
       other: { label: "Perkara lain", sub: "Tanya pembantu atau hubungi sokongan" },
       ticket: { label: "Semak status tiket", sub: "Lihat maklum balas admin" },
+      whatsapp: { label: "Whatsapp Kami", sub: "Hubungi kami melalui WhatsApp" },
+
     },
     ticket: {
       intro: "Masukkan nombor badge anda untuk lihat tiket dan maklum balas daripada admin.",
