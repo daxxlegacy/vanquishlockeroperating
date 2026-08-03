@@ -292,6 +292,8 @@ export const t: Record<Lang, Dict> = {
       cantFind: { label: "Saya tidak jumpa nombor loker saya", sub: "Dapatkan bantuan mencari" },
       other: { label: "Perkara lain", sub: "Tanya pembantu atau hubungi sokongan" },
       ticket: { label: "Semak status tiket", sub: "Lihat maklum balas admin" },
+      whatsapp: { label: "Whatsapp Kami", sub: "Hubungi kami melalui WhatsApp" },
+
     },
     ticket: {
       intro: "Masukkan nombor badge anda untuk lihat tiket dan maklum balas daripada admin.",
