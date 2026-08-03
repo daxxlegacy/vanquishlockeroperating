@@ -53,7 +53,25 @@ export function HelpMenu({
             label={tr.helpMenu.ticket.label}
             sub={tr.helpMenu.ticket.sub}
           />
+          <a
+            href={buildWhatsAppLink(
+              normalizeWhatsAppNumber("0123643282")!,
+              "Saya ingin tanya berkenaan loker\nNama : \nBadge Number : \nNombor Loker :",
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full min-h-[56px] text-left rounded-lg border border-border bg-background p-3 transition-colors active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-3">
+              <span className="shrink-0 text-primary"><MessageCircle className="h-5 w-5" /></span>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-sm truncate">{tr.helpMenu.whatsapp.label}</div>
+                <div className="text-xs text-muted-foreground mt-0.5 truncate">{tr.helpMenu.whatsapp.sub}</div>
+              </div>
+            </div>
+          </a>
         </div>
+
 
 
         {panel !== "menu" && (
