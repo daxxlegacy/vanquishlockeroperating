@@ -763,6 +763,10 @@ export function SyncOccupancyDialog({
                             <Badge variant="outline" className="border-success text-success">
                               Add Active
                             </Badge>
+                          ) : p.kind === "update_details" ? (
+                            <Badge variant="outline" className="border-primary text-primary">
+                              Update Details
+                            </Badge>
                           ) : (
                             <Badge variant="outline" className="border-warning text-warning">
                               Remove Duplicate
@@ -775,7 +779,7 @@ export function SyncOccupancyDialog({
                               {p.termination_date}
                               {p.source === "fallback" ? " (fallback)" : ""} · {p.reason}
                             </span>
-                          ) : p.kind === "duplicate_cleanup" ? (
+                          ) : p.kind === "duplicate_cleanup" || p.kind === "update_details" ? (
                             <span title={p.reason}>{p.reason}</span>
                           ) : "—"}
                         </td>
