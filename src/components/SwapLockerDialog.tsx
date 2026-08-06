@@ -127,7 +127,7 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
         }
       }
 
-      }
+
 
 
       toast.success(`Swapped ${locker.locker_number} ↔ ${target.locker_number}`);
