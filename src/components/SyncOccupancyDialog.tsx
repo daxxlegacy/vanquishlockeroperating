@@ -28,6 +28,7 @@ type OccActive = {
   locker_number: string;
   employee_name: string | null;
   badge_number: string | null;
+  national_id: string | null;
   status: string | null;
   updated_at: string | null;
   termination_date: string | null;
@@ -45,6 +46,18 @@ type Plan =
       termination_date: string;
       reason: string;
       source: "terminations" | "fallback";
+      locker: Locker;
+    }
+  | {
+      kind: "update_details";
+      occupancy_id: string;
+      category: string;
+      locker_number: string;
+      occ_employee: string | null;
+      locker_employee: string | null;
+      termination_date: null;
+      reason: string; // human-readable field diff
+      source: null;
       locker: Locker;
     }
   | {
@@ -80,7 +93,7 @@ function norm(v: string | null | undefined): string {
 type FailedItem = {
   locker_number: string;
   category: string;
-  kind: "terminate" | "activate" | "duplicate_cleanup";
+  kind: "terminate" | "activate" | "duplicate_cleanup" | "update_details";
   reason: string;
   code?: string;
   conflictRow?: OccupancyRow | null;
@@ -89,6 +102,7 @@ type FailedItem = {
 type ApplyResult = {
   terminated: number;
   activated: number;
+  updated: number;
   duplicates_removed: number;
   failedItems: FailedItem[];
 };
@@ -124,7 +138,7 @@ export function SyncOccupancyDialog({
       while (true) {
         const { data, error } = await supabase
           .from("locker_occupancy")
-          .select("id, category, locker_number, employee_name, badge_number, status, updated_at, termination_date, remarks")
+          .select("id, category, locker_number, employee_name, badge_number, national_id, status, updated_at, termination_date, remarks")
           .ilike("status", "active")
           .range(from, from + 999);
         if (error) throw error;
@@ -228,16 +242,47 @@ export function SyncOccupancyDialog({
       const occByKey = new Map<string, OccActive>();
       for (const o of occDedup) occByKey.set(`${o.locker_number}::${o.category}`, o);
 
-      // Case A: occupancy active rows that don't match lockers → terminate
-      // (preserve the row's category on the write)
+      // Case A: occupancy active rows that don't match lockers.
+      // If it's still the SAME PERSON (identity matches on name, badge or
+      // national ID) and the locker is still active, the record was merely
+      // edited upstream (e.g. an intake upload corrected the badge number) —
+      // update the occupancy row in place instead of terminating + reactivating.
       for (const o of occDedup) {
         const l = lockerByNum.get(o.locker_number);
         if (!l) continue; // locker missing entirely — handled by deletion flow
         const lockerIsActive = norm(l.status) === "active";
         const nameMatches = norm(l.employee_name) === norm(o.employee_name);
         const badgeMatches = norm(l.badge_number) === norm(o.badge_number);
+        const nidMatches = norm(l.national_id) === norm(o.national_id);
         const lockerHasEmployee = !!(l.employee_name && l.employee_name.trim());
         if (lockerHasEmployee && nameMatches && badgeMatches && lockerIsActive) continue;
+
+        if (lockerHasEmployee && lockerIsActive) {
+          const samePerson =
+            (nameMatches && !!norm(o.employee_name)) ||
+            (badgeMatches && !!norm(o.badge_number)) ||
+            (nidMatches && !!norm(o.national_id));
+          if (samePerson) {
+            const diffs: string[] = [];
+            if (!nameMatches) diffs.push(`name ${o.employee_name ?? "—"} → ${l.employee_name ?? "—"}`);
+            if (!badgeMatches) diffs.push(`badge ${o.badge_number ?? "—"} → ${l.badge_number ?? "—"}`);
+            if (!nidMatches) diffs.push("national ID updated");
+            nextPlans.push({
+              kind: "update_details",
+              occupancy_id: o.id,
+              category: o.category,
+              locker_number: o.locker_number,
+              occ_employee: o.employee_name,
+              locker_employee: l.employee_name,
+              termination_date: null,
+              reason: `Same occupant — ${diffs.length > 0 ? diffs.join(", ") : "details refreshed"} (from Lockers page)`,
+              source: null,
+              locker: l,
+            });
+            continue;
+          }
+        }
+
 
         const candidates = termsByNum.get(o.locker_number) ?? [];
         const match = candidates.find((t) =>
@@ -337,13 +382,14 @@ export function SyncOccupancyDialog({
   }
 
   const counts = useMemo(() => {
-    let t = 0, a = 0, d = 0;
+    let t = 0, a = 0, d = 0, u = 0;
     for (const p of plans) {
       if (p.kind === "terminate") t++;
       else if (p.kind === "activate") a++;
+      else if (p.kind === "update_details") u++;
       else d++;
     }
-    return { t, a, d };
+    return { t, a, d, u };
   }, [plans]);
 
   const key = (p: Plan) => `${p.kind}:${p.locker_number}:${p.category}:${p.occupancy_id ?? ""}`;
@@ -366,7 +412,7 @@ export function SyncOccupancyDialog({
 
     setApplying(true);
     setProgress({ done: 0, total: toApply.length });
-    let terminated = 0, activated = 0, duplicates_removed = 0;
+    let terminated = 0, activated = 0, duplicates_removed = 0, updated = 0;
     const failedItems: FailedItem[] = [];
     const auditRows: {
       locker_id: string | null; locker_number: string;
@@ -406,6 +452,35 @@ export function SyncOccupancyDialog({
             previous_status: `active (occupancy/${p.category}) [duplicate]`,
             new_status: `deleted (kept id=${p.keep_id})`,
             source: "sync_occupancy_duplicate_cleanup",
+            changed_by: userId,
+            changed_by_email: userEmail,
+          });
+        } else if (p.kind === "update_details") {
+          // Same occupant, refreshed details (e.g. corrected badge number from a
+          // new intake upload) — patch the active row in place. No termination.
+          const { error } = await supabase
+            .from("locker_occupancy")
+            .update({
+              employee_name: p.locker.employee_name,
+              badge_number: p.locker.badge_number,
+              national_id: p.locker.national_id,
+              work_location: p.locker.work_location,
+              locker_row: p.locker.row_label,
+              locker_location_by_row: p.locker.location,
+              key_lock_type: p.locker.key_lock,
+              batch_intake_date: p.locker.batch_intake ?? null,
+              status: "Active",
+              termination_date: null,
+            })
+            .eq("id", p.occupancy_id);
+          if (error) throw error;
+          updated++;
+          auditRows.push({
+            locker_id: p.locker.id,
+            locker_number: p.locker_number,
+            previous_status: `active (occupancy/${p.category})`,
+            new_status: `active (occupancy/${p.category}) [details updated]`,
+            source: "sync_occupancy_update_details",
             changed_by: userId,
             changed_by_email: userEmail,
           });
@@ -525,10 +600,10 @@ export function SyncOccupancyDialog({
 
     invalidateOccupancyCache();
     invalidateLockersCache();
-    setResult({ terminated, activated, duplicates_removed, failedItems });
+    setResult({ terminated, activated, updated, duplicates_removed, failedItems });
     setApplying(false);
     toast.success(
-      `Sync applied: ${terminated} terminated · ${activated} activated · ${duplicates_removed} duplicates removed${failedItems.length > 0 ? ` · ${failedItems.length} need${failedItems.length === 1 ? "s" : ""} attention` : ""}.`,
+      `Sync applied: ${updated} updated · ${terminated} terminated · ${activated} activated · ${duplicates_removed} duplicates removed${failedItems.length > 0 ? ` · ${failedItems.length} need${failedItems.length === 1 ? "s" : ""} attention` : ""}.`,
     );
   }
 
@@ -553,6 +628,7 @@ export function SyncOccupancyDialog({
               <h3 className="font-display text-lg font-bold">Sync complete</h3>
             </div>
             <div className="text-sm">
+              <span className="text-primary font-semibold">{result.updated}</span> updated ·{" "}
               <span className="text-success font-semibold">{result.terminated}</span> terminated ·{" "}
               <span className="text-success font-semibold">{result.activated}</span> activated ·{" "}
               <span className="text-warning font-semibold">{result.duplicates_removed}</span> duplicates removed
@@ -583,6 +659,7 @@ export function SyncOccupancyDialog({
                       const actionLabel =
                         f.kind === "terminate" ? "Mark Terminated"
                         : f.kind === "activate" ? "Add Active"
+                        : f.kind === "update_details" ? "Update Details"
                         : "Remove Duplicate";
                       return (
                         <div key={`${f.locker_number}-${f.category}-${idx}`} className="px-3 py-2 text-xs space-y-1">
@@ -633,6 +710,7 @@ export function SyncOccupancyDialog({
         ) : (
           <>
             <div className="text-sm">
+              <span className="text-primary font-semibold">{counts.u}</span> to <b>Update</b> ·{" "}
               <span className="text-destructive font-semibold">{counts.t}</span> to <b>Terminate</b> ·{" "}
               <span className="text-success font-semibold">{counts.a}</span> to <b>Activate</b> ·{" "}
               <span className="text-warning font-semibold">{counts.d}</span> duplicate row{counts.d === 1 ? "" : "s"} to <b>Remove</b>.
@@ -685,6 +763,10 @@ export function SyncOccupancyDialog({
                             <Badge variant="outline" className="border-success text-success">
                               Add Active
                             </Badge>
+                          ) : p.kind === "update_details" ? (
+                            <Badge variant="outline" className="border-primary text-primary">
+                              Update Details
+                            </Badge>
                           ) : (
                             <Badge variant="outline" className="border-warning text-warning">
                               Remove Duplicate
@@ -697,7 +779,7 @@ export function SyncOccupancyDialog({
                               {p.termination_date}
                               {p.source === "fallback" ? " (fallback)" : ""} · {p.reason}
                             </span>
-                          ) : p.kind === "duplicate_cleanup" ? (
+                          ) : p.kind === "duplicate_cleanup" || p.kind === "update_details" ? (
                             <span title={p.reason}>{p.reason}</span>
                           ) : "—"}
                         </td>
