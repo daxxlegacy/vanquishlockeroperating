@@ -64,7 +64,7 @@ const GRID = "grid grid-cols-[5.5rem_7rem_1fr_7rem_9rem_6.5rem] gap-3 items-cent
 
 export function TransferSwapHistoryPanel() {
   const { user, role } = useAuth();
-  const { data: lockers } = useLockers();
+  const { lockers } = useLockers();
   const [items, setItems] = useState<Row[] | null>(null);
   const [q, setQ] = useState("");
   const [refresh, setRefresh] = useState(0);
