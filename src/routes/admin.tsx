@@ -739,6 +739,10 @@ function AdminPage() {
                     which prevents duplicate active assignments.
                   </AlertDescription>
                 </Alert>
+                <div className="pt-2">
+                  <h3 className="text-sm font-semibold mb-2">Deletion Audit</h3>
+                  <DeletionsPanel />
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
