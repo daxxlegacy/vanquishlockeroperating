@@ -13,6 +13,7 @@ import { useLockers, invalidateLockersCache, patchLockersInCache } from "@/lib/l
 import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
+import { logTransferSwapEvent } from "@/lib/transfer-swap-history";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import { KeyBadge } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
@@ -145,6 +146,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
         patchLockersInCache([result.from, result.to]);
         await syncStatusChangeToOccupancy(result.from);
         await syncActivationToOccupancy(result.to);
+        await logTransferSwapEvent({ eventType: "transfer", lockerNumber: result.to.locker_number, otherLockerNumber: result.from.locker_number });
       }
     })();
   };
