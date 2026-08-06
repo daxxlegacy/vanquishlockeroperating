@@ -28,6 +28,7 @@ type OccActive = {
   locker_number: string;
   employee_name: string | null;
   badge_number: string | null;
+  national_id: string | null;
   status: string | null;
   updated_at: string | null;
   termination_date: string | null;
@@ -45,6 +46,18 @@ type Plan =
       termination_date: string;
       reason: string;
       source: "terminations" | "fallback";
+      locker: Locker;
+    }
+  | {
+      kind: "update_details";
+      occupancy_id: string;
+      category: string;
+      locker_number: string;
+      occ_employee: string | null;
+      locker_employee: string | null;
+      termination_date: null;
+      reason: string; // human-readable field diff
+      source: null;
       locker: Locker;
     }
   | {
@@ -80,7 +93,7 @@ function norm(v: string | null | undefined): string {
 type FailedItem = {
   locker_number: string;
   category: string;
-  kind: "terminate" | "activate" | "duplicate_cleanup";
+  kind: "terminate" | "activate" | "duplicate_cleanup" | "update_details";
   reason: string;
   code?: string;
   conflictRow?: OccupancyRow | null;
@@ -89,6 +102,7 @@ type FailedItem = {
 type ApplyResult = {
   terminated: number;
   activated: number;
+  updated: number;
   duplicates_removed: number;
   failedItems: FailedItem[];
 };
