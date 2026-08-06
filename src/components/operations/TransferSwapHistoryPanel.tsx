@@ -18,12 +18,53 @@ import {
 import { Search, ArrowRightLeft, Repeat, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { formatBatchIntake } from "@/lib/locker-utils";
+import { useLockers } from "@/lib/lockers-cache";
+import { NationalIdCell } from "@/components/NationalIdCell";
 import type { Database } from "@/integrations/supabase/types";
 
 type Row = Database["public"]["Tables"]["transfer_swap_history"]["Row"];
+type Locker = Database["public"]["Tables"]["lockers"]["Row"];
+
+const norm = (s: string | null | undefined) => (s ?? "").trim().toUpperCase();
+
+/** Occupant details resolved from the lockers table for a locker number. */
+type Occupant = {
+  lockerNumber: string;
+  id: string | null;
+  employeeName: string | null;
+  badgeNumber: string | null;
+  nationalId: string | null;
+};
+
+function occupantOf(lockerNumber: string | null, byNumber: Map<string, Locker>): Occupant {
+  const l = lockerNumber ? byNumber.get(norm(lockerNumber)) : undefined;
+  return {
+    lockerNumber: lockerNumber ?? "—",
+    id: l?.id ?? null,
+    employeeName: l?.employee_name?.trim() || null,
+    badgeNumber: l?.badge_number?.trim() || null,
+    nationalId: l?.national_id ?? null,
+  };
+}
+
+function OccupantCells({ o }: { o: Occupant }) {
+  return (
+    <>
+      <span className="font-mono font-semibold truncate">{o.lockerNumber}</span>
+      <span className="truncate">{o.employeeName ?? <span className="text-muted-foreground">—</span>}</span>
+      <span className="font-mono text-xs truncate">
+        {o.badgeNumber ?? <span className="text-muted-foreground font-sans">—</span>}
+      </span>
+      <NationalIdCell value={o.nationalId} recordId={o.id} table="lockers" />
+    </>
+  );
+}
+
+const GRID = "grid grid-cols-[5.5rem_7rem_1fr_7rem_9rem_6.5rem] gap-3 items-center";
 
 export function TransferSwapHistoryPanel() {
   const { user, role } = useAuth();
+  const { data: lockers } = useLockers();
   const [items, setItems] = useState<Row[] | null>(null);
   const [q, setQ] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -48,17 +89,39 @@ export function TransferSwapHistoryPanel() {
       });
   }, [user, refresh]);
 
+  const byNumber = useMemo(() => {
+    const m = new Map<string, Locker>();
+    for (const l of lockers ?? []) {
+      const k = norm(l.locker_number);
+      const prev = m.get(k);
+      // Prefer the row that actually has an occupant.
+      if (!prev || (!prev.employee_name && l.employee_name)) m.set(k, l);
+    }
+    return m;
+  }, [lockers]);
+
   const filtered = useMemo(() => {
     if (!items) return [];
     const s = q.trim().toLowerCase();
     if (!s) return items;
-    return items.filter(
-      (r) =>
-        r.locker_number.toLowerCase().includes(s) ||
-        (r.other_locker_number ?? "").toLowerCase().includes(s) ||
-        r.event_type.includes(s),
-    );
-  }, [items, q]);
+    return items.filter((r) => {
+      const a = occupantOf(r.locker_number, byNumber);
+      const b = occupantOf(r.other_locker_number, byNumber);
+      const hay = [
+        r.locker_number,
+        r.other_locker_number,
+        r.event_type,
+        a.employeeName,
+        a.badgeNumber,
+        b.employeeName,
+        b.badgeNumber,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(s);
+    });
+  }, [items, q, byNumber]);
 
   const inRange = useMemo(() => {
     if (!items || !from || !to) return [];
@@ -128,7 +191,7 @@ export function TransferSwapHistoryPanel() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search locker number…"
+            placeholder="Search locker number, name or badge…"
             className="pl-9"
           />
         </div>
@@ -140,23 +203,72 @@ export function TransferSwapHistoryPanel() {
         <Card className="p-12 text-center text-muted-foreground">No transfer or swap history yet.</Card>
       ) : (
         <Card className="overflow-hidden">
-          <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-2 border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-            <span>Locker Number</span>
-            <span>Date</span>
-          </div>
-          <div className="divide-y max-h-[32rem] overflow-auto">
-            {filtered.map((r) => (
-              <div key={r.id} className="grid grid-cols-[1fr_auto] gap-3 px-4 py-2.5 text-sm items-center">
-                <span className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono font-semibold">{r.locker_number}</span>
-                  <Badge variant="outline" className="gap-1 shrink-0 text-[10px]">
-                    {r.event_type === "swap" ? <Repeat className="h-3 w-3" /> : <ArrowRightLeft className="h-3 w-3" />}
-                    {r.event_type === "swap" ? "Swap" : "Transfer"}
-                  </Badge>
-                </span>
-                <span className="text-muted-foreground whitespace-nowrap">{formatBatchIntake(r.occurred_on)}</span>
+          <div className="overflow-x-auto">
+            <div className="min-w-[54rem]">
+              <div
+                className={`${GRID} px-4 py-2 border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground`}
+              >
+                <span>Type</span>
+                <span>Locker</span>
+                <span>Employee Name</span>
+                <span>Badge</span>
+                <span>National ID</span>
+                <span>Date</span>
               </div>
-            ))}
+              <div className="divide-y max-h-[32rem] overflow-auto">
+                {filtered.map((r) => {
+                  const isSwap = r.event_type === "swap";
+                  const a = occupantOf(r.locker_number, byNumber);
+                  const b = occupantOf(r.other_locker_number, byNumber);
+                  const date = formatBatchIntake(r.occurred_on);
+
+                  if (isSwap) {
+                    return (
+                      <div key={r.id} className="px-4 py-2.5 text-sm space-y-1.5 bg-muted/10">
+                        <div className={GRID}>
+                          <Badge variant="outline" className="gap-1 text-[10px] w-fit">
+                            <Repeat className="h-3 w-3" /> Swap
+                          </Badge>
+                          <OccupantCells o={a} />
+                          <span className="text-muted-foreground whitespace-nowrap">{date}</span>
+                        </div>
+                        <div className={GRID}>
+                          <span className="text-[10px] uppercase text-muted-foreground pl-1">↕ with</span>
+                          <OccupantCells o={b} />
+                          <span />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Transfer: occupant details come from whichever side holds the person.
+                  const person = a.employeeName || a.badgeNumber ? a : b;
+                  return (
+                    <div key={r.id} className={`${GRID} px-4 py-2.5 text-sm`}>
+                      <Badge variant="outline" className="gap-1 text-[10px] w-fit">
+                        <ArrowRightLeft className="h-3 w-3" /> Transfer
+                      </Badge>
+                      <span className="font-mono font-semibold truncate">
+                        {r.locker_number}
+                        {r.other_locker_number && (
+                          <span className="block text-[10px] font-sans font-normal text-muted-foreground">
+                            → {r.other_locker_number}
+                          </span>
+                        )}
+                      </span>
+                      <span className="truncate">
+                        {person.employeeName ?? <span className="text-muted-foreground">—</span>}
+                      </span>
+                      <span className="font-mono text-xs truncate">
+                        {person.badgeNumber ?? <span className="text-muted-foreground font-sans">—</span>}
+                      </span>
+                      <NationalIdCell value={person.nationalId} recordId={person.id} table="lockers" />
+                      <span className="text-muted-foreground whitespace-nowrap">{date}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </Card>
       )}
