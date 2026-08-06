@@ -65,13 +65,19 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
 
   const reset = () => { setSearch(""); setTargetId(null); setConfirming(false); };
 
+  const inFlight = useRef(false);
+
   const handleSwap = async () => {
     if (!target) { toast.error("Pick a locker to swap with"); return; }
+    if (inFlight.current) return; // guard double submits
+    inFlight.current = true;
     setBusy(true);
     try {
       // Snapshot pre-swap occupants so we can terminate the outgoing rows correctly.
       const preA = { locker_number: locker.locker_number, employee_name: locker.employee_name, badge_number: locker.badge_number };
       const preB = { locker_number: target.locker_number, employee_name: target.employee_name, badge_number: target.badge_number };
+      const nidA = locker.national_id;
+      const nidB = target.national_id;
 
       const { data, error } = await supabase.rpc("swap_lockers" as never, {
         _a_id: locker.id,
@@ -89,7 +95,6 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
         // to respect locker_occupancy_active_locker_unique.
         try {
           await recordSwapHistory(preA, result.a, preB.locker_number);
-          await logTransferSwapEvent({ eventType: "swap", lockerNumber: result.a.locker_number, otherLockerNumber: preB.locker_number });
         } catch (err) {
           throw new Error(
             err instanceof SwapStepError
@@ -99,7 +104,6 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
         }
         try {
           await recordSwapHistory(preB, result.b, preA.locker_number);
-          await logTransferSwapEvent({ eventType: "swap", lockerNumber: result.b.locker_number, otherLockerNumber: preA.locker_number });
         } catch (err) {
           throw new Error(
             err instanceof SwapStepError
@@ -107,7 +111,17 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
               : err instanceof Error ? `Locker B swap-history failed: ${err.message}` : "Locker B swap-history failed",
           );
         }
+        // Exactly ONE transfer/swap history row per confirmed swap, holding
+        // both lockers and both occupants.
+        await logTransferSwapEvent({
+          eventType: "swap",
+          lockerNumber: preA.locker_number,
+          otherLockerNumber: preB.locker_number,
+          sideA: { employeeName: preA.employee_name, badgeNumber: preA.badge_number, nationalId: nidA },
+          sideB: { employeeName: preB.employee_name, badgeNumber: preB.badge_number, nationalId: nidB },
+        });
       }
+
 
       toast.success(`Swapped ${locker.locker_number} ↔ ${target.locker_number}`);
       invalidateLockersCache();
