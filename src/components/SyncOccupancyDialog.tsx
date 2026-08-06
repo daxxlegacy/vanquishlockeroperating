@@ -600,10 +600,10 @@ export function SyncOccupancyDialog({
 
     invalidateOccupancyCache();
     invalidateLockersCache();
-    setResult({ terminated, activated, duplicates_removed, failedItems });
+    setResult({ terminated, activated, updated, duplicates_removed, failedItems });
     setApplying(false);
     toast.success(
-      `Sync applied: ${terminated} terminated · ${activated} activated · ${duplicates_removed} duplicates removed${failedItems.length > 0 ? ` · ${failedItems.length} need${failedItems.length === 1 ? "s" : ""} attention` : ""}.`,
+      `Sync applied: ${updated} updated · ${terminated} terminated · ${activated} activated · ${duplicates_removed} duplicates removed${failedItems.length > 0 ? ` · ${failedItems.length} need${failedItems.length === 1 ? "s" : ""} attention` : ""}.`,
     );
   }
 
