@@ -716,10 +716,16 @@ export type Database = {
       }
       transfer_swap_history: {
         Row: {
+          badge_a: string | null
+          badge_b: string | null
           created_at: string
+          employee_a: string | null
+          employee_b: string | null
           event_type: string
           id: string
           locker_number: string
+          national_id_a: string | null
+          national_id_b: string | null
           occurred_on: string
           other_locker_number: string | null
           performed_by: string | null
@@ -727,10 +733,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          badge_a?: string | null
+          badge_b?: string | null
           created_at?: string
+          employee_a?: string | null
+          employee_b?: string | null
           event_type: string
           id?: string
           locker_number: string
+          national_id_a?: string | null
+          national_id_b?: string | null
           occurred_on?: string
           other_locker_number?: string | null
           performed_by?: string | null
@@ -738,10 +750,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          badge_a?: string | null
+          badge_b?: string | null
           created_at?: string
+          employee_a?: string | null
+          employee_b?: string | null
           event_type?: string
           id?: string
           locker_number?: string
+          national_id_a?: string | null
+          national_id_b?: string | null
           occurred_on?: string
           other_locker_number?: string | null
           performed_by?: string | null
