@@ -36,6 +36,7 @@ type EventRow = {
 
 export type DupHistoryGroup = {
   key: string;
+  kind: "event" | "person";
   locker_number: string;
   employee_name: string | null;
   badge_number: string | null;
