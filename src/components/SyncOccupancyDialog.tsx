@@ -628,6 +628,7 @@ export function SyncOccupancyDialog({
               <h3 className="font-display text-lg font-bold">Sync complete</h3>
             </div>
             <div className="text-sm">
+              <span className="text-primary font-semibold">{result.updated}</span> updated ·{" "}
               <span className="text-success font-semibold">{result.terminated}</span> terminated ·{" "}
               <span className="text-success font-semibold">{result.activated}</span> activated ·{" "}
               <span className="text-warning font-semibold">{result.duplicates_removed}</span> duplicates removed
