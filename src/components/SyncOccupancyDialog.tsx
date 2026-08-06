@@ -382,13 +382,14 @@ export function SyncOccupancyDialog({
   }
 
   const counts = useMemo(() => {
-    let t = 0, a = 0, d = 0;
+    let t = 0, a = 0, d = 0, u = 0;
     for (const p of plans) {
       if (p.kind === "terminate") t++;
       else if (p.kind === "activate") a++;
+      else if (p.kind === "update_details") u++;
       else d++;
     }
-    return { t, a, d };
+    return { t, a, d, u };
   }, [plans]);
 
   const key = (p: Plan) => `${p.kind}:${p.locker_number}:${p.category}:${p.occupancy_id ?? ""}`;
