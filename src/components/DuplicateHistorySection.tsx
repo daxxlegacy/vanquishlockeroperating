@@ -36,6 +36,7 @@ type EventRow = {
 
 export type DupHistoryGroup = {
   key: string;
+  kind: "event" | "person";
   locker_number: string;
   employee_name: string | null;
   badge_number: string | null;
@@ -99,15 +100,19 @@ export function buildHistoryDupGroups(events: EventRow[]): DupHistoryGroup[] {
   }
 
   const groups: DupHistoryGroup[] = [];
-  for (const [key, rows] of map) {
-    if (rows.length < 2) continue;
-    // Ignore rows with no identifying data at all.
-    if (!rows.some((r) => (r.employee_name ?? "").trim() || (r.badge_number ?? "").trim())) continue;
+  const claimed = new Set<string>();
+
+  const push = (key: string, kind: "event" | "person", rows: EventRow[]) => {
     const sorted = [...rows].sort(
-      (a, b) => score(b) - score(a) || (a.created_at ?? "").localeCompare(b.created_at ?? ""),
+      (a, b) =>
+        Number(isTerminate(a.status)) - Number(isTerminate(b.status)) ||
+        score(b) - score(a) ||
+        (b.created_at ?? "").localeCompare(a.created_at ?? ""),
     );
+    for (const r of sorted) claimed.add(r.id);
     groups.push({
       key,
+      kind,
       locker_number: sorted[0].locker_number,
       employee_name: sorted.find((r) => r.employee_name)?.employee_name ?? null,
       badge_number: sorted.find((r) => r.badge_number)?.badge_number ?? null,
@@ -115,12 +120,42 @@ export function buildHistoryDupGroups(events: EventRow[]): DupHistoryGroup[] {
       date: sorted.find((r) => r.date)?.date ?? null,
       rows: sorted,
     });
+  };
+
+  // Pass 1 — the exact same event recorded more than once.
+  for (const [key, rows] of map) {
+    if (rows.length < 2) continue;
+    // Ignore rows with no identifying data at all.
+    if (!rows.some((r) => (r.employee_name ?? "").trim() || (r.badge_number ?? "").trim())) continue;
+    push(key, "event", rows);
+  }
+
+  // Pass 2 — the same person recorded twice for the same locker under different
+  // statuses/dates (e.g. an "Active" row plus a leftover "Terminate" copy written
+  // by an activation/sync). Pass 1 misses these because status and date differ.
+  const byPerson = new Map<string, EventRow[]>();
+  for (const e of events) {
+    if (claimed.has(e.id)) continue;
+    const name = norm(e.employee_name);
+    const badge = norm(e.badge_number);
+    const nid = norm(e.national_id);
+    const identity = name || badge || nid;
+    if (!identity) continue;
+    const key = `person|${norm(e.locker_number)}|${identity}`;
+    const list = byPerson.get(key) ?? [];
+    list.push(e);
+    byPerson.set(key, list);
+  }
+  for (const [key, rows] of byPerson) {
+    if (rows.length < 2) continue;
+    push(key, "person", rows);
   }
 
   return groups.sort(
     (a, b) => b.rows.length - a.rows.length || a.locker_number.localeCompare(b.locker_number),
   );
 }
+
 
 export function DuplicateHistorySection({
   active,
@@ -413,6 +448,9 @@ export function DuplicateHistorySection({
                   <span className="font-mono font-semibold">{g.locker_number}</span>
                   <Badge variant="secondary" className="text-[11px]">{g.status}</Badge>
                   <Badge variant="destructive" className="text-[11px]">{g.rows.length} copies</Badge>
+                  {g.kind === "person" && (
+                    <Badge variant="outline" className="text-[11px]">Same person, repeated</Badge>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground truncate mt-0.5">
                   {g.employee_name ?? "—"}
