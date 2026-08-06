@@ -52,7 +52,9 @@ function occupantOf(
   const hasSnap = !!(snapName || snapBadge);
   return {
     lockerNumber: lockerNumber ?? "—",
-    id: hasSnap && !snapshot?.nationalId ? null : l?.id ?? null,
+    // With a snapshot we cannot reveal via the live lockers row (the locker may
+    // now hold a different person), so no reveal target is passed.
+    id: hasSnap ? null : l?.id ?? null,
     employeeName: hasSnap ? snapName : l?.employee_name?.trim() || null,
     badgeNumber: hasSnap ? snapBadge : l?.badge_number?.trim() || null,
     nationalId: hasSnap ? snapshot?.nationalId ?? null : l?.national_id ?? null,
