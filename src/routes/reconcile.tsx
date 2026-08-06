@@ -541,10 +541,6 @@ function ReconcilePage() {
           <TabsContent value="terminations" className="mt-4">
             <TransferSwapHistoryPanel />
           </TabsContent>
-
-          <TabsContent value="deletions" className="mt-4">
-            <DeletionsPanel />
-          </TabsContent>
         </Tabs>
       </main>
     </div>
