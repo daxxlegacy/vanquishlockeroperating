@@ -369,10 +369,22 @@ export function DuplicateHistorySection({
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={load} disabled={loading || busy}>
           <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} /> Rescan
         </Button>
+        {isAdmin && (
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setConfirmAll(true)}
+            disabled={loading || busy || groups.length === 0}
+          >
+            <Wand2 className="h-4 w-4 mr-1.5" />
+            {progress ? `Removing ${progress.done}/${progress.total}…` : "Remove All Duplicates"}
+          </Button>
+        )}
       </div>
+
 
       <div className="flex-1 overflow-y-auto space-y-2 pr-1">
         {error && (
