@@ -36,14 +36,26 @@ type Occupant = {
   nationalId: string | null;
 };
 
-function occupantOf(lockerNumber: string | null, byNumber: Map<string, Locker>): Occupant {
+/**
+ * Prefer the occupant snapshot stored on the history row itself (recorded at
+ * the time of the event); fall back to the live lockers table for older rows
+ * written before snapshots existed.
+ */
+function occupantOf(
+  lockerNumber: string | null,
+  byNumber: Map<string, Locker>,
+  snapshot?: { employeeName?: string | null; badgeNumber?: string | null; nationalId?: string | null },
+): Occupant {
   const l = lockerNumber ? byNumber.get(norm(lockerNumber)) : undefined;
+  const snapName = snapshot?.employeeName?.trim() || null;
+  const snapBadge = snapshot?.badgeNumber?.trim() || null;
+  const hasSnap = !!(snapName || snapBadge);
   return {
     lockerNumber: lockerNumber ?? "—",
-    id: l?.id ?? null,
-    employeeName: l?.employee_name?.trim() || null,
-    badgeNumber: l?.badge_number?.trim() || null,
-    nationalId: l?.national_id ?? null,
+    id: hasSnap && !snapshot?.nationalId ? null : l?.id ?? null,
+    employeeName: hasSnap ? snapName : l?.employee_name?.trim() || null,
+    badgeNumber: hasSnap ? snapBadge : l?.badge_number?.trim() || null,
+    nationalId: hasSnap ? snapshot?.nationalId ?? null : l?.national_id ?? null,
   };
 }
 
@@ -59,6 +71,7 @@ function OccupantCells({ o }: { o: Occupant }) {
     </>
   );
 }
+
 
 const GRID = "grid grid-cols-[5.5rem_7rem_1fr_7rem_9rem_6.5rem] gap-3 items-center";
 
