@@ -13,6 +13,7 @@ import { useLockers, invalidateLockersCache, patchLockersInCache } from "@/lib/l
 import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { recordSwapHistory, SwapStepError } from "@/lib/occupancy-sync";
+import { logTransferSwapEvent } from "@/lib/transfer-swap-history";
 import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import { KeyBadge } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
@@ -88,6 +89,7 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
         // to respect locker_occupancy_active_locker_unique.
         try {
           await recordSwapHistory(preA, result.a, preB.locker_number);
+          await logTransferSwapEvent({ eventType: "swap", lockerNumber: result.a.locker_number, otherLockerNumber: preB.locker_number });
         } catch (err) {
           throw new Error(
             err instanceof SwapStepError
@@ -97,6 +99,7 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
         }
         try {
           await recordSwapHistory(preB, result.b, preA.locker_number);
+          await logTransferSwapEvent({ eventType: "swap", lockerNumber: result.b.locker_number, otherLockerNumber: preA.locker_number });
         } catch (err) {
           throw new Error(
             err instanceof SwapStepError
