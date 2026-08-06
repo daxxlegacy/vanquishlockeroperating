@@ -233,41 +233,79 @@ export function DuplicateHistorySection({
 
   const totalDupRows = groups.reduce((n, g) => n + g.rows.length - 1, 0);
 
-  const autoRemove = async () => {
-    if (!confirm) return;
-    setBusy(true);
-    try {
-      const [keep, ...drop] = confirm.rows;
-      const { data: u } = await supabase.auth.getUser();
-      const occIds = drop.filter((r) => r.source === "occupancy").map((r) => r.id);
-      const termIds = drop.filter((r) => r.source === "termination").map((r) => r.id);
+  // Remove the duplicate copies of one group, keeping rows[0].
+  // NOTE: `terminations` has no DELETE policy (deletes silently affect 0 rows),
+  // so duplicate termination rows are soft-removed by stamping undone_at —
+  // the scanner and the history dialog both ignore undone rows.
+  const removeGroup = async (
+    g: DupHistoryGroup,
+    user: { id?: string; email?: string | null },
+  ) => {
+    const [keep, ...drop] = g.rows;
+    const occIds = drop.filter((r) => r.source === "occupancy").map((r) => r.id);
+    const termIds = drop.filter((r) => r.source === "termination").map((r) => r.id);
 
-      if (occIds.length) {
-        const { error: e } = await supabase.from("locker_occupancy").delete().in("id", occIds);
-        if (e) throw e;
-      }
-      if (termIds.length) {
-        const { error: e } = await supabase.from("terminations").delete().in("id", termIds);
-        if (e) throw e;
-      }
+    let removed = 0;
 
+    if (occIds.length) {
+      const { data, error } = await supabase
+        .from("locker_occupancy")
+        .delete()
+        .in("id", occIds)
+        .select("id");
+      if (error) throw error;
+      removed += data?.length ?? 0;
+      if ((data?.length ?? 0) < occIds.length) {
+        throw new Error("Some occupancy duplicates could not be removed (permission denied).");
+      }
+    }
+
+    if (termIds.length) {
+      const { data, error } = await supabase
+        .from("terminations")
+        .update({ undone_at: new Date().toISOString(), undone_by: user.id ?? null })
+        .in("id", termIds)
+        .is("undone_at", null)
+        .select("id");
+      if (error) throw error;
+      removed += data?.length ?? 0;
+      if ((data?.length ?? 0) < termIds.length) {
+        throw new Error("Some termination duplicates could not be removed (permission denied).");
+      }
+    }
+
+    if (drop.length) {
       await supabase.from("status_change_log").insert(
         drop.map((r) => ({
-          locker_number: confirm.locker_number,
+          locker_number: g.locker_number,
           previous_status: r.status,
           new_status: "(duplicate removed)",
           source:
             r.source === "occupancy"
               ? "duplicate_history_cleanup_occupancy"
               : "duplicate_history_cleanup_termination",
-          changed_by: u.user?.id ?? "",
-          changed_by_email: u.user?.email ?? null,
+          changed_by: user.id ?? "",
+          changed_by_email: user.email ?? null,
         })),
       );
+    }
+
+    return { removed, keep };
+  };
+
+  const autoRemove = async () => {
+    if (!confirm) return;
+    setBusy(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const { removed, keep } = await removeGroup(confirm, {
+        id: u.user?.id,
+        email: u.user?.email,
+      });
 
       invalidateOccupancyCache();
       toast.success(
-        `Removed ${drop.length} duplicate cop${drop.length === 1 ? "y" : "ies"} from ${confirm.locker_number}` +
+        `Removed ${removed} duplicate cop${removed === 1 ? "y" : "ies"} from ${confirm.locker_number}` +
           ` (kept the ${keep.source === "occupancy" ? "occupancy" : "termination"} record)`,
       );
       setConfirm(null);
@@ -278,6 +316,40 @@ export function DuplicateHistorySection({
       setBusy(false);
     }
   };
+
+  const removeAll = async () => {
+    setConfirmAll(false);
+    setBusy(true);
+    setProgress({ done: 0, total: groups.length });
+    let removed = 0;
+    let failed = 0;
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const user = { id: u.user?.id, email: u.user?.email };
+      for (let i = 0; i < groups.length; i++) {
+        try {
+          const res = await removeGroup(groups[i], user);
+          removed += res.removed;
+        } catch {
+          failed++;
+        }
+        setProgress({ done: i + 1, total: groups.length });
+      }
+      invalidateOccupancyCache();
+      if (failed) {
+        toast.warning(`Removed ${removed} duplicate rows; ${failed} group(s) could not be cleaned.`);
+      } else {
+        toast.success(`Removed ${removed} duplicate row${removed === 1 ? "" : "s"}.`);
+      }
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Cleanup failed");
+    } finally {
+      setProgress(null);
+      setBusy(false);
+    }
+  };
+
 
   return (
     <div className="flex-1 flex flex-col min-h-0 gap-3">
