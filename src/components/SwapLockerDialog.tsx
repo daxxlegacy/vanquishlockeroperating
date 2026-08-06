@@ -131,8 +131,10 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Swap failed");
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
+
   };
 
   return (
