@@ -13,7 +13,6 @@ import { useLockers, invalidateLockersCache, patchLockersInCache } from "@/lib/l
 import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { recordSwapHistory, SwapStepError } from "@/lib/occupancy-sync";
-import { logTransferSwapEvent } from "@/lib/transfer-swap-history";
 import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import { KeyBadge } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
@@ -90,20 +89,8 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
         // Instant cache patch so the Lockers page + LockerDetail re-render
         // with the swapped occupants immediately, before any background refetch.
         patchLockersInCache([result.a, result.b]);
-        // Write the swap audit row FIRST — exactly ONE row per confirmed swap,
-        // holding both lockers and both occupants. A later occupancy-sync
-        // failure must never cost us the history record.
-        try {
-          await logTransferSwapEvent({
-            eventType: "swap",
-            lockerNumber: preA.locker_number,
-            otherLockerNumber: preB.locker_number,
-            sideA: { employeeName: preA.employee_name, badgeNumber: preA.badge_number, nationalId: nidA },
-            sideB: { employeeName: preB.employee_name, badgeNumber: preB.badge_number, nationalId: nidB },
-          });
-        } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Swap history log failed");
-        }
+        // The swap RPC writes exactly one history row in the same transaction
+        // as the locker swap, before occupancy reconciliation runs.
         // Then reconcile occupancy: terminate outgoing occupancy row(s), then
         // insert fresh Active row for the incoming occupant. Order matters
         // to respect locker_occupancy_active_locker_unique.
