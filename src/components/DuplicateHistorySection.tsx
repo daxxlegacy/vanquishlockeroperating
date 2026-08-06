@@ -104,7 +104,10 @@ export function buildHistoryDupGroups(events: EventRow[]): DupHistoryGroup[] {
 
   const push = (key: string, kind: "event" | "person", rows: EventRow[]) => {
     const sorted = [...rows].sort(
-      (a, b) => score(b) - score(a) || (b.created_at ?? "").localeCompare(a.created_at ?? ""),
+      (a, b) =>
+        Number(isTerminate(a.status)) - Number(isTerminate(b.status)) ||
+        score(b) - score(a) ||
+        (b.created_at ?? "").localeCompare(a.created_at ?? ""),
     );
     for (const r of sorted) claimed.add(r.id);
     groups.push({
