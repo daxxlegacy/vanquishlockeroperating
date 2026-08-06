@@ -138,7 +138,7 @@ export function SyncOccupancyDialog({
       while (true) {
         const { data, error } = await supabase
           .from("locker_occupancy")
-          .select("id, category, locker_number, employee_name, badge_number, status, updated_at, termination_date, remarks")
+          .select("id, category, locker_number, employee_name, badge_number, national_id, status, updated_at, termination_date, remarks")
           .ilike("status", "active")
           .range(from, from + 999);
         if (error) throw error;
