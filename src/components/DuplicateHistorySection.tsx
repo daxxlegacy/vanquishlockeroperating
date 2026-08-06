@@ -464,6 +464,27 @@ export function DuplicateHistorySection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={confirmAll} onOpenChange={(v) => { if (!v && !busy) setConfirmAll(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5" /> Remove all duplicates
+            </DialogTitle>
+            <DialogDescription>
+              This will clean up all {groups.length} affected locker{groups.length === 1 ? "" : "s"} —
+              removing {totalDupRows} duplicate row{totalDupRows === 1 ? "" : "s"} and keeping the most
+              complete record for each event. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAll(false)} disabled={busy}>Cancel</Button>
+            <Button variant="destructive" onClick={removeAll} disabled={busy}>
+              {busy ? "Removing…" : `Remove ${totalDupRows} duplicates`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
