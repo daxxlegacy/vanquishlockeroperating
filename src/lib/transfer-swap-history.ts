@@ -44,6 +44,9 @@ export async function logTransferSwapEvent(input: TransferSwapEventInput): Promi
     performed_by: auth.user?.id ?? null,
     performed_by_email: auth.user?.email ?? null,
   } as never);
-  if (error) console.warn("[transfer-swap-history] log failed:", error.message);
+  if (error) {
+    console.warn("[transfer-swap-history] log failed:", error.message);
+    throw new Error(`History log failed: ${error.message}`);
+  }
 }
 

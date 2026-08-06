@@ -144,9 +144,28 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
       const result = data as { from: Locker; to: Locker } | null;
       if (result?.from && result?.to) {
         patchLockersInCache([result.from, result.to]);
-        await syncStatusChangeToOccupancy(result.from);
-        await syncActivationToOccupancy(result.to);
-        await logTransferSwapEvent({ eventType: "transfer", lockerNumber: result.to.locker_number, otherLockerNumber: result.from.locker_number });
+        // Write the audit row FIRST: a later occupancy-sync failure must never
+        // cost us the transfer record.
+        try {
+          await logTransferSwapEvent({
+            eventType: "transfer",
+            lockerNumber: result.to.locker_number,
+            otherLockerNumber: result.from.locker_number,
+            sideA: {
+              employeeName: from.employee_name,
+              badgeNumber: from.badge_number,
+              nationalId: from.national_id,
+            },
+          });
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Transfer history log failed");
+        }
+        try {
+          await syncStatusChangeToOccupancy(result.from);
+          await syncActivationToOccupancy(result.to);
+        } catch (err) {
+          toast.error(err instanceof Error ? `Occupancy sync failed: ${err.message}` : "Occupancy sync failed");
+        }
       }
     })();
   };

@@ -277,10 +277,10 @@ export function TransferSwapHistoryPanel() {
                         <ArrowRightLeft className="h-3 w-3" /> Transfer
                       </Badge>
                       <span className="font-mono font-semibold truncate">
-                        {r.locker_number}
+                        {r.other_locker_number ?? r.locker_number}
                         {r.other_locker_number && (
                           <span className="block text-[10px] font-sans font-normal text-muted-foreground">
-                            → {r.other_locker_number}
+                            → {r.locker_number}
                           </span>
                         )}
                       </span>
