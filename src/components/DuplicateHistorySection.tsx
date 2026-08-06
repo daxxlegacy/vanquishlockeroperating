@@ -448,6 +448,9 @@ export function DuplicateHistorySection({
                   <span className="font-mono font-semibold">{g.locker_number}</span>
                   <Badge variant="secondary" className="text-[11px]">{g.status}</Badge>
                   <Badge variant="destructive" className="text-[11px]">{g.rows.length} copies</Badge>
+                  {g.kind === "person" && (
+                    <Badge variant="outline" className="text-[11px]">Same person, repeated</Badge>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground truncate mt-0.5">
                   {g.employee_name ?? "—"}
