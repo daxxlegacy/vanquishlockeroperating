@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/automation")({
-  beforeLoad: () => { throw redirect({ to: "/operations" }); },
+  beforeLoad: () => { throw redirect({ to: "/reconcile" }); },
 });
