@@ -61,6 +61,16 @@ function occupantOf(
   };
 }
 
+/** Occupant snapshots stored on the history row itself (side A / side B). */
+const snapA = (r: Row) => {
+  const x = r as unknown as Record<string, string | null>;
+  return { employeeName: x['employee_a'], badgeNumber: x['badge_a'], nationalId: x['national_id_a'] };
+};
+const snapB = (r: Row) => {
+  const x = r as unknown as Record<string, string | null>;
+  return { employeeName: x['employee_b'], badgeNumber: x['badge_b'], nationalId: x['national_id_b'] };
+};
+
 function OccupantCells({ o }: { o: Occupant }) {
   return (
     <>
@@ -234,25 +244,27 @@ export function TransferSwapHistoryPanel() {
               <div className="divide-y max-h-[32rem] overflow-auto">
                 {filtered.map((r) => {
                   const isSwap = r.event_type === "swap";
-                  const a = occupantOf(r.locker_number, byNumber);
-                  const b = occupantOf(r.other_locker_number, byNumber);
+                  const a = occupantOf(r.locker_number, byNumber, snapA(r));
+                  const b = occupantOf(r.other_locker_number, byNumber, snapB(r));
                   const date = formatBatchIntake(r.occurred_on);
 
                   if (isSwap) {
+                    // ONE row per swap event: both sides stacked inside it,
+                    // with a single Date column on the right.
                     return (
-                      <div key={r.id} className="px-4 py-2.5 text-sm space-y-1.5 bg-muted/10">
-                        <div className={GRID}>
-                          <Badge variant="outline" className="gap-1 text-[10px] w-fit">
-                            <Repeat className="h-3 w-3" /> Swap
-                          </Badge>
-                          <OccupantCells o={a} />
-                          <span className="text-muted-foreground whitespace-nowrap">{date}</span>
+                      <div key={r.id} className={`${GRID} px-4 py-2.5 text-sm bg-muted/20`}>
+                        <Badge variant="outline" className="gap-1 text-[10px] w-fit">
+                          <Repeat className="h-3 w-3" /> Swap
+                        </Badge>
+                        <div className="col-span-4 rounded-md border border-border/60 bg-background/60 divide-y divide-border/60">
+                          <div className="grid grid-cols-[7rem_1fr_7rem_9rem] gap-3 items-center px-2 py-1.5">
+                            <OccupantCells o={a} />
+                          </div>
+                          <div className="grid grid-cols-[7rem_1fr_7rem_9rem] gap-3 items-center px-2 py-1.5">
+                            <OccupantCells o={b} />
+                          </div>
                         </div>
-                        <div className={GRID}>
-                          <span className="text-[10px] uppercase text-muted-foreground pl-1">↕ with</span>
-                          <OccupantCells o={b} />
-                          <span />
-                        </div>
+                        <span className="text-muted-foreground whitespace-nowrap">{date}</span>
                       </div>
                     );
                   }
