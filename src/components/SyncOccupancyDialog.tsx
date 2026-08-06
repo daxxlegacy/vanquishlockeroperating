@@ -455,6 +455,35 @@ export function SyncOccupancyDialog({
             changed_by: userId,
             changed_by_email: userEmail,
           });
+        } else if (p.kind === "update_details") {
+          // Same occupant, refreshed details (e.g. corrected badge number from a
+          // new intake upload) — patch the active row in place. No termination.
+          const { error } = await supabase
+            .from("locker_occupancy")
+            .update({
+              employee_name: p.locker.employee_name,
+              badge_number: p.locker.badge_number,
+              national_id: p.locker.national_id,
+              work_location: p.locker.work_location,
+              locker_row: p.locker.row_label,
+              locker_location_by_row: p.locker.location,
+              key_lock_type: p.locker.key_lock,
+              batch_intake_date: p.locker.batch_intake ?? null,
+              status: "Active",
+              termination_date: null,
+            })
+            .eq("id", p.occupancy_id);
+          if (error) throw error;
+          updated++;
+          auditRows.push({
+            locker_id: p.locker.id,
+            locker_number: p.locker_number,
+            previous_status: `active (occupancy/${p.category})`,
+            new_status: `active (occupancy/${p.category}) [details updated]`,
+            source: "sync_occupancy_update_details",
+            changed_by: userId,
+            changed_by_email: userEmail,
+          });
         } else if (p.kind === "terminate") {
           await supabase
             .from("locker_occupancy")
