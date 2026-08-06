@@ -242,16 +242,47 @@ export function SyncOccupancyDialog({
       const occByKey = new Map<string, OccActive>();
       for (const o of occDedup) occByKey.set(`${o.locker_number}::${o.category}`, o);
 
-      // Case A: occupancy active rows that don't match lockers → terminate
-      // (preserve the row's category on the write)
+      // Case A: occupancy active rows that don't match lockers.
+      // If it's still the SAME PERSON (identity matches on name, badge or
+      // national ID) and the locker is still active, the record was merely
+      // edited upstream (e.g. an intake upload corrected the badge number) —
+      // update the occupancy row in place instead of terminating + reactivating.
       for (const o of occDedup) {
         const l = lockerByNum.get(o.locker_number);
         if (!l) continue; // locker missing entirely — handled by deletion flow
         const lockerIsActive = norm(l.status) === "active";
         const nameMatches = norm(l.employee_name) === norm(o.employee_name);
         const badgeMatches = norm(l.badge_number) === norm(o.badge_number);
+        const nidMatches = norm(l.national_id) === norm(o.national_id);
         const lockerHasEmployee = !!(l.employee_name && l.employee_name.trim());
         if (lockerHasEmployee && nameMatches && badgeMatches && lockerIsActive) continue;
+
+        if (lockerHasEmployee && lockerIsActive) {
+          const samePerson =
+            (nameMatches && !!norm(o.employee_name)) ||
+            (badgeMatches && !!norm(o.badge_number)) ||
+            (nidMatches && !!norm(o.national_id));
+          if (samePerson) {
+            const diffs: string[] = [];
+            if (!nameMatches) diffs.push(`name ${o.employee_name ?? "—"} → ${l.employee_name ?? "—"}`);
+            if (!badgeMatches) diffs.push(`badge ${o.badge_number ?? "—"} → ${l.badge_number ?? "—"}`);
+            if (!nidMatches) diffs.push("national ID updated");
+            nextPlans.push({
+              kind: "update_details",
+              occupancy_id: o.id,
+              category: o.category,
+              locker_number: o.locker_number,
+              occ_employee: o.employee_name,
+              locker_employee: l.employee_name,
+              termination_date: null,
+              reason: `Same occupant — ${diffs.length > 0 ? diffs.join(", ") : "details refreshed"} (from Lockers page)`,
+              source: null,
+              locker: l,
+            });
+            continue;
+          }
+        }
+
 
         const candidates = termsByNum.get(o.locker_number) ?? [];
         const match = candidates.find((t) =>
