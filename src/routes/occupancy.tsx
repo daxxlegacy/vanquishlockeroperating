@@ -1060,6 +1060,7 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
     const ch = supabase
       .channel(`history-${lockerNumber}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "terminations", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
       .on("postgres_changes", { event: "*", schema: "public", table: "lockers", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -1071,7 +1072,7 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
       setEvents(null);
       const [{ data: occ }, { data: term }] = await Promise.all([
         supabase.from("locker_occupancy").select("*").eq("locker_number", lockerNumber).order("updated_at", { ascending: false }),
-        supabase.from("terminations").select("*").eq("locker_number", lockerNumber).order("termination_date", { ascending: false }),
+        supabase.from("terminations").select("*").eq("locker_number", lockerNumber).is("undone_at", null).order("termination_date", { ascending: false }),
       ]);
       const out: HistoryEvent[] = [];
       // Map badge → occupancy row so termination events can show a masked
@@ -1148,8 +1149,16 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
         const { error } = await supabase.from("locker_occupancy").delete().eq("id", rawId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("terminations").delete().eq("id", rawId);
+        // Termination history is immutable for audit purposes. Hide a removed
+        // event by marking it undone, matching duplicate-history cleanup.
+        const { data, error } = await supabase
+          .from("terminations")
+          .update({ undone_at: new Date().toISOString(), undone_by: u.user?.id ?? null })
+          .eq("id", rawId)
+          .is("undone_at", null)
+          .select("id");
         if (error) throw error;
+        if ((data?.length ?? 0) !== 1) throw new Error("Termination history entry could not be removed.");
       }
       await supabase.from("status_change_log").insert({
         locker_number: lockerNumber,
