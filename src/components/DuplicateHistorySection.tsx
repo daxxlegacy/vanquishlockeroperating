@@ -136,8 +136,11 @@ export function DuplicateHistorySection({
   const [groups, setGroups] = useState<DupHistoryGroup[]>([]);
   const [search, setSearch] = useState("");
   const [confirm, setConfirm] = useState<DupHistoryGroup | null>(null);
+  const [confirmAll, setConfirmAll] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
 
   const load = useCallback(async () => {
     setLoading(true);
