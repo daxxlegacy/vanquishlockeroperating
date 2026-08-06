@@ -125,14 +125,8 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
               : err instanceof Error ? `Locker B swap-history failed: ${err.message}` : "Locker B swap-history failed",
           );
         }
-        void ((): void => undefined)();
-        const _unused = ({
-          eventType: "swap",
-          lockerNumber: preA.locker_number,
-          otherLockerNumber: preB.locker_number,
-          sideA: { employeeName: preA.employee_name, badgeNumber: preA.badge_number, nationalId: nidA },
-          sideB: { employeeName: preB.employee_name, badgeNumber: preB.badge_number, nationalId: nidB },
-        });
+      }
+
       }
 
 
