@@ -714,6 +714,72 @@ export type Database = {
         }
         Relationships: []
       }
+      transfer_swap_history: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          locker_number: string
+          occurred_on: string
+          other_locker_number: string | null
+          performed_by: string | null
+          performed_by_email: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          locker_number: string
+          occurred_on?: string
+          other_locker_number?: string | null
+          performed_by?: string | null
+          performed_by_email?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          locker_number?: string
+          occurred_on?: string
+          other_locker_number?: string | null
+          performed_by?: string | null
+          performed_by_email?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      transfer_swap_history_clears: {
+        Row: {
+          created_at: string
+          from_date: string
+          id: string
+          performed_by: string
+          performed_by_email: string | null
+          removed_count: number
+          to_date: string
+        }
+        Insert: {
+          created_at?: string
+          from_date: string
+          id?: string
+          performed_by: string
+          performed_by_email?: string | null
+          removed_count?: number
+          to_date: string
+        }
+        Update: {
+          created_at?: string
+          from_date?: string
+          id?: string
+          performed_by?: string
+          performed_by_email?: string | null
+          removed_count?: number
+          to_date?: string
+        }
+        Relationships: []
+      }
       upload_history: {
         Row: {
           active_count: number | null
