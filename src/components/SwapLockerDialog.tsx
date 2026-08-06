@@ -75,9 +75,6 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
       // Snapshot pre-swap occupants so we can terminate the outgoing rows correctly.
       const preA = { locker_number: locker.locker_number, employee_name: locker.employee_name, badge_number: locker.badge_number };
       const preB = { locker_number: target.locker_number, employee_name: target.employee_name, badge_number: target.badge_number };
-      const nidA = locker.national_id;
-      const nidB = target.national_id;
-
       const { data, error } = await supabase.rpc("swap_lockers" as never, {
         _a_id: locker.id,
         _b_id: target.id,
