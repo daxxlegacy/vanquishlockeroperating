@@ -710,6 +710,7 @@ export function SyncOccupancyDialog({
         ) : (
           <>
             <div className="text-sm">
+              <span className="text-primary font-semibold">{counts.u}</span> to <b>Update</b> ·{" "}
               <span className="text-destructive font-semibold">{counts.t}</span> to <b>Terminate</b> ·{" "}
               <span className="text-success font-semibold">{counts.a}</span> to <b>Activate</b> ·{" "}
               <span className="text-warning font-semibold">{counts.d}</span> duplicate row{counts.d === 1 ? "" : "s"} to <b>Remove</b>.
