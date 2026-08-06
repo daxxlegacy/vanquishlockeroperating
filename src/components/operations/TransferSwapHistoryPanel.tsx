@@ -120,8 +120,9 @@ export function TransferSwapHistoryPanel() {
     const s = q.trim().toLowerCase();
     if (!s) return items;
     return items.filter((r) => {
-      const a = occupantOf(r.locker_number, byNumber);
-      const b = occupantOf(r.other_locker_number, byNumber);
+      const a = occupantOf(r.locker_number, byNumber, snapA(r));
+      const b = occupantOf(r.other_locker_number, byNumber, snapB(r));
+
       const hay = [
         r.locker_number,
         r.other_locker_number,
