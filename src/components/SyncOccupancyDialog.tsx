@@ -659,6 +659,7 @@ export function SyncOccupancyDialog({
                       const actionLabel =
                         f.kind === "terminate" ? "Mark Terminated"
                         : f.kind === "activate" ? "Add Active"
+                        : f.kind === "update_details" ? "Update Details"
                         : "Remove Duplicate";
                       return (
                         <div key={`${f.locker_number}-${f.category}-${idx}`} className="px-3 py-2 text-xs space-y-1">
