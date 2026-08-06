@@ -53,7 +53,7 @@ export function DeleteLockerByNumberDialog({ onDeleted }: { onDeleted: () => voi
         reason: reason.trim(),
       });
       toast.success(`Locker ${selected.locker_number} deleted`, {
-        description: "You have 15 minutes to undo from the Operations → Deletion Audit tab.",
+        description: "You have 15 minutes to undo from Admin → System → Deletion Audit.",
         duration: UNDO_TOAST_MS,
         action: {
           label: "Undo",
