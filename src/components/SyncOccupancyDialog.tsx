@@ -412,7 +412,7 @@ export function SyncOccupancyDialog({
 
     setApplying(true);
     setProgress({ done: 0, total: toApply.length });
-    let terminated = 0, activated = 0, duplicates_removed = 0;
+    let terminated = 0, activated = 0, duplicates_removed = 0, updated = 0;
     const failedItems: FailedItem[] = [];
     const auditRows: {
       locker_id: string | null; locker_number: string;
