@@ -1,5 +1,6 @@
 // Admin command center — dashboard overview + grouped collapsible sections.
 import { DeletionsPanel } from "@/components/operations/DeletionsPanel";
+import { RecentTerminationsPanel } from "@/components/operations/RecentTerminationsPanel";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -740,6 +741,10 @@ function AdminPage() {
                     which prevents duplicate active assignments.
                   </AlertDescription>
                 </Alert>
+                <div className="pt-2">
+                  <h3 className="text-sm font-semibold mb-2">Termination History (yesterday &amp; today)</h3>
+                  <RecentTerminationsPanel />
+                </div>
                 <div className="pt-2">
                   <h3 className="text-sm font-semibold mb-2">Deletion Audit</h3>
                   <DeletionsPanel />
