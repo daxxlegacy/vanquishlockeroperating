@@ -1,7 +1,7 @@
 // Undo a recent termination (15 minute window) — restores employee, badge, and prior status.
 // Also exposes terminateLocker() for one-shot terminations (used by bulk + dialog flows).
 import { supabase } from "@/integrations/supabase/client";
-import { syncTerminationToOccupancy } from "@/lib/occupancy-sync";
+import { syncTerminationToOccupancy, syncActivationToOccupancy } from "@/lib/occupancy-sync";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -124,6 +124,47 @@ export async function terminateLocker(
   await syncTerminationToOccupancy(locker as Locker, terminationDateIso, cleanReason);
 }
 
+
+/**
+ * Admin-only restore of a termination logged today or yesterday — no 15-minute
+ * window. Restores occupant details + prior status on the locker and
+ * re-activates the occupancy record.
+ */
+export async function restoreTerminationAdmin(terminationId: string): Promise<void> {
+  const { data: me } = await supabase.auth.getUser();
+  if (!me.user) throw new Error("Not signed in");
+
+  const { data: t, error: eFetch } = await supabase
+    .from("terminations")
+    .select("*")
+    .eq("id", terminationId)
+    .single();
+  if (eFetch || !t) throw eFetch ?? new Error("Termination not found");
+  if (t.undone_at) throw new Error("Already restored");
+  if (!t.locker_id) throw new Error("Original locker reference missing");
+
+  const { data: locker, error: eRestore } = await supabase
+    .from("lockers")
+    .update({
+      employee_name: t.prior_employee_name ?? t.employee_name,
+      badge_number: t.prior_badge_number ?? t.badge_number,
+      status: t.prior_status ?? "active",
+    })
+    .eq("id", t.locker_id)
+    .select("*")
+    .single();
+  if (eRestore) throw eRestore;
+
+  const { error: eMark } = await supabase
+    .from("terminations")
+    .update({ undone_at: new Date().toISOString(), undone_by: me.user.id })
+    .eq("id", terminationId);
+  if (eMark) throw eMark;
+
+  if (locker) {
+    try { await syncActivationToOccupancy(locker as Locker); } catch { /* non-fatal */ }
+  }
+}
 
 export async function undoTermination(terminationId: string): Promise<void> {
   const { data: me } = await supabase.auth.getUser();
