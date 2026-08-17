@@ -17,8 +17,9 @@ import { Search, Key, Plus, Download } from "lucide-react";
 import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import { List, type RowComponentProps } from "react-window";
-import { compareLockerNumbers } from "@/lib/locker-utils";
-import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { invalidateLockersCache } from "@/lib/lockers-cache";
+import { useSpareKeysPage, fetchAllMatchingSpareKeys, SPARE_PAGE_SIZE, type SpareKeysQuery } from "@/lib/spare-keys-page";
+import { TablePagination } from "@/components/TablePagination";
 import { useDebounced } from "@/hooks/use-debounced";
 import { KeyBadge, SPARE_KEY_SWATCH } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
@@ -57,57 +58,29 @@ function SpareKeysPage() {
   const navigate = useNavigate();
   const isAdmin = role === "admin";
   const [addOpen, setAddOpen] = useState(false);
-  const { lockers: rawLockers } = useLockers();
   const [search, setSearch] = useState(() => {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("search") ?? "";
   });
-  const debouncedSearch = useDebounced(search, 180);
+  const debouncedSearch = useDebounced(search, 300);
   const [spareFilter, setSpareFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
 
-  const lockers = useMemo(() => {
-    if (!rawLockers) return null;
-    // Numeric / numerical (combination) locks have no spare key — exclude them here.
-    return [...rawLockers]
-      .filter((l) => !/numeric/i.test(l.key_lock ?? ""))
-      .sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
-  }, [rawLockers]);
+  const query: SpareKeysQuery = useMemo(
+    () => ({ page, search: debouncedSearch, spareFilter, locFilter }),
+    [page, debouncedSearch, spareFilter, locFilter],
+  );
+  const {
+    rows, total, eligibleTotal, counts, locations,
+    loading: rowsLoading, refreshing,
+  } = useSpareKeysPage(query, SPARE_PAGE_SIZE);
+  const filtered = rows ?? [];
 
-  const locations = useMemo(() => {
-    if (!lockers) return [];
-    return Array.from(new Set(lockers.map((l) => l.location))).sort();
-  }, [lockers]);
-
-  const filtered = useMemo(() => {
-    if (!lockers) return [];
-    const q = debouncedSearch.toLowerCase().trim();
-    return lockers.filter((l) => {
-      const s = l.spare_key_status ?? "unknown";
-      if (spareFilter !== "all" && s !== spareFilter) return false;
-      if (locFilter !== "all" && l.location !== locFilter) return false;
-      if (!q) return true;
-      return (
-        l.locker_number.toLowerCase().includes(q) ||
-        
-        l.location.toLowerCase().includes(q)
-      );
-    });
-  }, [lockers, debouncedSearch, spareFilter, locFilter]);
-
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const k of SPARE_OPTIONS) c[k] = 0;
-    for (const l of lockers ?? []) {
-      const s = l.spare_key_status ?? "unknown";
-      c[s] = (c[s] ?? 0) + 1;
-    }
-    return c;
-  }, [lockers]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, spareFilter, locFilter]);
 
   if (loading || !user) return <div className="min-h-screen" />;
 
@@ -122,14 +95,14 @@ function SpareKeysPage() {
               <h1 className="font-display text-3xl font-bold">Spare Keys</h1>
             </div>
             <p className="text-muted-foreground text-sm">
-              {lockers?.length.toLocaleString() ?? "…"} lockers · {filtered.length.toLocaleString()} match
+              {eligibleTotal.toLocaleString()} lockers with spare keys · {total.toLocaleString()} match
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
-              onClick={() => exportSpareKeysToExcel(filtered)}
-              disabled={!lockers || filtered.length === 0}
+              onClick={() => exportSpareKeysToExcel(query)}
+              disabled={total === 0}
             >
               <Download className="h-4 w-4 mr-1" /> Export to Excel
             </Button>
@@ -139,7 +112,6 @@ function SpareKeysPage() {
                   <Button><Plus className="h-4 w-4 mr-1" /> Add Spare Key Locker</Button>
                 </DialogTrigger>
                 <AddSpareKeyLockerDialog
-                  existingNumbers={new Set((lockers ?? []).map((l) => l.locker_number.toUpperCase()))}
                   existingLocations={locations}
                   onClose={() => setAddOpen(false)}
                   onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
@@ -154,7 +126,7 @@ function SpareKeysPage() {
             <Card key={k} className="p-3 flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${SPARE_KEY_SWATCH[k]}`} />
               <div>
-                <div className="text-lg font-bold font-display leading-tight">{counts[k].toLocaleString()}</div>
+                <div className="text-lg font-bold font-display leading-tight">{(counts[k] ?? 0).toLocaleString()}</div>
                 <div className="text-[10px] text-muted-foreground capitalize leading-tight">{k.replace(/_/g, " ")}</div>
               </div>
             </Card>
@@ -184,7 +156,7 @@ function SpareKeysPage() {
 
 
         <Card className="mt-4 overflow-hidden">
-          {!lockers ? (
+          {rowsLoading ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : (
             <>
@@ -194,7 +166,7 @@ function SpareKeysPage() {
                   <div className="p-8 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
                 ) : (
                   <>
-                    {filtered.slice(0, 200).map((l) => (
+                    {filtered.map((l) => (
                       <button
                         type="button"
                         key={l.id}
@@ -212,11 +184,7 @@ function SpareKeysPage() {
                         </div>
                       </button>
                     ))}
-                    {filtered.length > 200 && (
-                      <div className="p-3 text-center text-xs text-muted-foreground">
-                        Showing first 200 of {filtered.length.toLocaleString()}. Narrow the filters to see more.
-                      </div>
-                    )}
+                    <TablePagination page={page} pageSize={SPARE_PAGE_SIZE} total={total} loading={refreshing} onPageChange={setPage} label="lockers" />
                   </>
                 )}
               </div>
@@ -242,9 +210,7 @@ function SpareKeysPage() {
                     />
                   )}
                 </div>
-                <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
-                  Showing {filtered.length.toLocaleString()} locker{filtered.length === 1 ? "" : "s"}
-                </div>
+                <TablePagination page={page} pageSize={SPARE_PAGE_SIZE} total={total} loading={refreshing} onPageChange={setPage} label="lockers" />
               </div>
             </>
           )}
@@ -256,7 +222,10 @@ function SpareKeysPage() {
   );
 }
 
-async function exportSpareKeysToExcel(rows: Locker[]) {
+async function exportSpareKeysToExcel(query: SpareKeysQuery) {
+  // Stream every matching row from the server so the export isn't limited to
+  // the page currently on screen.
+  const rows = await fetchAllMatchingSpareKeys(query);
   const data = rows.map((l) => ({
     "Locker #": l.locker_number,
     Location: l.location,
@@ -295,12 +264,10 @@ const SpareRow = memo(function SpareRow({ index, style, rows, onPick }: RowCompo
 
 
 function AddSpareKeyLockerDialog({
-  existingNumbers,
   existingLocations,
   onClose,
   onCreated,
 }: {
-  existingNumbers: Set<string>;
   existingLocations: string[];
   onClose: () => void;
   onCreated: () => void;
@@ -314,7 +281,7 @@ function AddSpareKeyLockerDialog({
   const [saving, setSaving] = useState(false);
 
   const trimmedNumber = form.locker_number.trim();
-  const duplicate = trimmedNumber && existingNumbers.has(trimmedNumber.toUpperCase());
+  const duplicate = false; // uniqueness is enforced by the database on insert
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
