@@ -175,6 +175,50 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
 
   
 
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+
+  const [sort, setSort] = useState<SortState>(null);
+  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
+
+  const urlKey = "f_occupancy";
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const s = decodeFilterState(readFilterParam(urlKey));
+    if (s) {
+      setSearch(s.q ?? "");
+      const x = s.x ?? {};
+      setStatusFilter(x.status ?? "all");
+      setCategoryFilter((x.cat as "all" | OccCategory) ?? "all");
+      setLocFilter(x.loc ?? "all");
+      setColFilters(objToColFilters(s.cf));
+      setSort(s.sort ?? null);
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const encoded = encodeFilterState({
+      cf: colFiltersToObj(colFilters),
+      q: search,
+      sort,
+      x: { status: statusFilter, cat: categoryFilter, loc: locFilter },
+    });
+    writeFilterParam(encoded, urlKey);
+  }, [hydrated, colFilters, search, sort, statusFilter, categoryFilter, locFilter]);
+
+  const hasAnyFilter =
+    !!search ||
+    statusFilter !== "all" ||
+    categoryFilter !== "all" ||
+    locFilter !== "all" ||
+    sort !== null;
+
+  const clearAllFilters = () => {
+    setSearch(""); setStatusFilter("all"); setCategoryFilter("all"); setLocFilter("all");
+    setColFilters({}); setSort(null);
+  };
+
   // ---------- Server-side paged data ----------
   const locOpts = useOccupancyLocations();
 
