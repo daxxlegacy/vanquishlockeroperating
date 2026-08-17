@@ -29,6 +29,7 @@ export function BackgroundRefreshIndicator() {
         description: `Loaded ${incomplete.loaded}${
           incomplete.expected != null ? ` of ${incomplete.expected}` : ""
         } lockers — showing last saved data, please retry.`,
+        closeButton: true,
         action: { label: "Retry", onClick: () => invalidateLockersCache() },
       });
     }

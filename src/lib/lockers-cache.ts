@@ -142,6 +142,21 @@ async function fetchOnce(): Promise<{ rows: Locker[]; ok: boolean }> {
 }
 
 const MAX_ATTEMPTS = 3;
+// The table is live: inserts/deletes can happen after the count query but
+// before pagination finishes. Allow modest drift while still rejecting the
+// large shortfalls caused by a failed page (the original partial-load bug).
+const MAX_SHORTFALL_RATIO = 0.05;
+const MIN_SHORTFALL_MARGIN = 10;
+
+function isFetchComplete(actual: number, expected: number | null, pagesOk: boolean) {
+  if (!pagesOk) return false;
+  if (expected == null) return true;
+  const allowedShortfall = Math.max(
+    MIN_SHORTFALL_MARGIN,
+    Math.ceil(expected * MAX_SHORTFALL_RATIO),
+  );
+  return actual >= expected - allowedShortfall;
+}
 
 async function fetchAll(silent = false): Promise<void> {
   if (fetchPromise) return fetchPromise;
@@ -162,7 +177,12 @@ async function fetchAll(silent = false): Promise<void> {
 
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         last = await fetchOnce();
-        const complete = last.ok && (expected == null || last.rows.length === expected);
+        const complete = isFetchComplete(last.rows.length, expected, last.ok);
+        if (import.meta.env.DEV) {
+          console.info(
+            `[lockers-cache] fetch attempt ${attempt}/${MAX_ATTEMPTS}: expected=${expected ?? "unknown"}, actual=${last.rows.length}, pagesOk=${last.ok}, complete=${complete}`,
+          );
+        }
         if (complete) {
           rebuildIndex(last.rows);
           state = { data: last.rows, loading: false, refreshing: false, incomplete: null };
@@ -171,11 +191,11 @@ async function fetchAll(silent = false): Promise<void> {
           emit();
           return;
         }
-        console.warn(
-          `[lockers-cache] incomplete fetch (attempt ${attempt}/${MAX_ATTEMPTS}): got ${last.rows.length}${
-            expected == null ? "" : ` of ${expected}`
-          }`,
-        );
+        if (import.meta.env.DEV) {
+          console.warn(
+            `[lockers-cache] incomplete fetch (attempt ${attempt}/${MAX_ATTEMPTS}): expected=${expected ?? "unknown"}, actual=${last.rows.length}`,
+          );
+        }
         if (attempt < MAX_ATTEMPTS) {
           await new Promise((r) => setTimeout(r, 400 * attempt));
         }
@@ -196,6 +216,8 @@ async function fetchAll(silent = false): Promise<void> {
       }
       emit();
     } finally {
+      // This promise owns all bounded attempts. Clear it only after the final
+      // attempt settles so callers cannot start an overlapping retry.
       fetchPromise = null;
       if (timerLabel) console.timeEnd(timerLabel);
     }
