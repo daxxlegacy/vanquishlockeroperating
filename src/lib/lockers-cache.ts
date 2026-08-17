@@ -377,6 +377,20 @@ export function useLockersRefreshing() {
   return r;
 }
 
+/** Tracks whether the last fetch failed to load the full locker list. */
+export function useLockersIncomplete() {
+  const [inc, set] = useState(state.incomplete);
+  useEffect(() => {
+    const fn = (s: State) => set(s.incomplete);
+    subscribers.add(fn);
+    set(state.incomplete);
+    return () => { subscribers.delete(fn); };
+  }, []);
+  return inc;
+}
+
+
+
 
 export function invalidateLockersCache() {
   // Silent refresh: keep existing data visible, refetch in background.
