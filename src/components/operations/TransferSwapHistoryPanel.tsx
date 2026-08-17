@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,8 +20,13 @@ import { formatBatchIntake } from "@/lib/locker-utils";
 import { useLockers } from "@/lib/lockers-cache";
 import { NationalIdCell } from "@/components/NationalIdCell";
 import type { Database } from "@/integrations/supabase/types";
-
-type Row = Database["public"]["Tables"]["transfer_swap_history"]["Row"];
+import {
+  clearTransferSwapHistoryRange,
+  invalidateTransferSwapHistory,
+  removeTransferSwapHistoryFromCache,
+  useTransferSwapHistory,
+  type TransferSwapHistoryRow as Row,
+} from "@/lib/transfer-swap-history";
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
 const norm = (s: string | null | undefined) => (s ?? "").trim().toUpperCase();
@@ -90,29 +94,14 @@ const GRID = "grid grid-cols-[5.5rem_7rem_1fr_7rem_9rem_6.5rem] gap-3 items-cent
 export function TransferSwapHistoryPanel() {
   const { user, role } = useAuth();
   const { lockers } = useLockers();
-  const [items, setItems] = useState<Row[] | null>(null);
+  const { items } = useTransferSwapHistory();
   const [q, setQ] = useState("");
-  const [refresh, setRefresh] = useState(0);
 
   const [clearOpen, setClearOpen] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("transfer_swap_history")
-      .select("*")
-      .order("occurred_on", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(3000)
-      .then(({ data, error }) => {
-        if (error) toast.error(`Could not load history: ${error.message}`);
-        setItems(data ?? []);
-      });
-  }, [user, refresh]);
 
   const byNumber = useMemo(() => {
     const m = new Map<string, Locker>();
@@ -163,28 +152,21 @@ export function TransferSwapHistoryPanel() {
   const applyClear = async () => {
     setBusy(true);
     try {
-      const { data: deleted, error } = await supabase
-        .from("transfer_swap_history")
-        .delete()
-        .gte("occurred_on", from)
-        .lte("occurred_on", to)
-        .select("id");
-      if (error) throw error;
-      const removed = deleted?.length ?? 0;
-
-      const { error: logErr } = await supabase.from("transfer_swap_history_clears").insert({
-        from_date: from,
-        to_date: to,
-        removed_count: removed,
-        performed_by: user!.id,
-        performed_by_email: user!.email ?? null,
+      const { removedIds, auditError } = await clearTransferSwapHistoryRange(from, to, {
+        id: user!.id,
+        email: user!.email ?? null,
       });
-      if (logErr) toast.warning(`History cleared, but audit log failed: ${logErr.message}`);
 
+      // Instant update first, background refetch as the safety net.
+      removeTransferSwapHistoryFromCache(removedIds);
+      invalidateTransferSwapHistory();
+
+      if (auditError) toast.warning(`History cleared, but audit log failed: ${auditError}`);
+
+      const removed = removedIds.length;
       toast.success(`Removed ${removed} entr${removed === 1 ? "y" : "ies"}`);
       setClearOpen(false);
       resetClear();
-      setRefresh((k) => k + 1);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Clear failed");
     } finally {
