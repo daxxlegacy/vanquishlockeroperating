@@ -117,9 +117,8 @@ export const Route = createFileRoute("/lockers")({
 function LockersPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
-  const { lockers: rawLockers } = useLockers();
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounced(search, 180);
+  const debouncedSearch = useDebounced(search, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [keyLockFilter, setKeyLockFilter] = useState("all");
@@ -128,13 +127,24 @@ function LockersPage() {
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  
-  
+  const [page, setPage] = useState(1);
+
+
   const [addOpen, setAddOpen] = useState(false);
   const isMobile = useIsMobile();
   const { set: batchWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
+
+  // Excel-style per-column checkbox filters — only for low-cardinality columns
+  // whose values come from server-side DISTINCT facets.
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+  const setColFilter = (k: string) => (next: Set<string>) =>
+    setColFilters((cur) => ({ ...cur, [k]: next }));
+
+  // Click-to-sort state (single column at a time, cycles asc → desc → none).
+  const [sort, setSort] = useState<SortState>(null);
+  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
 
   useEffect(() => {
     // URL takes precedence over localStorage so shared links work.
@@ -166,50 +176,40 @@ function LockersPage() {
     writeLockerFilters({ search, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter });
   }, [filtersHydrated, search, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter]);
 
-  // Sort once when underlying data changes (avoid re-sorting on every render)
-  const lockers = useMemo(() => {
-    if (!rawLockers) return null;
-    return [...rawLockers].sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
-  }, [rawLockers]);
+  // Server-side DISTINCT lists for the dropdowns (cached, refreshed rarely).
+  const facets = useLockerFacets();
+  const locations = facets.locations;
+  const keyLocks = facets.keyLocks;
+  const customStatuses = facets.customStatuses;
 
-  const locations = useMemo(() => {
-    if (!lockers) return [];
-    return Array.from(new Set(lockers.map((l) => l.location))).sort();
-  }, [lockers]);
+  const statusIn = useMemo(() => Array.from(colFilters.status ?? []), [colFilters.status]);
+  const locationIn = useMemo(() => Array.from(colFilters.loc ?? []), [colFilters.loc]);
 
-  const keyLocks = useMemo(() => {
-    if (!lockers) return [];
-    return Array.from(new Set(lockers.map((l) => (l.key_lock ?? "").trim()).filter(Boolean))).sort();
-  }, [lockers]);
+  const query: LockersQuery = useMemo(() => ({
+    page,
+    search: debouncedSearch,
+    statusFilter,
+    locFilter,
+    keyLockFilter,
+    missingNid: missingNidFilter,
+    missingBadge: missingBadgeFilter,
+    statusIn,
+    locationIn,
+    sortCol: sort?.col ?? "num",
+    sortDir: sort?.dir ?? "asc",
+  }), [page, debouncedSearch, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter, statusIn, locationIn, sort]);
 
-  // Pre-extract column values ONCE per data change. Without this, every
-  // keystroke in the search box re-created 9 fresh `lockers.map(...)` arrays
-  // inline in JSX — each column's <ColumnFilter> then re-ran its O(N) unique
-  // Set computation on every render. With thousands of lockers this is the
-  // dominant cause of search-input lag.
-  const columnValues = useMemo(() => {
-    const ls = lockers ?? [];
-    return {
-      num: ls.map((l) => l.locker_number),
-      loc: ls.map((l) => l.location),
-      key_lock: ls.map((l) => l.key_lock),
-      badge: ls.map((l) => l.badge_number),
-      nid: ls.map((l) => l.national_id),
-      emp: ls.map((l) => l.employee_name),
-      work: ls.map((l) => l.work_location),
-      status: ls.map((l) => l.status),
-      batch: ls.map((l) => formatBatchIntake(l.batch_intake)),
-    };
-  }, [lockers]);
+  const {
+    rows: pageRows, total, missingNid: missingNidCount, missingBadge: missingBadgeCount,
+    loading: rowsLoading, refreshing, stale, refresh,
+  } = useLockersPage(query, PAGE_SIZE);
 
-  // Excel-style per-column checkbox filters (keyed by column id in COLS).
-  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
-  const setColFilter = (k: string) => (next: Set<string>) =>
-    setColFilters((cur) => ({ ...cur, [k]: next }));
+  const filtered = pageRows ?? [];
 
-  // Click-to-sort state (single column at a time, cycles asc → desc → none).
-  const [sort, setSort] = useState<SortState>(null);
-  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
+  // Reset to the first page whenever the result set changes shape.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter, statusIn, locationIn, sort]);
 
   // Mirror current filter/sort state into the URL ?f= param for sharing.
   useEffect(() => {
@@ -262,93 +262,6 @@ function LockersPage() {
     setSort(null);
   };
 
-  // Distinct non-empty custom_status values across the dataset, used to extend
-  // the status filter dropdown with whatever admins have typed.
-  const customStatuses = useMemo(() => {
-    const s = new Set<string>();
-    for (const l of lockers ?? []) {
-      const c = (l.custom_status ?? "").trim();
-      if (c) s.add(c);
-    }
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
-  }, [lockers]);
-
-  const preQuickFiltered = useMemo(() => {
-    if (!lockers) return [];
-    const q = debouncedSearch.toLowerCase().trim();
-    return lockers.filter((l) => {
-      if (statusFilter !== "all") {
-        if (statusFilter.startsWith("custom:")) {
-          if ((l.custom_status ?? "").trim() !== statusFilter.slice("custom:".length)) return false;
-        } else if (l.status !== statusFilter || ((l.custom_status ?? "").trim() !== "")) {
-          // standard status filters exclude rows with a custom override set
-          return false;
-        }
-      }
-      if (locFilter !== "all" && l.location !== locFilter) return false;
-      if (keyLockFilter !== "all") {
-        const k = (l.key_lock ?? "").trim();
-        if (keyLockFilter === "__none__" ? k !== "" : k !== keyLockFilter) return false;
-      }
-      if (!passesColumnFilter(l.locker_number, colFilters.num ?? new Set())) return false;
-      if (!passesColumnFilter(l.location, colFilters.loc ?? new Set())) return false;
-      if (!passesColumnFilter(l.row_label, colFilters.row ?? new Set())) return false;
-      if (!passesColumnFilter(l.key_lock, colFilters.key_lock ?? new Set())) return false;
-      if (!passesColumnFilter(l.badge_number, colFilters.badge ?? new Set())) return false;
-      if (!passesColumnFilter(l.national_id, colFilters.nid ?? new Set())) return false;
-      if (!passesColumnFilter(l.employee_name, colFilters.emp ?? new Set())) return false;
-      if (!passesColumnFilter(l.work_location, colFilters.work ?? new Set())) return false;
-      if (!passesColumnFilter(l.status, colFilters.status ?? new Set())) return false;
-      if (!passesColumnFilter(formatBatchIntake(l.batch_intake), colFilters.batch ?? new Set())) return false;
-      if (!q) return true;
-      return (
-        l.locker_number.toLowerCase().includes(q) ||
-        l.employee_name?.toLowerCase().includes(q) ||
-        l.badge_number?.toLowerCase().includes(q) ||
-        l.key_lock?.toLowerCase().includes(q)
-      );
-    });
-  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters]);
-
-  const missingNidCount = useMemo(() => preQuickFiltered.filter((l) => l.status === "active" && (!l.national_id || l.national_id.trim() === "")).length, [preQuickFiltered]);
-  const missingBadgeCount = useMemo(() => preQuickFiltered.filter((l) => l.status === "active" && (!l.badge_number || l.badge_number.trim() === "")).length, [preQuickFiltered]);
-
-  const filtered = useMemo(() => {
-    let result = preQuickFiltered;
-    if (missingNidFilter) {
-      result = result.filter((l) => l.status === "active" && (!l.national_id || l.national_id.trim() === ""));
-    }
-    if (missingBadgeFilter) {
-      result = result.filter((l) => l.status === "active" && (!l.badge_number || l.badge_number.trim() === ""));
-    }
-
-    if (!sort) return result;
-    const accessors: Record<string, (l: Locker) => string | number | null | undefined> = {
-      num: (l) => l.locker_number,
-      loc: (l) => l.location,
-      row: (l) => l.row_label,
-      key_lock: (l) => l.key_lock,
-      badge: (l) => l.badge_number,
-      nid: (l) => l.national_id,
-      emp: (l) => l.employee_name,
-      work: (l) => l.work_location,
-      status: (l) => l.status,
-      batch: (l) => l.batch_intake,
-    };
-    const get = accessors[sort.col] ?? accessors.num;
-    const dir = sort.dir === "asc" ? 1 : -1;
-    const sorted = [...result].sort((a, b) => {
-      if (sort.col === "num") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
-      const av = get(a), bv = get(b);
-      const ae = av == null || av === "";
-      const be = bv == null || bv === "";
-      if (ae && be) return 0;
-      if (ae) return 1;
-      if (be) return -1;
-      return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
-    });
-    return sorted;
-  }, [preQuickFiltered, missingNidFilter, missingBadgeFilter, sort]);
 
 
   const canRevealNid = useCanRevealNationalId();
