@@ -1,8 +1,10 @@
-// Shared in-memory occupancy cache (per category) with localStorage warm
-// cache and realtime patching. Makes switching between Full/Staff/Shoe tabs
-// and re-visiting the Occupancy page instant.
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+// Occupancy row types + instant-update notifications.
+//
+// The Occupancy list is now server-paginated (see occupancy-page.ts), so this
+// module no longer holds a full client-side dataset or a localStorage cache.
+// It keeps the shared row type and the two entry points single-row flows use
+// (patch / invalidate), which now notify paginated views through row-events.
+import { emitRowsChanged, emitTableChanged } from "@/lib/row-events";
 
 export type OccCategory = "main" | "staff" | "shoe" | "hr";
 
@@ -28,276 +30,19 @@ export type OccupancyRow = {
   source_filename: string | null;
 };
 
-type State = { data: OccupancyRow[] | null; loading: boolean; refreshing: boolean };
-
-const states: Record<OccCategory, State> = {
-  main: { data: null, loading: false, refreshing: false },
-  staff: { data: null, loading: false, refreshing: false },
-  shoe: { data: null, loading: false, refreshing: false },
-  hr: { data: null, loading: false, refreshing: false },
-};
-
-const subs: Record<OccCategory, Set<(s: State) => void>> = {
-  main: new Set(), staff: new Set(), shoe: new Set(), hr: new Set(),
-};
-const fetchPromises: Partial<Record<OccCategory, Promise<void>>> = {};
-let channel: ReturnType<typeof supabase.channel> | null = null;
-let authListenerStarted = false;
-
-const STORAGE_PREFIX = "lockerops.occupancy.cache.v1.";
-// Warm cache validity — realtime patches keep state live, so trust storage longer.
-const MAX_AGE_MS = 30 * 60 * 1000;
-// Skip silent background refetch when a category was fetched within this window.
-const FRESH_WINDOW_MS = 60 * 1000;
-const lastFetchAt: Record<OccCategory, number> = { main: 0, staff: 0, shoe: 0, hr: 0 };
-function isFresh(cat: OccCategory) {
-  return lastFetchAt[cat] > 0 && Date.now() - lastFetchAt[cat] < FRESH_WINDOW_MS;
-}
-
-function emit(cat: OccCategory) {
-  for (const fn of subs[cat]) fn(states[cat]);
-}
-
-// Never persist full national_id to browser storage.
-function maskNidRow(r: OccupancyRow): OccupancyRow {
-  const nid = r.national_id;
-  if (!nid || /^\*+/.test(nid)) return r;
-  const masked = nid.length <= 4 ? "*".repeat(nid.length) : "******" + nid.slice(-4);
-  return { ...r, national_id: masked };
-}
-
-function writeStorage(cat: OccCategory, data: OccupancyRow[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_PREFIX + cat, JSON.stringify({ ts: Date.now(), data: data.map(maskNidRow) }));
-  } catch { /* ignore quota */ }
-}
-
-function clearStorage(cat?: OccCategory) {
-  if (typeof window === "undefined") return;
-  try {
-    if (cat) {
-      localStorage.removeItem(STORAGE_PREFIX + cat);
-      return;
-    }
-    for (const c of ["main", "staff", "shoe", "hr"] as OccCategory[]) {
-      localStorage.removeItem(STORAGE_PREFIX + c);
-    }
-  } catch { /* ignore storage errors */ }
-}
-
-function readStorage(cat: OccCategory): OccupancyRow[] | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_PREFIX + cat);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as { ts: number; data: OccupancyRow[] };
-    if (!p || typeof p.ts !== "number" || !Array.isArray(p.data)) return null;
-    if (Date.now() - p.ts > MAX_AGE_MS) return null;
-    return p.data;
-  } catch { return null; }
-}
-
-async function fetchCat(cat: OccCategory, silent = false): Promise<void> {
-  if (fetchPromises[cat]) return fetchPromises[cat];
-  states[cat] = { ...states[cat], loading: !silent, refreshing: true }; emit(cat);
-  const timerLabel = import.meta.env.DEV
-    ? `[perf] occupancy-cache fetchCat(${cat})${silent ? " (silent)" : ""}`
-    : null;
-  if (timerLabel) console.time(timerLabel);
-  fetchPromises[cat] = (async () => {
-    try {
-      const all: OccupancyRow[] = [];
-      let from = 0;
-      let failed = false;
-      while (true) {
-        // Query masked view so national_id is masked for non-authorised users.
-        const { data, error } = await (supabase as unknown as {
-          from: (t: string) => {
-            select: (c: string) => {
-              eq: (col: string, v: string) => {
-                range: (a: number, b: number) => Promise<{ data: OccupancyRow[] | null; error: { message: string } | null }>;
-              };
-            };
-          };
-        })
-          .from("locker_occupancy_masked")
-          .select("*")
-          .eq("category", cat)
-          .range(from, from + 999);
-        if (error || !data) {
-          failed = true;
-          if (error) console.error(`Failed to load ${cat} occupancy:`, error.message);
-          break;
-        }
-        all.push(...(data as OccupancyRow[]));
-        if (data.length < 1000) break;
-        from += 1000;
-      }
-      if (failed && all.length === 0) {
-        states[cat] = { data: null, loading: false, refreshing: false };
-        emit(cat);
-        return;
-      }
-      states[cat] = { data: all, loading: false, refreshing: false };
-
-      lastFetchAt[cat] = Date.now();
-      writeStorage(cat, all);
-      emit(cat);
-    } finally {
-      delete fetchPromises[cat];
-      if (timerLabel) console.timeEnd(timerLabel);
-    }
-  })();
-  return fetchPromises[cat];
-}
-
-/** Kick off occupancy cache warm-up for one or more categories without
- *  mounting a component. Reads warm cache from localStorage first, then
- *  triggers a silent background refresh. */
-export function prefetchOccupancy(cats: OccCategory[] = ["main", "staff", "shoe", "hr"]) {
-  if (typeof window === "undefined") return;
-  startAuthRefresh();
-  ensureChannel();
-  for (const cat of cats) {
-    if (states[cat].data || states[cat].loading || fetchPromises[cat]) continue;
-    const warm = readStorage(cat);
-    if (warm && warm.length > 0) {
-      states[cat] = { data: warm, loading: false, refreshing: false };
-
-      emit(cat);
-      if (!isFresh(cat)) fetchCat(cat, true);
-    } else {
-      fetchCat(cat, true);
-    }
-  }
-}
-
-
-async function refetchAfterAuthReady() {
-  const cats = ["main", "staff", "shoe", "hr"] as OccCategory[];
-  await Promise.all(cats.map((cat) => fetchPromises[cat]?.catch(() => {})));
-  await Promise.all(
-    cats
-      .filter((cat) => subs[cat].size > 0 || states[cat].data)
-      .map((cat) => fetchCat(cat, true)),
-  );
-}
-
-function startAuthRefresh() {
-  if (authListenerStarted || typeof window === "undefined") return;
-  authListenerStarted = true;
-
-  supabase.auth.getSession().then(({ data }) => {
-    if (data.session?.user) void refetchAfterAuthReady();
-  }).catch(() => {});
-
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "SIGNED_OUT") {
-      for (const cat of ["main", "staff", "shoe", "hr"] as OccCategory[]) {
-        states[cat] = { data: null, loading: false, refreshing: false };
-        emit(cat);
-      }
-      clearStorage();
-      return;
-    }
-
-    if (
-      session?.user
-      && (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED")
-    ) {
-      void refetchAfterAuthReady();
-    }
-  });
-}
-
-let pendingRefresh: Partial<Record<OccCategory, ReturnType<typeof setTimeout>>> = {};
-function scheduleRefresh(cat: OccCategory) {
-  if (pendingRefresh[cat]) clearTimeout(pendingRefresh[cat]);
-  pendingRefresh[cat] = setTimeout(() => { fetchCat(cat, true); }, 800);
-}
-
-function ensureChannel() {
-  if (channel) return;
-  channel = supabase
-    .channel("occupancy-shared-cache")
-    .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy" }, (payload) => {
-      const cat = ((payload.new as { category?: OccCategory })?.category
-        ?? (payload.old as { category?: OccCategory })?.category) as OccCategory | undefined;
-      if (cat && states[cat].data) scheduleRefresh(cat);
-    })
-    .subscribe();
-}
-
-/** Optimistically patch occupancy rows into the in-memory cache (upsert by
- *  id within their category) so the Occupancy page updates instantly. */
+/** Notify list views that specific occupancy rows changed, so the currently
+ *  visible page refreshes immediately. */
 export function patchOccupancyInCache(rows: OccupancyRow[]) {
-  const touched = new Set<OccCategory>();
-  for (const row of rows) {
-    const cat = row.category;
-    if (!cat || !states[cat]?.data) continue;
-    const cur = states[cat].data!;
-    const i = cur.findIndex((r) => r.id === row.id);
-    const next = cur.slice();
-    if (i >= 0) next[i] = { ...next[i], ...row };
-    else next.push(row);
-    states[cat] = { ...states[cat], data: next };
-    touched.add(cat);
-  }
-  for (const cat of touched) {
-    writeStorage(cat, states[cat].data!);
-    emit(cat);
-  }
+  const ids = rows.map((r) => r.id).filter(Boolean);
+  if (ids.length > 0) emitRowsChanged("locker_occupancy", ids);
 }
 
-export function invalidateOccupancyCache(cat?: OccCategory) {
-  const cats: OccCategory[] = cat ? [cat] : ["main", "staff", "shoe", "hr"];
-  for (const c of cats) {
-    // Silent refresh: keep existing rows visible and refetch in background,
-    // so the tab doesn't flash a loading skeleton after every edit.
-    lastFetchAt[c] = 0;
-    if (states[c].data) {
-      fetchCat(c, true);
-    } else {
-      fetchCat(c);
-    }
-  }
+/** Notify list views that an unknown/large set of occupancy rows changed. */
+export function invalidateOccupancyCache(_cat?: OccCategory) {
+  emitTableChanged("locker_occupancy");
 }
 
-export function useOccupancy(cat: OccCategory) {
-  const [s, set] = useState<State>(states[cat]);
-  useEffect(() => {
-    set(states[cat]);
-    subs[cat].add(set);
-    startAuthRefresh();
-    ensureChannel();
-    if (!states[cat].data && !states[cat].loading) {
-      const warm = readStorage(cat);
-      if (warm && warm.length > 0) {
-        states[cat] = { data: warm, loading: false, refreshing: false };
-        emit(cat);
-        if (!isFresh(cat)) fetchCat(cat, true);
-      } else {
-        fetchCat(cat);
-      }
-    }
-    return () => { subs[cat].delete(set); };
-  }, [cat]);
-  return { rows: s.data, loading: s.loading, refreshing: s.refreshing, refresh: () => invalidateOccupancyCache(cat) };
-
-}
-
-/** Returns true when any occupancy category is doing a silent background
- *  refresh. Cheap subscription for header/status indicators. */
+/** Kept for header indicators — paginated views own their own loading state. */
 export function useOccupancyRefreshing() {
-  const compute = () => (["main", "staff", "shoe", "hr"] as OccCategory[]).some((c) => states[c].refreshing);
-  const [r, set] = useState(compute);
-  useEffect(() => {
-    const fn = () => set(compute());
-    for (const c of ["main", "staff", "shoe", "hr"] as OccCategory[]) subs[c].add(fn);
-    fn();
-    return () => { for (const c of ["main", "staff", "shoe", "hr"] as OccCategory[]) subs[c].delete(fn); };
-  }, []);
-  return r;
+  return false;
 }
-
