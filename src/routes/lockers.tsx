@@ -112,7 +112,7 @@ export const Route = createFileRoute("/lockers")({
 function LockersPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
-  const { lockers: rawLockers } = useLockers();
+  const { lockers: rawLockers, refreshing: lockersRefreshing } = useLockers();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 180);
   const [statusFilter, setStatusFilter] = useState("all");
