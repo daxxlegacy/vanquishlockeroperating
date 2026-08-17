@@ -464,24 +464,34 @@ function LockersPage() {
           </div>
         )}
 
+        {stale && (
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-4 py-2 text-sm">
+            <span>New updates are available for other pages of this list.</span>
+            <Button size="sm" variant="outline" onClick={refresh}>Refresh</Button>
+          </div>
+        )}
+
         <Card className="mt-4 overflow-hidden">
-          {!lockers ? (
+          {rowsLoading ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : isMobile ? (
-            <MobileLockerList rows={filtered} onPick={setSelected} warnings={batchWarnings} />
+            <>
+              <MobileLockerList rows={filtered} onPick={setSelected} warnings={batchWarnings} />
+              <TablePagination page={page} pageSize={PAGE_SIZE} total={total} loading={refreshing} onPageChange={setPage} label="lockers" />
+            </>
           ) : (
             <div className="overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                  <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker #" values={columnValues.num} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
-                  <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={columnValues.loc} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
-                  <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Key Lock" values={columnValues.key_lock} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
-                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={columnValues.badge} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
-                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={columnValues.nid} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
-                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={columnValues.emp} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
-                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
-                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={columnValues.status} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
-                  <Th><SortHeader label="Batch" col="batch" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Batch" values={columnValues.batch} selected={colFilters.batch ?? new Set()} onChange={setColFilter("batch")} /></Th>
+                  <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={locations} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
+                  <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={LOCKER_STATUSES as unknown as string[]} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                  <Th><SortHeader label="Batch" col="batch" sort={sort} onCycle={onCycleSort} /></Th>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
@@ -495,12 +505,11 @@ function LockersPage() {
                   />
                 )}
               </div>
-              <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
-                Showing {filtered.length.toLocaleString()} locker{filtered.length === 1 ? "" : "s"}
-              </div>
+              <TablePagination page={page} pageSize={PAGE_SIZE} total={total} loading={refreshing} onPageChange={setPage} label="lockers" />
             </div>
           )}
         </Card>
+
       </main>
       <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
     </div>
