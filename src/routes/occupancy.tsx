@@ -234,7 +234,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
 
   const {
     rows: pageRows, total, stats, loading: loadingData, refreshing, stale, refresh,
+    error: pageError,
   } = useOccupancyPage(query, OCC_PAGE_SIZE);
+
 
   useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, categoryFilter, locFilter, sort]);
 
