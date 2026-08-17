@@ -542,7 +542,29 @@ function LockersPage() {
           </div>
         )}
 
-        <Card className="mt-4 overflow-hidden">
+        <div
+          aria-live="polite"
+          className="mt-4 flex items-center justify-between gap-3 flex-wrap text-sm"
+        >
+          <div className="font-medium">
+            {!lockers ? (
+              <span className="text-muted-foreground">Loading lockers…</span>
+            ) : (
+              <>
+                {lockers.length.toLocaleString()} locker{lockers.length === 1 ? "" : "s"} loaded
+                <span className="text-muted-foreground font-normal">
+                  {" · "}
+                  {filtered.length.toLocaleString()} shown
+                </span>
+              </>
+            )}
+          </div>
+          {lockers && lockersRefreshing && (
+            <span className="text-xs text-muted-foreground">Refreshing…</span>
+          )}
+        </div>
+
+        <Card className="mt-2 overflow-hidden">
           {!lockers ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : isMobile ? (
