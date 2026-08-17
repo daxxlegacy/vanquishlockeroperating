@@ -435,6 +435,13 @@ export function useLockers() {
     }
     return () => { subscribers.delete(set); };
   }, []);
-  return { lockers: s.data, loading: s.loading, refreshing: s.refreshing, refresh: invalidateLockersCache };
+  return {
+    lockers: s.data,
+    loading: s.loading,
+    refreshing: s.refreshing,
+    incomplete: s.incomplete,
+    refresh: invalidateLockersCache,
+  };
+
 
 }
