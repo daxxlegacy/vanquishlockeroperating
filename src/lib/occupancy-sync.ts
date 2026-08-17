@@ -162,14 +162,18 @@ export async function syncTerminationToOccupancy(
     }
 
     const ids = activeRows.map((r) => r.id);
-    await supabase
+    const { data: updated } = await supabase
       .from("locker_occupancy")
       .update({
         status: "Terminate",
         termination_date: terminationDateIso,
         remarks: reason ?? undefined,
       })
-      .in("id", ids);
+      .in("id", ids)
+      .select("*");
+    if (updated && updated.length > 0) {
+      patchOccupancyInCache(updated as unknown as OccupancyRow[]);
+    }
     return;
   }
 
@@ -194,7 +198,7 @@ export async function syncTerminationToOccupancy(
     return;
   }
 
-  await supabase.from("locker_occupancy").insert({
+  const { data: inserted } = await supabase.from("locker_occupancy").insert({
 
     category,
     locker_number: locker.locker_number,
@@ -210,7 +214,10 @@ export async function syncTerminationToOccupancy(
     termination_date: terminationDateIso,
     remarks: reason,
     source_filename: "manual-termination",
-  });
+  }).select("*");
+  if (inserted && inserted.length > 0) {
+    patchOccupancyInCache(inserted as unknown as OccupancyRow[]);
+  }
 }
 
 /**
