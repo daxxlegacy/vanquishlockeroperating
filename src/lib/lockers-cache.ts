@@ -278,6 +278,19 @@ export function patchLockersInCache(rows: Locker[]) {
   emit();
 }
 
+/** Optimistically remove a locker row from the in-memory cache (used after
+ *  a soft delete) so the row disappears from the UI immediately. */
+export function removeLockerFromCache(id: string) {
+  const cur = state.data;
+  if (!cur) return;
+  const next = cur.filter((l) => l.id !== id);
+  if (next.length === cur.length) return;
+  rebuildIndex(next);
+  state = { ...state, data: next };
+  writeToStorage(next);
+  emit();
+}
+
 export function getLockerById(id: string): Locker | null {
   const data = state.data;
   if (!data) return null;
