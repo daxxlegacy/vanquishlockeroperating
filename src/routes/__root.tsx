@@ -88,16 +88,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function CachePrewarm() {
-  const { user } = useAuth();
-  useEffect(() => {
-    if (!user) return;
-    // Warm both major caches as soon as the user is signed in so switching
-    // between /lockers, /occupancy, /spare-keys, /duplicates feels instant.
-    prefetchLockers();
-    prefetchOccupancy();
-  }, [user]);
+  // The list pages (Lockers, Occupancy, Spare Keys) now page through the
+  // database, so nothing needs to be pre-loaded at app start. Full-dataset
+  // screens (Reconcile, Bulk Update, Upload) warm their own cache on mount.
   return null;
 }
+
 
 function RootComponent() {
   return (
