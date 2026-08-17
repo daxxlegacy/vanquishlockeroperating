@@ -32,9 +32,12 @@ import {
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
 import { deriveOccCategoryOr } from "@/lib/locker-category";
-import { useOccupancy, invalidateOccupancyCache, type OccupancyRow, type OccCategory } from "@/lib/occupancy-cache";
-
-import { useLockers } from "@/lib/lockers-cache";
+import { invalidateOccupancyCache, type OccupancyRow, type OccCategory } from "@/lib/occupancy-cache";
+import {
+  useOccupancyPage, useOccupancyLocations, fetchAllMatchingOccupancy,
+  OCC_PAGE_SIZE, type OccupancyQuery, type OccPageRow,
+} from "@/lib/occupancy-page";
+import { TablePagination } from "@/components/TablePagination";
 import { useDebounced } from "@/hooks/use-debounced";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -108,17 +111,13 @@ function OccupancyPage() {
 }
 
 function CombinedView({ isAdmin }: { isAdmin: boolean }) {
-  const { rows: mainRows } = useOccupancy("main");
-  const { rows: staffRows } = useOccupancy("staff");
-  const { rows: shoeRows } = useOccupancy("shoe");
-  const { lockers } = useLockers();
-
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 180);
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | OccCategory>("all");
   const [locFilter, setLocFilter] = useState("all");
-  
+  const [page, setPage] = useState(1);
+
   const [importing, setImporting] = useState(false);
   const [importCat, setImportCat] = useState<OccCategory | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
@@ -173,12 +172,40 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [reasons, setReasons] = useState<Map<string, string>>(new Map());
+
+  
+
+  // ---------- Server-side paged data ----------
+  const locOpts = useOccupancyLocations();
+
+  const query: OccupancyQuery = useMemo(() => ({
+    page,
+    search: debouncedSearch,
+    statusFilter,
+    categoryFilter,
+    locFilter,
+    sortCol: sort?.col ?? "locker",
+    sortDir: sort?.dir ?? "asc",
+  }), [page, debouncedSearch, statusFilter, categoryFilter, locFilter, sort]);
+
+  const {
+    rows: pageRows, total, stats, loading: loadingData, refreshing, stale, refresh,
+  } = useOccupancyPage(query, OCC_PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, categoryFilter, locFilter, sort]);
+
+  const filtered: Row[] = useMemo(() => (pageRows ?? []) as unknown as Row[], [pageRows]);
+
+  // Termination reasons only for the lockers visible on this page.
   useEffect(() => {
+    const nums = [...new Set(filtered.map((r) => r.locker_number))];
+    if (nums.length === 0) { setReasons(new Map()); return; }
     let cancelled = false;
     (async () => {
       const { data: terms } = await supabase
         .from("terminations")
         .select("locker_number,reason,termination_date")
+        .in("locker_number", nums)
         .order("termination_date", { ascending: false });
       if (cancelled) return;
       const map = new Map<string, string>();
@@ -189,188 +216,21 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       setReasons(map);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [filtered]);
 
-  
-
-  // ---------- Merge data ----------
-  // Combine occupancy rows from all three categories, then overlay the lockers
-  // table so every locker number appears even when it has no occupancy record.
-  const allRows: Row[] = useMemo(() => {
-    const occ: Row[] = [];
-    for (const r of mainRows ?? []) occ.push(r);
-    for (const r of staffRows ?? []) occ.push(r);
-    for (const r of shoeRows ?? []) occ.push(r);
-
-    const seenLockers = new Set(occ.map((r) => r.locker_number));
-    const synth: Row[] = [];
-    for (const l of lockers ?? []) {
-      if (seenLockers.has(l.locker_number)) continue;
-      synth.push(syntheticRowFromLocker(l));
-    }
-    return [...occ, ...synth];
-  }, [mainRows, staffRows, shoeRows, lockers]);
-
-  const loadingData = !mainRows || !staffRows || !shoeRows || !lockers;
-
-  // Distinct locations from merged dataset
-  const locOpts = useMemo(() => {
-    const l = new Set<string>();
-    for (const x of allRows) {
-      if (x.locker_location_by_row) l.add(x.locker_location_by_row);
-    }
-    return [...l].sort();
-  }, [allRows]);
-
-  const columnValues = useMemo(() => {
-    return {
-      locker: allRows.map((r) => r.locker_number),
-      status: allRows.map((r) => r.status),
-      badge: allRows.map((r) => r.badge_number),
-      emp: allRows.map((r) => r.employee_name),
-      nid: allRows.map((r) => r.national_id),
-      intake: allRows.map((r) => fmtDate(r.batch_intake_date)),
-      term: allRows.map((r) => fmtDate(r.termination_date)),
-      work: allRows.map((r) => r.work_location),
-      cat: allRows.map((r) => r.category),
-    };
-  }, [allRows]);
-
-  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
-  const setColFilter = (k: string) => (next: Set<string>) =>
-    setColFilters((cur) => ({ ...cur, [k]: next }));
-
-  const [sort, setSort] = useState<SortState>(null);
-  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
-
-  const urlKey = "f_occupancy";
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    const s = decodeFilterState(readFilterParam(urlKey));
-    if (s) {
-      setSearch(s.q ?? "");
-      const x = s.x ?? {};
-      setStatusFilter(x.status ?? "all");
-      setCategoryFilter((x.cat as "all" | OccCategory) ?? "all");
-      setLocFilter(x.loc ?? "all");
-      setColFilters(objToColFilters(s.cf));
-      setSort(s.sort ?? null);
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const encoded = encodeFilterState({
-      cf: colFiltersToObj(colFilters),
-      q: search,
-      sort,
-      x: { status: statusFilter, cat: categoryFilter, loc: locFilter },
-    });
-    writeFilterParam(encoded, urlKey);
-  }, [hydrated, colFilters, search, sort, statusFilter, categoryFilter, locFilter]);
-
-  const hasAnyFilter =
-    !!search ||
-    statusFilter !== "all" ||
-    categoryFilter !== "all" ||
-    locFilter !== "all" ||
-    sort !== null ||
-    Object.values(colFilters).some((s) => s.size > 0);
-
-  const clearAllFilters = () => {
-    setSearch(""); setStatusFilter("all"); setCategoryFilter("all"); setLocFilter("all");
-    setColFilters({}); setSort(null);
-  };
-
-  const filtered = useMemo(() => {
-    const q = debouncedSearch.toLowerCase().trim();
-    const f = allRows.filter((r) => {
-      const st = (r.status ?? "").toLowerCase();
-      if (statusFilter === "active" && st !== "active") return false;
-      if (statusFilter === "terminate" && st !== "terminate" && st !== "terminated") return false;
-      if (statusFilter === "vacant" && st !== "" && st !== "vacant" && st !== "empty") return false;
-      if (categoryFilter !== "all" && r.category !== categoryFilter) return false;
-      if (locFilter !== "all" && (r.locker_location_by_row ?? "") !== locFilter) return false;
-      if (!passesColumnFilter(r.locker_number, colFilters.locker ?? new Set())) return false;
-      if (!passesColumnFilter(r.status, colFilters.status ?? new Set())) return false;
-      if (!passesColumnFilter(r.badge_number, colFilters.badge ?? new Set())) return false;
-      if (!passesColumnFilter(r.employee_name, colFilters.emp ?? new Set())) return false;
-      if (!passesColumnFilter(r.national_id, colFilters.nid ?? new Set())) return false;
-      if (!passesColumnFilter(fmtDate(r.batch_intake_date), colFilters.intake ?? new Set())) return false;
-      if (!passesColumnFilter(fmtDate(r.termination_date), colFilters.term ?? new Set())) return false;
-      if (!passesColumnFilter(r.work_location, colFilters.work ?? new Set())) return false;
-      if (!passesColumnFilter(r.category, colFilters.cat ?? new Set())) return false;
-      if (!q) return true;
-      return (
-        r.locker_number.toLowerCase().includes(q) ||
-        (r.employee_name ?? "").toLowerCase().includes(q) ||
-        (r.badge_number ?? "").toLowerCase().includes(q) ||
-        (r.national_id ?? "").toLowerCase().includes(q) ||
-        (r.work_location ?? "").toLowerCase().includes(q) ||
-        (r.locker_row ?? "").toLowerCase().includes(q) ||
-        (r.locker_location_by_row ?? "").toLowerCase().includes(q)
-      );
-    });
-    if (sort) {
-      const accessors: Record<string, (r: Row) => string | null | undefined> = {
-        locker: (r) => r.locker_number,
-        status: (r) => r.status,
-        badge: (r) => r.badge_number,
-        emp: (r) => r.employee_name,
-        nid: (r) => r.national_id,
-        intake: (r) => r.batch_intake_date,
-        term: (r) => r.termination_date,
-        work: (r) => r.work_location,
-        cat: (r) => r.category,
-      };
-      const get = accessors[sort.col] ?? accessors.locker;
-      const dir = sort.dir === "asc" ? 1 : -1;
-      f.sort((a, b) => {
-        if (sort.col === "locker") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
-        const av = get(a), bv = get(b);
-        const ae = av == null || av === "";
-        const be = bv == null || bv === "";
-        if (ae && be) return 0;
-        if (ae) return 1;
-        if (be) return -1;
-        return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
-      });
-    } else {
-      f.sort((a, b) => {
-        const c = compareLockerNumbers(a.locker_number, b.locker_number);
-        if (c !== 0) return c;
-        const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
-        const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
-        if (aActive !== bActive) return aActive - bActive;
-        return (b.termination_date ?? "").localeCompare(a.termination_date ?? "");
-      });
-    }
-    return f;
-  }, [allRows, debouncedSearch, statusFilter, categoryFilter, locFilter, colFilters, sort]);
-
-  // Group by locker number — limit to 1 active + 1 most-recent terminate
+  // The server already returns at most 1 active + 1 most-recent terminate per
+  // locker, ordered by locker; just group consecutive rows for rendering.
   const grouped = useMemo(() => {
-    const m = new Map<string, Row[]>();
+    const out: [string, Row[]][] = [];
+    const seen = new Map<string, Row[]>();
     for (const r of filtered) {
-      const arr = m.get(r.locker_number) ?? [];
-      arr.push(r);
-      m.set(r.locker_number, arr);
+      const arr = seen.get(r.locker_number);
+      if (arr) { arr.push(r); continue; }
+      const fresh = [r];
+      seen.set(r.locker_number, fresh);
+      out.push([r.locker_number, fresh]);
     }
-    const trimmed: [string, Row[]][] = [];
-    for (const [k, arr] of m.entries()) {
-      const active = arr.find((r) => (r.status ?? "").toLowerCase() === "active");
-      const terminate = arr.find((r) => {
-        const s = (r.status ?? "").toLowerCase();
-        return s === "terminate" || s === "terminated";
-      });
-      const out: Row[] = [];
-      if (active) out.push(active);
-      if (terminate) out.push(terminate);
-      if (out.length === 0) out.push(arr[0]);
-      trimmed.push([k, out]);
-    }
-    return trimmed;
+    return out;
   }, [filtered]);
 
   const visible = grouped;
@@ -386,25 +246,15 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     return out;
   }, [visible, reasons]);
 
-  const stats = useMemo(() => {
-    const lockerNos = new Set<string>();
-    let active = 0, terminated = 0;
-    for (const r of allRows) {
-      lockerNos.add(r.locker_number);
-      const s = (r.status ?? "").toLowerCase();
-      if (s === "active") active++;
-      else if (s === "terminate" || s === "terminated") terminated++;
-    }
-    return { total: allRows.length, uniqueLockers: lockerNos.size, active, terminated };
-  }, [allRows]);
-
   // ---------- Exports ----------
   const canRevealNid = useCanRevealNationalId();
   const buildExportRows = async () => {
+    // Exports cover every matching locker, streamed from the server in chunks.
+    const all = (await fetchAllMatchingOccupancy(query)) as unknown as Row[];
     // Only rows that map to a real occupancy record (not synthetic locker rows) have valid ids for reveal.
-    const realIds = filtered.filter((r) => !r.__synthetic).map((r) => r.id);
+    const realIds = all.filter((r) => !r.__synthetic).map((r) => r.id);
     const nidMap = canRevealNid ? await fetchFullNationalIds("locker_occupancy", realIds) : new Map<string, string>();
-    return filtered.map((r) => ({
+    return all.map((r) => ({
       "Locker Number": r.locker_number,
       "Status": r.status ?? "",
       "Badge Number": r.badge_number ?? "",
@@ -430,7 +280,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   };
 
   const exportCsv = async () => {
-    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (total === 0) { toast.error("Nothing to export with the current filters"); return; }
     if (!confirmNidExport()) return;
     const rows = await buildExportRows();
     downloadCsv(`occupancy${filterTag()}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
@@ -438,7 +288,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   };
 
   const exportXlsx = async () => {
-    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (total === 0) { toast.error("Nothing to export with the current filters"); return; }
     if (!confirmNidExport()) return;
     const rows = await buildExportRows();
     const XLSX = await getXLSX();
@@ -639,7 +489,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     <div className="space-y-4 pt-2">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <StatCard label="Total Rows" value={stats.total} />
-        <StatCard label="Unique Lockers" value={stats.uniqueLockers} />
+        <StatCard label="Unique Lockers" value={stats.unique_lockers} />
         <StatCard label="Active" value={stats.active} tone="success" />
         <StatCard label="Terminated" value={stats.terminated} tone="muted" />
       </div>
@@ -746,10 +596,10 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
             </Button>
           </>
         )}
-        <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
+        <Button variant="outline" onClick={exportCsv} disabled={total === 0}>
           <Download className="h-4 w-4 mr-1.5" /> Export CSV
         </Button>
-        <Button variant="outline" onClick={exportXlsx} disabled={filtered.length === 0}>
+        <Button variant="outline" onClick={exportXlsx} disabled={total === 0}>
           <Download className="h-4 w-4 mr-1.5" /> Export Excel
         </Button>
         <Button
@@ -767,7 +617,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
           <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
         ) : grouped.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
-            {allRows.length === 0
+            {total === 0 && !hasAnyFilter
               ? "No data yet. Click \"Import Excel\" and upload your master listing workbook."
               : "No rows match these filters."}
           </div>
@@ -776,15 +626,15 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
             <div className="hidden sm:block overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                  <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker" values={columnValues.locker} selected={colFilters.locker ?? new Set()} onChange={setColFilter("locker")} /></Th>
-                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={columnValues.status} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
-                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={columnValues.badge} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
-                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={columnValues.emp} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
-                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={columnValues.nid} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
-                  <Th><SortHeader label="Intake" col="intake" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Intake" values={columnValues.intake} selected={colFilters.intake ?? new Set()} onChange={setColFilter("intake")} /></Th>
-                  <Th><SortHeader label="Terminated" col="term" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Terminated" values={columnValues.term} selected={colFilters.term ?? new Set()} onChange={setColFilter("term")} /></Th>
+                  <Th><SortHeader label="Locker" col="locker" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Intake" col="intake" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Terminated" col="term" sort={sort} onCycle={onCycleSort} /></Th>
                   <Th>Reason</Th>
-                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
+                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /></Th>
                   <Th>History</Th>
                   <Th>{isAdmin ? "Actions" : ""}</Th>
                 </div>
@@ -802,27 +652,12 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
               </div>
             </div>
             <div className="sm:hidden divide-y">
-              {(() => {
-                const MOBILE_CAP = 150;
-                const shown = visible.slice(0, MOBILE_CAP);
-                return (
-                  <>
-                    {shown.map(([lockerNumber, group]) => (
-                      <MobileLockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
-                    ))}
-                    {visible.length > MOBILE_CAP && (
-                      <div className="p-3 text-center text-xs text-muted-foreground">
-                        Showing first {MOBILE_CAP} of {visible.length.toLocaleString()} lockers. Narrow the filters to see more.
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+              {visible.map(([lockerNumber, group]) => (
+                <MobileLockerGroup key={lockerNumber} lockerNumber={lockerNumber} group={group} reason={reasons.get(lockerNumber) ?? null} onViewHistory={() => setHistoryFor(lockerNumber)} />
+              ))}
             </div>
 
-            <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
-              Showing {grouped.length.toLocaleString()} locker{grouped.length === 1 ? "" : "s"} ({filtered.length.toLocaleString()} rows)
-            </div>
+            <TablePagination page={page} pageSize={OCC_PAGE_SIZE} total={total} loading={refreshing} onPageChange={setPage} label="lockers" />
           </>
         )}
       </Card>
