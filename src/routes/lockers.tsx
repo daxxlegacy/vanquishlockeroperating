@@ -22,18 +22,23 @@ import { Search, Plus, Download, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import { getXLSX } from "@/lib/xlsx-lazy";
 import { List, type RowComponentProps } from "react-window";
-import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
+import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
 import { NationalIdCell } from "@/components/NationalIdCell";
 import { maskNationalId, fullyMaskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDialog";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
-import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { invalidateLockersCache } from "@/lib/lockers-cache";
+import {
+  useLockersPage, useLockerFacets, invalidateLockerFacets, fetchAllMatchingLockers,
+  PAGE_SIZE, type LockersQuery,
+} from "@/lib/lockers-page";
+import { TablePagination } from "@/components/TablePagination";
 import { useDebounced } from "@/hooks/use-debounced";
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import { AlertTriangle } from "lucide-react";
-import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
+import { ColumnFilter } from "@/components/ColumnFilter";
 import { SortHeader, type SortState } from "@/components/SortHeader";
 import {
   encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
@@ -112,9 +117,8 @@ export const Route = createFileRoute("/lockers")({
 function LockersPage() {
   const { user, role, loading } = useAuth();
   const navigate = useNavigate();
-  const { lockers: rawLockers } = useLockers();
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounced(search, 180);
+  const debouncedSearch = useDebounced(search, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [locFilter, setLocFilter] = useState("all");
   const [keyLockFilter, setKeyLockFilter] = useState("all");
@@ -123,13 +127,24 @@ function LockersPage() {
   const [filtersHydrated, setFiltersHydrated] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  
-  
+  const [page, setPage] = useState(1);
+
+
   const [addOpen, setAddOpen] = useState(false);
   const isMobile = useIsMobile();
   const { set: batchWarnings, store: batchWarningStore } = useBatchIntakeWarningSet();
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [user, loading, navigate]);
+
+  // Excel-style per-column checkbox filters — only for low-cardinality columns
+  // whose values come from server-side DISTINCT facets.
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+  const setColFilter = (k: string) => (next: Set<string>) =>
+    setColFilters((cur) => ({ ...cur, [k]: next }));
+
+  // Click-to-sort state (single column at a time, cycles asc → desc → none).
+  const [sort, setSort] = useState<SortState>(null);
+  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
 
   useEffect(() => {
     // URL takes precedence over localStorage so shared links work.
@@ -161,50 +176,40 @@ function LockersPage() {
     writeLockerFilters({ search, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter });
   }, [filtersHydrated, search, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter]);
 
-  // Sort once when underlying data changes (avoid re-sorting on every render)
-  const lockers = useMemo(() => {
-    if (!rawLockers) return null;
-    return [...rawLockers].sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
-  }, [rawLockers]);
+  // Server-side DISTINCT lists for the dropdowns (cached, refreshed rarely).
+  const facets = useLockerFacets();
+  const locations = facets.locations;
+  const keyLocks = facets.keyLocks;
+  const customStatuses = facets.customStatuses;
 
-  const locations = useMemo(() => {
-    if (!lockers) return [];
-    return Array.from(new Set(lockers.map((l) => l.location))).sort();
-  }, [lockers]);
+  const statusIn = useMemo(() => Array.from(colFilters.status ?? []), [colFilters.status]);
+  const locationIn = useMemo(() => Array.from(colFilters.loc ?? []), [colFilters.loc]);
 
-  const keyLocks = useMemo(() => {
-    if (!lockers) return [];
-    return Array.from(new Set(lockers.map((l) => (l.key_lock ?? "").trim()).filter(Boolean))).sort();
-  }, [lockers]);
+  const query: LockersQuery = useMemo(() => ({
+    page,
+    search: debouncedSearch,
+    statusFilter,
+    locFilter,
+    keyLockFilter,
+    missingNid: missingNidFilter,
+    missingBadge: missingBadgeFilter,
+    statusIn,
+    locationIn,
+    sortCol: sort?.col ?? "num",
+    sortDir: sort?.dir ?? "asc",
+  }), [page, debouncedSearch, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter, statusIn, locationIn, sort]);
 
-  // Pre-extract column values ONCE per data change. Without this, every
-  // keystroke in the search box re-created 9 fresh `lockers.map(...)` arrays
-  // inline in JSX — each column's <ColumnFilter> then re-ran its O(N) unique
-  // Set computation on every render. With thousands of lockers this is the
-  // dominant cause of search-input lag.
-  const columnValues = useMemo(() => {
-    const ls = lockers ?? [];
-    return {
-      num: ls.map((l) => l.locker_number),
-      loc: ls.map((l) => l.location),
-      key_lock: ls.map((l) => l.key_lock),
-      badge: ls.map((l) => l.badge_number),
-      nid: ls.map((l) => l.national_id),
-      emp: ls.map((l) => l.employee_name),
-      work: ls.map((l) => l.work_location),
-      status: ls.map((l) => l.status),
-      batch: ls.map((l) => formatBatchIntake(l.batch_intake)),
-    };
-  }, [lockers]);
+  const {
+    rows: pageRows, total, missingNid: missingNidCount, missingBadge: missingBadgeCount,
+    loading: rowsLoading, refreshing, stale, refresh,
+  } = useLockersPage(query, PAGE_SIZE);
 
-  // Excel-style per-column checkbox filters (keyed by column id in COLS).
-  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
-  const setColFilter = (k: string) => (next: Set<string>) =>
-    setColFilters((cur) => ({ ...cur, [k]: next }));
+  const filtered = pageRows ?? [];
 
-  // Click-to-sort state (single column at a time, cycles asc → desc → none).
-  const [sort, setSort] = useState<SortState>(null);
-  const onCycleSort = (col: string) => setSort((cur) => cycleSort(cur, col));
+  // Reset to the first page whenever the result set changes shape.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, locFilter, keyLockFilter, missingNidFilter, missingBadgeFilter, statusIn, locationIn, sort]);
 
   // Mirror current filter/sort state into the URL ?f= param for sharing.
   useEffect(() => {
@@ -257,100 +262,16 @@ function LockersPage() {
     setSort(null);
   };
 
-  // Distinct non-empty custom_status values across the dataset, used to extend
-  // the status filter dropdown with whatever admins have typed.
-  const customStatuses = useMemo(() => {
-    const s = new Set<string>();
-    for (const l of lockers ?? []) {
-      const c = (l.custom_status ?? "").trim();
-      if (c) s.add(c);
-    }
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
-  }, [lockers]);
-
-  const preQuickFiltered = useMemo(() => {
-    if (!lockers) return [];
-    const q = debouncedSearch.toLowerCase().trim();
-    return lockers.filter((l) => {
-      if (statusFilter !== "all") {
-        if (statusFilter.startsWith("custom:")) {
-          if ((l.custom_status ?? "").trim() !== statusFilter.slice("custom:".length)) return false;
-        } else if (l.status !== statusFilter || ((l.custom_status ?? "").trim() !== "")) {
-          // standard status filters exclude rows with a custom override set
-          return false;
-        }
-      }
-      if (locFilter !== "all" && l.location !== locFilter) return false;
-      if (keyLockFilter !== "all") {
-        const k = (l.key_lock ?? "").trim();
-        if (keyLockFilter === "__none__" ? k !== "" : k !== keyLockFilter) return false;
-      }
-      if (!passesColumnFilter(l.locker_number, colFilters.num ?? new Set())) return false;
-      if (!passesColumnFilter(l.location, colFilters.loc ?? new Set())) return false;
-      if (!passesColumnFilter(l.row_label, colFilters.row ?? new Set())) return false;
-      if (!passesColumnFilter(l.key_lock, colFilters.key_lock ?? new Set())) return false;
-      if (!passesColumnFilter(l.badge_number, colFilters.badge ?? new Set())) return false;
-      if (!passesColumnFilter(l.national_id, colFilters.nid ?? new Set())) return false;
-      if (!passesColumnFilter(l.employee_name, colFilters.emp ?? new Set())) return false;
-      if (!passesColumnFilter(l.work_location, colFilters.work ?? new Set())) return false;
-      if (!passesColumnFilter(l.status, colFilters.status ?? new Set())) return false;
-      if (!passesColumnFilter(formatBatchIntake(l.batch_intake), colFilters.batch ?? new Set())) return false;
-      if (!q) return true;
-      return (
-        l.locker_number.toLowerCase().includes(q) ||
-        l.employee_name?.toLowerCase().includes(q) ||
-        l.badge_number?.toLowerCase().includes(q) ||
-        l.key_lock?.toLowerCase().includes(q)
-      );
-    });
-  }, [lockers, debouncedSearch, statusFilter, locFilter, keyLockFilter, colFilters]);
-
-  const missingNidCount = useMemo(() => preQuickFiltered.filter((l) => l.status === "active" && (!l.national_id || l.national_id.trim() === "")).length, [preQuickFiltered]);
-  const missingBadgeCount = useMemo(() => preQuickFiltered.filter((l) => l.status === "active" && (!l.badge_number || l.badge_number.trim() === "")).length, [preQuickFiltered]);
-
-  const filtered = useMemo(() => {
-    let result = preQuickFiltered;
-    if (missingNidFilter) {
-      result = result.filter((l) => l.status === "active" && (!l.national_id || l.national_id.trim() === ""));
-    }
-    if (missingBadgeFilter) {
-      result = result.filter((l) => l.status === "active" && (!l.badge_number || l.badge_number.trim() === ""));
-    }
-
-    if (!sort) return result;
-    const accessors: Record<string, (l: Locker) => string | number | null | undefined> = {
-      num: (l) => l.locker_number,
-      loc: (l) => l.location,
-      row: (l) => l.row_label,
-      key_lock: (l) => l.key_lock,
-      badge: (l) => l.badge_number,
-      nid: (l) => l.national_id,
-      emp: (l) => l.employee_name,
-      work: (l) => l.work_location,
-      status: (l) => l.status,
-      batch: (l) => l.batch_intake,
-    };
-    const get = accessors[sort.col] ?? accessors.num;
-    const dir = sort.dir === "asc" ? 1 : -1;
-    const sorted = [...result].sort((a, b) => {
-      if (sort.col === "num") return compareLockerNumbers(a.locker_number, b.locker_number) * dir;
-      const av = get(a), bv = get(b);
-      const ae = av == null || av === "";
-      const be = bv == null || bv === "";
-      if (ae && be) return 0;
-      if (ae) return 1;
-      if (be) return -1;
-      return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) * dir;
-    });
-    return sorted;
-  }, [preQuickFiltered, missingNidFilter, missingBadgeFilter, sort]);
 
 
   const canRevealNid = useCanRevealNationalId();
 
   const buildExportRows = async () => {
-    const nidMap = canRevealNid ? await fetchFullNationalIds("lockers", filtered.map((l) => l.id)) : new Map<string, string>();
-    return filtered.map((l) => ({
+    // Exports must cover every matching row, not just the current page — stream
+    // them from the server in chunks and discard afterwards.
+    const all = await fetchAllMatchingLockers(query);
+    const nidMap = canRevealNid ? await fetchFullNationalIds("lockers", all.map((l) => l.id)) : new Map<string, string>();
+    return all.map((l) => ({
       "Locker Number": l.locker_number,
       "Location": l.location,
       "Key Lock": l.key_lock ?? "",
@@ -365,6 +286,7 @@ function LockersPage() {
     }));
   };
 
+
   const filterTag = () => {
     const parts: string[] = [];
     if (statusFilter !== "all") parts.push(statusFilter);
@@ -374,7 +296,7 @@ function LockersPage() {
   };
 
   const exportCsv = async () => {
-    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (total === 0) { toast.error("Nothing to export with the current filters"); return; }
     if (!confirmNidExport()) return;
     const rows = await buildExportRows();
     downloadCsv(`lockers${filterTag()}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
@@ -382,7 +304,7 @@ function LockersPage() {
   };
 
   const exportXlsx = async () => {
-    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (total === 0) { toast.error("Nothing to export with the current filters"); return; }
     if (!confirmNidExport()) return;
     const rows = await buildExportRows();
     const XLSX = await getXLSX();
@@ -428,7 +350,7 @@ function LockersPage() {
           <div>
             <h1 className="font-display text-3xl font-bold">Lockers</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {lockers?.length.toLocaleString() ?? "…"} total · {filtered.length.toLocaleString()} match
+              {facets.total.toLocaleString()} total · {total.toLocaleString()} match
             </p>
           </div>
           {role === "admin" && (
@@ -439,14 +361,14 @@ function LockersPage() {
                 </DialogTrigger>
                 <AddLockerDialog
                   onClose={() => setAddOpen(false)}
-                  onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
+                  onCreated={() => { setAddOpen(false); invalidateLockersCache(); invalidateLockerFacets(); }}
                   existingLocations={locations}
                 />
               </Dialog>
-              <DeleteLockerByNumberDialog onDeleted={() => invalidateLockersCache()} />
+              <DeleteLockerByNumberDialog onDeleted={() => { invalidateLockersCache(); invalidateLockerFacets(); }} />
               <DeleteLocationDialog
                 locations={locations}
-                onDeleted={() => invalidateLockersCache()}
+                onDeleted={() => { invalidateLockersCache(); invalidateLockerFacets(); }}
               />
             </div>
           )}
@@ -508,7 +430,7 @@ function LockersPage() {
           {role === "admin" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={filtered.length === 0}>
+                <Button variant="outline" disabled={total === 0}>
                   <Download className="h-4 w-4 mr-1.5" /> Export
                 </Button>
               </DropdownMenuTrigger>
@@ -542,24 +464,34 @@ function LockersPage() {
           </div>
         )}
 
+        {stale && (
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-4 py-2 text-sm">
+            <span>New updates are available for other pages of this list.</span>
+            <Button size="sm" variant="outline" onClick={refresh}>Refresh</Button>
+          </div>
+        )}
+
         <Card className="mt-4 overflow-hidden">
-          {!lockers ? (
+          {rowsLoading ? (
             <div className="p-6 space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : isMobile ? (
-            <MobileLockerList rows={filtered} onPick={setSelected} warnings={batchWarnings} />
+            <>
+              <MobileLockerList rows={filtered} onPick={setSelected} warnings={batchWarnings} />
+              <TablePagination page={page} pageSize={PAGE_SIZE} total={total} loading={refreshing} onPageChange={setPage} label="lockers" />
+            </>
           ) : (
             <div className="overflow-x-auto">
               <div style={{ minWidth: GRID_TOTAL_WIDTH }}>
                 <div className="bg-muted/50 grid text-left text-xs uppercase font-semibold tracking-wide text-muted-foreground" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                  <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Locker #" values={columnValues.num} selected={colFilters.num ?? new Set()} onChange={setColFilter("num")} /></Th>
-                  <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={columnValues.loc} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
-                  <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Key Lock" values={columnValues.key_lock} selected={colFilters.key_lock ?? new Set()} onChange={setColFilter("key_lock")} /></Th>
-                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Badge" values={columnValues.badge} selected={colFilters.badge ?? new Set()} onChange={setColFilter("badge")} /></Th>
-                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="National ID" values={columnValues.nid} selected={colFilters.nid ?? new Set()} onChange={setColFilter("nid")} /></Th>
-                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Employee" values={columnValues.emp} selected={colFilters.emp ?? new Set()} onChange={setColFilter("emp")} /></Th>
-                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Work Location" values={columnValues.work} selected={colFilters.work ?? new Set()} onChange={setColFilter("work")} /></Th>
-                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={columnValues.status} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
-                  <Th><SortHeader label="Batch" col="batch" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Batch" values={columnValues.batch} selected={colFilters.batch ?? new Set()} onChange={setColFilter("batch")} /></Th>
+                  <Th><SortHeader label="Locker #" col="num" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Location" col="loc" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Location" values={locations} selected={colFilters.loc ?? new Set()} onChange={setColFilter("loc")} /></Th>
+                  <Th><SortHeader label="Key Lock" col="key_lock" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Badge" col="badge" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="National ID" col="nid" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Employee" col="emp" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Work Location" col="work" sort={sort} onCycle={onCycleSort} /></Th>
+                  <Th><SortHeader label="Status" col="status" sort={sort} onCycle={onCycleSort} /> <ColumnFilter label="Status" values={LOCKER_STATUSES as unknown as string[]} selected={colFilters.status ?? new Set()} onChange={setColFilter("status")} /></Th>
+                  <Th><SortHeader label="Batch" col="batch" sort={sort} onCycle={onCycleSort} /></Th>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="px-3 py-12 text-center text-muted-foreground text-sm">No lockers match these filters.</div>
@@ -573,12 +505,11 @@ function LockersPage() {
                   />
                 )}
               </div>
-              <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
-                Showing {filtered.length.toLocaleString()} locker{filtered.length === 1 ? "" : "s"}
-              </div>
+              <TablePagination page={page} pageSize={PAGE_SIZE} total={total} loading={refreshing} onPageChange={setPage} label="lockers" />
             </div>
           )}
         </Card>
+
       </main>
       <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} />
     </div>

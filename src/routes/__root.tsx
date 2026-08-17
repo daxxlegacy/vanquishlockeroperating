@@ -1,9 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { AuthProvider, useAuth } from "@/lib/auth";
+import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
-import { prefetchLockers } from "@/lib/lockers-cache";
-import { prefetchOccupancy } from "@/lib/occupancy-cache";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -88,16 +85,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function CachePrewarm() {
-  const { user } = useAuth();
-  useEffect(() => {
-    if (!user) return;
-    // Warm both major caches as soon as the user is signed in so switching
-    // between /lockers, /occupancy, /spare-keys, /duplicates feels instant.
-    prefetchLockers();
-    prefetchOccupancy();
-  }, [user]);
+  // The list pages (Lockers, Occupancy, Spare Keys) now page through the
+  // database, so nothing needs to be pre-loaded at app start. Full-dataset
+  // screens (Reconcile, Bulk Update, Upload) warm their own cache on mount.
   return null;
 }
+
 
 function RootComponent() {
   return (
