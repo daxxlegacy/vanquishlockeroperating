@@ -229,6 +229,27 @@ function ensureChannel() {
     .subscribe();
 }
 
+/** Optimistically patch occupancy rows into the in-memory cache (upsert by
+ *  id within their category) so the Occupancy page updates instantly. */
+export function patchOccupancyInCache(rows: OccupancyRow[]) {
+  const touched = new Set<OccCategory>();
+  for (const row of rows) {
+    const cat = row.category;
+    if (!cat || !states[cat]?.data) continue;
+    const cur = states[cat].data!;
+    const i = cur.findIndex((r) => r.id === row.id);
+    const next = cur.slice();
+    if (i >= 0) next[i] = { ...next[i], ...row };
+    else next.push(row);
+    states[cat] = { ...states[cat], data: next };
+    touched.add(cat);
+  }
+  for (const cat of touched) {
+    writeStorage(cat, states[cat].data!);
+    emit(cat);
+  }
+}
+
 export function invalidateOccupancyCache(cat?: OccCategory) {
   const cats: OccCategory[] = cat ? [cat] : ["main", "staff", "shoe", "hr"];
   for (const c of cats) {
