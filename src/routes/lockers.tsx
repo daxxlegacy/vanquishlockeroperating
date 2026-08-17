@@ -267,8 +267,11 @@ function LockersPage() {
   const canRevealNid = useCanRevealNationalId();
 
   const buildExportRows = async () => {
-    const nidMap = canRevealNid ? await fetchFullNationalIds("lockers", filtered.map((l) => l.id)) : new Map<string, string>();
-    return filtered.map((l) => ({
+    // Exports must cover every matching row, not just the current page — stream
+    // them from the server in chunks and discard afterwards.
+    const all = await fetchAllMatchingLockers(query);
+    const nidMap = canRevealNid ? await fetchFullNationalIds("lockers", all.map((l) => l.id)) : new Map<string, string>();
+    return all.map((l) => ({
       "Locker Number": l.locker_number,
       "Location": l.location,
       "Key Lock": l.key_lock ?? "",
@@ -282,6 +285,7 @@ function LockersPage() {
       "Remark": l.remark ?? "",
     }));
   };
+
 
   const filterTag = () => {
     const parts: string[] = [];
