@@ -92,6 +92,57 @@ function readFromStorage(): Locker[] | null {
   }
 }
 
+type MaskedClient = {
+  from: (t: string) => {
+    select: (c: string, o?: { count?: "exact"; head?: boolean }) => {
+      is: (col: string, v: null) => {
+        range: (a: number, b: number) => Promise<{ data: Locker[] | null; error: { message: string } | null; count: number | null }>;
+      } & Promise<{ data: Locker[] | null; error: { message: string } | null; count: number | null }>;
+    };
+  };
+};
+
+const masked = () => supabase as unknown as MaskedClient;
+
+/** Exact number of non-deleted lockers, or null when the count query fails. */
+async function fetchExpectedCount(): Promise<number | null> {
+  try {
+    const { count, error } = await masked()
+      .from("lockers_masked")
+      .select("*", { count: "exact", head: true })
+      .is("deleted_at", null);
+    if (error) return null;
+    return typeof count === "number" ? count : null;
+  } catch {
+    return null;
+  }
+}
+
+/** One full pagination pass. Returns rows plus whether every page succeeded. */
+async function fetchOnce(): Promise<{ rows: Locker[]; ok: boolean }> {
+  const all: Locker[] = [];
+  let from = 0;
+  while (true) {
+    // Query the masked view so national_id never arrives full for
+    // non-authorised users. Cast because the view isn't in generated types.
+    const { data, error } = await masked()
+      .from("lockers_masked")
+      .select("*")
+      .is("deleted_at", null)
+      .range(from, from + 999);
+    if (error || !data) {
+      if (error) console.error("Failed to load lockers:", error.message);
+      return { rows: all, ok: false };
+    }
+    all.push(...data);
+    if (data.length < 1000) break;
+    from += 1000;
+  }
+  return { rows: all, ok: true };
+}
+
+const MAX_ATTEMPTS = 3;
+
 async function fetchAll(silent = false): Promise<void> {
   if (fetchPromise) return fetchPromise;
   if (silent) {
@@ -106,43 +157,43 @@ async function fetchAll(silent = false): Promise<void> {
   if (timerLabel) console.time(timerLabel);
   fetchPromise = (async () => {
     try {
-      const all: Locker[] = [];
-      let from = 0;
-      let failed = false;
-      while (true) {
-        // Query the masked view so national_id never arrives full for
-        // non-authorised users. Cast because the view isn't in generated types.
-        const { data, error } = await (supabase as unknown as {
-          from: (t: string) => {
-            select: (c: string) => {
-              is: (col: string, v: null) => {
-                range: (a: number, b: number) => Promise<{ data: Locker[] | null; error: { message: string } | null }>;
-              };
-            };
-          };
-        })
-          .from("lockers_masked")
-          .select("*")
-          .is("deleted_at", null)
-          .range(from, from + 999);
-        if (error || !data) {
-          failed = true;
-          if (error) console.error("Failed to load lockers:", error.message);
-          break;
+      const expected = await fetchExpectedCount();
+      let last: { rows: Locker[]; ok: boolean } = { rows: [], ok: false };
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        last = await fetchOnce();
+        const complete = last.ok && (expected == null || last.rows.length === expected);
+        if (complete) {
+          rebuildIndex(last.rows);
+          state = { data: last.rows, loading: false, refreshing: false, incomplete: null };
+          lastFetchAt = Date.now();
+          writeToStorage(last.rows);
+          emit();
+          return;
         }
-        all.push(...data);
-        if (data.length < 1000) break;
-        from += 1000;
+        console.warn(
+          `[lockers-cache] incomplete fetch (attempt ${attempt}/${MAX_ATTEMPTS}): got ${last.rows.length}${
+            expected == null ? "" : ` of ${expected}`
+          }`,
+        );
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, 400 * attempt));
+        }
       }
-      if (failed && all.length === 0) {
-        state = { data: null, loading: false, refreshing: false };
-        emit();
-        return;
+
+      // Still incomplete after retries — never persist or promote a partial
+      // dataset. Keep the last known good data visible and flag the failure.
+      const incomplete = { loaded: last.rows.length, expected };
+      if (state.data && state.data.length > 0) {
+        state = { ...state, loading: false, refreshing: false, incomplete };
+      } else if (last.rows.length > 0) {
+        // Nothing better to show — surface the partial data but mark it as such
+        // and do NOT write it to localStorage.
+        rebuildIndex(last.rows);
+        state = { data: last.rows, loading: false, refreshing: false, incomplete };
+      } else {
+        state = { data: null, loading: false, refreshing: false, incomplete };
       }
-      rebuildIndex(all);
-      state = { data: all, loading: false, refreshing: false };
-      lastFetchAt = Date.now();
-      writeToStorage(all);
       emit();
     } finally {
       fetchPromise = null;
@@ -151,6 +202,7 @@ async function fetchAll(silent = false): Promise<void> {
   })();
   return fetchPromise;
 }
+
 
 
 function isFresh() {
