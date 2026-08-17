@@ -71,7 +71,10 @@ function SpareKeysPage() {
 
   const lockers = useMemo(() => {
     if (!rawLockers) return null;
-    return [...rawLockers].sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
+    // Numeric / numerical (combination) locks have no spare key — exclude them here.
+    return [...rawLockers]
+      .filter((l) => !/numeric/i.test(l.key_lock ?? ""))
+      .sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
   }, [rawLockers]);
 
   const locations = useMemo(() => {
