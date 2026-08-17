@@ -29,7 +29,12 @@ import { maskNationalId, fullyMaskNationalId, confirmNidExport, fetchFullNationa
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDialog";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
-import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
+import { invalidateLockersCache } from "@/lib/lockers-cache";
+import {
+  useLockersPage, useLockerFacets, invalidateLockerFacets, fetchAllMatchingLockers,
+  PAGE_SIZE, type LockersQuery,
+} from "@/lib/lockers-page";
+import { TablePagination } from "@/components/TablePagination";
 import { useDebounced } from "@/hooks/use-debounced";
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import { AlertTriangle } from "lucide-react";
