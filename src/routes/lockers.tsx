@@ -22,7 +22,7 @@ import { Search, Plus, Download, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import { getXLSX } from "@/lib/xlsx-lazy";
 import { List, type RowComponentProps } from "react-window";
-import { compareLockerNumbers, parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
+import { parseBatchIntake, formatBatchIntake } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
 import { NationalIdCell } from "@/components/NationalIdCell";
 import { maskNationalId, fullyMaskNationalId, confirmNidExport, fetchFullNationalIds, useCanRevealNationalId } from "@/lib/national-id";
@@ -38,7 +38,7 @@ import { TablePagination } from "@/components/TablePagination";
 import { useDebounced } from "@/hooks/use-debounced";
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import { AlertTriangle } from "lucide-react";
-import { ColumnFilter, passesColumnFilter } from "@/components/ColumnFilter";
+import { ColumnFilter } from "@/components/ColumnFilter";
 import { SortHeader, type SortState } from "@/components/SortHeader";
 import {
   encodeFilterState, decodeFilterState, writeFilterParam, readFilterParam,
@@ -296,7 +296,7 @@ function LockersPage() {
   };
 
   const exportCsv = async () => {
-    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (total === 0) { toast.error("Nothing to export with the current filters"); return; }
     if (!confirmNidExport()) return;
     const rows = await buildExportRows();
     downloadCsv(`lockers${filterTag()}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
@@ -304,7 +304,7 @@ function LockersPage() {
   };
 
   const exportXlsx = async () => {
-    if (filtered.length === 0) { toast.error("Nothing to export with the current filters"); return; }
+    if (total === 0) { toast.error("Nothing to export with the current filters"); return; }
     if (!confirmNidExport()) return;
     const rows = await buildExportRows();
     const XLSX = await getXLSX();
@@ -361,14 +361,14 @@ function LockersPage() {
                 </DialogTrigger>
                 <AddLockerDialog
                   onClose={() => setAddOpen(false)}
-                  onCreated={() => { setAddOpen(false); invalidateLockersCache(); }}
+                  onCreated={() => { setAddOpen(false); invalidateLockersCache(); invalidateLockerFacets(); }}
                   existingLocations={locations}
                 />
               </Dialog>
-              <DeleteLockerByNumberDialog onDeleted={() => invalidateLockersCache()} />
+              <DeleteLockerByNumberDialog onDeleted={() => { invalidateLockersCache(); invalidateLockerFacets(); }} />
               <DeleteLocationDialog
                 locations={locations}
-                onDeleted={() => invalidateLockersCache()}
+                onDeleted={() => { invalidateLockersCache(); invalidateLockerFacets(); }}
               />
             </div>
           )}
@@ -430,7 +430,7 @@ function LockersPage() {
           {role === "admin" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={filtered.length === 0}>
+                <Button variant="outline" disabled={total === 0}>
                   <Download className="h-4 w-4 mr-1.5" /> Export
                 </Button>
               </DropdownMenuTrigger>
