@@ -2,8 +2,6 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
-import { prefetchLockers } from "@/lib/lockers-cache";
-import { prefetchOccupancy } from "@/lib/occupancy-cache";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
