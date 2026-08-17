@@ -1,5 +1,6 @@
 // Admin command center — dashboard overview + grouped collapsible sections.
 import { DeletionsPanel } from "@/components/operations/DeletionsPanel";
+import { RunHistoryPanel } from "@/components/operations/RunHistoryPanel";
 import { RecentTerminationsPanel } from "@/components/operations/RecentTerminationsPanel";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -748,6 +749,10 @@ function AdminPage() {
                 <div className="pt-2">
                   <h3 className="text-sm font-semibold mb-2">Deletion Audit</h3>
                   <DeletionsPanel />
+                </div>
+                <div className="pt-2">
+                  <h3 className="text-sm font-semibold mb-2">Automation Run History</h3>
+                  <RunHistoryPanel />
                 </div>
               </div>
             </CollapsibleContent>
