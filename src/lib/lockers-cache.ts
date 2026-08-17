@@ -1,13 +1,14 @@
-// Shared in-memory lockers cache with realtime patching.
-// Used by /lockers, /spare-keys, /duplicates so switching tabs is instant
-// and a single realtime subscription keeps every page in sync.
+// Full-dataset lockers cache.
 //
-// Improvements:
-// - localStorage warm-cache (stale-while-revalidate, 5 min max age)
-// - O(1) id->index Map for realtime patches
-// - getLockerById() lookup without Supabase round-trip
+// IMPORTANT: list views (Lockers, Spare Keys, Occupancy) no longer use this —
+// they page through the database via lockers-page.ts / spare-keys-page.ts /
+// occupancy-page.ts. This module remains for the screens that genuinely need
+// to compare the WHOLE dataset (Reconcile, Bulk Status Update, Record Intake,
+// Upload, dashboard counts, locker pickers). It is loaded on demand by those
+// screens only, and no longer mirrored into localStorage.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { emitRowsChanged, emitTableChanged } from "@/lib/row-events";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -22,13 +23,7 @@ let fetchPromise: Promise<void> | null = null;
 let realtimePaused = 0; // counter for nested pauses
 let authListenerStarted = false;
 
-const STORAGE_KEY = "lockerops.lockers.cache.v2";
-// Warm cache validity — realtime keeps memory in sync, so we can safely
-// trust localStorage for much longer than the original 5 minutes.
-const MAX_AGE_MS = 30 * 60 * 1000;
 // Skip silent background refetch when data was fetched this recently.
-// Realtime patches keep it live; this avoids redundant network calls
-// every time a route/tab remounts.
 const FRESH_WINDOW_MS = 60 * 1000;
 let lastFetchAt = 0;
 
@@ -42,49 +37,6 @@ function emit() {
   for (const fn of subscribers) fn(state);
 }
 
-// Never persist full national_id to browser storage; keep only a masked form.
-function maskForStorage(row: Locker): Locker {
-  const nid = row.national_id;
-  if (!nid || /^\*+/.test(nid)) return row;
-  const masked = nid.length <= 4 ? "*".repeat(nid.length) : "******" + nid.slice(-4);
-  return { ...row, national_id: masked };
-}
-
-function writeToStorage(data: Locker[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ ts: Date.now(), data: data.map(maskForStorage) }),
-    );
-  } catch {
-    // quota / serialization errors — ignore
-  }
-}
-
-function clearStorage() {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // ignore storage errors
-  }
-}
-
-function readFromStorage(): Locker[] | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { ts: number; data: Locker[] };
-    if (!parsed || typeof parsed.ts !== "number" || !Array.isArray(parsed.data)) return null;
-    if (Date.now() - parsed.ts > MAX_AGE_MS) return null;
-    return parsed.data;
-  } catch {
-    return null;
-  }
-}
-
 async function fetchAll(silent = false): Promise<void> {
   if (fetchPromise) return fetchPromise;
   if (silent) {
@@ -93,10 +45,6 @@ async function fetchAll(silent = false): Promise<void> {
     state = { ...state, loading: true, refreshing: true };
   }
   emit();
-  const timerLabel = import.meta.env.DEV
-    ? `[perf] lockers-cache fetchAll${silent ? " (silent)" : ""}`
-    : null;
-  if (timerLabel) console.time(timerLabel);
   fetchPromise = (async () => {
     try {
       const all: Locker[] = [];
@@ -135,41 +83,28 @@ async function fetchAll(silent = false): Promise<void> {
       rebuildIndex(all);
       state = { data: all, loading: false, refreshing: false };
       lastFetchAt = Date.now();
-      writeToStorage(all);
       emit();
     } finally {
       fetchPromise = null;
-      if (timerLabel) console.timeEnd(timerLabel);
     }
   })();
   return fetchPromise;
 }
 
-
 function isFresh() {
   return lastFetchAt > 0 && Date.now() - lastFetchAt < FRESH_WINDOW_MS;
 }
 
-/** Kick off cache warm-up without mounting a component. Safe to call
- *  multiple times — dedupes against in-flight fetches. Reads warm cache
- *  from localStorage first, then triggers a silent background refresh. */
+/** Kick off cache warm-up without mounting a component. Safe to call multiple
+ *  times — dedupes against in-flight fetches. Only call this from screens that
+ *  genuinely need the entire dataset. */
 export function prefetchLockers() {
   if (typeof window === "undefined") return;
   startAuthRefresh();
   ensureChannel();
   if (state.data || state.loading || fetchPromise) return;
-  const warm = readFromStorage();
-  if (warm && warm.length > 0) {
-    rebuildIndex(warm);
-    state = { data: warm, loading: false, refreshing: false };
-
-    emit();
-    if (!isFresh()) fetchAll(true);
-  } else {
-    fetchAll(true);
-  }
+  fetchAll(true);
 }
-
 
 async function refetchAfterAuthReady() {
   if (fetchPromise) {
@@ -182,22 +117,18 @@ function startAuthRefresh() {
   if (authListenerStarted || typeof window === "undefined") return;
   authListenerStarted = true;
 
-  supabase.auth.getSession().then(({ data }) => {
-    if (data.session?.user) void refetchAfterAuthReady();
-  }).catch(() => {});
-
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
       state = { data: null, loading: false, refreshing: false };
       index = new Map();
-      clearStorage();
       emit();
       return;
     }
 
     if (
       session?.user
-      && (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED")
+      && state.data
+      && (event === "SIGNED_IN" || event === "USER_UPDATED")
     ) {
       void refetchAfterAuthReady();
     }
@@ -218,7 +149,6 @@ function ensureChannel() {
           const next = [...cur, row];
           index.set(row.id, next.length - 1);
           state = { ...state, data: next };
-          writeToStorage(next);
           emit();
         }
       } else if (payload.eventType === "UPDATE") {
@@ -240,14 +170,12 @@ function ensureChannel() {
             state = { ...state, data: next };
           }
         }
-        writeToStorage(state.data!);
         emit();
       } else if (payload.eventType === "DELETE") {
         const row = payload.old as Locker;
         const next = cur.filter((l) => l.id !== row.id);
         rebuildIndex(next);
         state = { ...state, data: next };
-        writeToStorage(next);
         emit();
       }
     })
@@ -255,40 +183,42 @@ function ensureChannel() {
 }
 
 /** Optimistically patch one or more locker rows into the in-memory cache
- *  without refetching. Emits to subscribers so the UI updates instantly. */
+ *  without refetching, and tell paginated list views to refresh those rows. */
 export function patchLockersInCache(rows: Locker[]) {
+  if (rows.length === 0) return;
   const cur = state.data;
-  if (!cur || rows.length === 0) return;
-  const next = cur.slice();
-  for (const row of rows) {
-    const i = index.get(row.id);
-    if (row.deleted_at) {
-      if (i != null) {
-        next.splice(i, 1);
+  if (cur) {
+    const next = cur.slice();
+    for (const row of rows) {
+      const i = index.get(row.id);
+      if (row.deleted_at) {
+        if (i != null) next.splice(i, 1);
+      } else if (i != null && next[i]?.id === row.id) {
+        next[i] = { ...next[i], ...row };
+      } else {
+        next.push(row);
       }
-    } else if (i != null && next[i]?.id === row.id) {
-      next[i] = { ...next[i], ...row };
-    } else {
-      next.push(row);
     }
+    rebuildIndex(next);
+    state = { ...state, data: next };
+    emit();
   }
-  rebuildIndex(next);
-  state = { ...state, data: next };
-  writeToStorage(next);
-  emit();
+  emitRowsChanged("lockers", rows.map((r) => r.id));
 }
 
 /** Optimistically remove a locker row from the in-memory cache (used after
  *  a soft delete) so the row disappears from the UI immediately. */
 export function removeLockerFromCache(id: string) {
   const cur = state.data;
-  if (!cur) return;
-  const next = cur.filter((l) => l.id !== id);
-  if (next.length === cur.length) return;
-  rebuildIndex(next);
-  state = { ...state, data: next };
-  writeToStorage(next);
-  emit();
+  if (cur) {
+    const next = cur.filter((l) => l.id !== id);
+    if (next.length !== cur.length) {
+      rebuildIndex(next);
+      state = { ...state, data: next };
+      emit();
+    }
+  }
+  emitRowsChanged("lockers", [id]);
 }
 
 export function getLockerById(id: string): Locker | null {
@@ -318,16 +248,12 @@ export function useLockersRefreshing() {
   return r;
 }
 
-
 export function invalidateLockersCache() {
-  // Silent refresh: keep existing data visible, refetch in background.
-  // Avoids the full loading skeleton flicker that made refreshes feel slow.
+  // Silent refresh for the full-dataset consumers, plus a nudge to paginated
+  // list views so they re-read the current page.
   lastFetchAt = 0;
-  if (state.data) {
-    fetchAll(true);
-  } else {
-    fetchAll();
-  }
+  if (state.data) fetchAll(true);
+  emitTableChanged("lockers");
 }
 
 /** Pause realtime patches (e.g. during a bulk import) so the table doesn't
@@ -347,21 +273,14 @@ export function useLockers() {
     startAuthRefresh();
     ensureChannel();
     if (!state.data && !state.loading) {
-      const warm = readFromStorage();
-      if (warm && warm.length > 0) {
-        rebuildIndex(warm);
-        state = { data: warm, loading: false, refreshing: false };
-        emit();
-        // silent background refresh (skip if fetched very recently — realtime keeps it live)
-        if (!isFresh()) fetchAll(true);
-      } else {
-        fetchAll();
-      }
+      fetchAll();
+    } else if (!isFresh() && state.data && !fetchPromise) {
+      fetchAll(true);
+      set(state);
     } else {
       set(state);
     }
     return () => { subscribers.delete(set); };
   }, []);
   return { lockers: s.data, loading: s.loading, refreshing: s.refreshing, refresh: invalidateLockersCache };
-
 }
