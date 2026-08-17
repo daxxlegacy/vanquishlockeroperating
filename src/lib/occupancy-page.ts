@@ -119,12 +119,16 @@ export function useOccupancyPage(q: OccupancyQuery, pageSize = OCC_PAGE_SIZE) {
       setStale(false);
     } catch (e) {
       if (id !== reqId.current) return;
+      // Never leave the previous (unfiltered) page on screen after a failed
+      // query — that looks like search/filters silently doing nothing.
+      setResult(null);
       setError(e instanceof Error ? e.message : "Failed to load occupancy");
     } finally {
       if (id === reqId.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, pageSize]);
+
 
   useEffect(() => { void load(true); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [key]);
 

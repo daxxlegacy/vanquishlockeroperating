@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.search_occupancy(text,text,text,text,text,text,integer,integer) TO supabase_read_only_user;

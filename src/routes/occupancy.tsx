@@ -234,7 +234,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
 
   const {
     rows: pageRows, total, stats, loading: loadingData, refreshing, stale, refresh,
+    error: pageError,
   } = useOccupancyPage(query, OCC_PAGE_SIZE);
+
 
   useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, categoryFilter, locFilter, sort]);
 
@@ -531,12 +533,19 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-4 pt-2">
+      {pageError && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <span>Search / filter could not be applied: {pageError}</span>
+          <Button size="sm" variant="outline" onClick={refresh}>Retry</Button>
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <StatCard label="Total Rows" value={stats.total} />
         <StatCard label="Unique Lockers" value={stats.unique_lockers} />
         <StatCard label="Active" value={stats.active} tone="success" />
         <StatCard label="Terminated" value={stats.terminated} tone="muted" />
       </div>
+
 
       <Card className="p-4 flex gap-3 flex-wrap items-center">
         <div className="relative flex-1 min-w-0 sm:min-w-[240px] w-full sm:w-auto">
