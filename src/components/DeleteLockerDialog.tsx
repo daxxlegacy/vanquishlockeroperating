@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { softDeleteLocker, undoDeletion, UNDO_TOAST_MS } from "@/lib/delete-actions";
+import { removeLockerFromCache, invalidateLockersCache } from "@/lib/lockers-cache";
 
 interface Props {
   open: boolean;
@@ -34,6 +35,8 @@ export function DeleteLockerDialog({ open, onOpenChange, locker, onDeleted }: Pr
         location: locker.location,
         reason: reason.trim(),
       });
+      removeLockerFromCache(locker.id);
+      invalidateLockersCache();
       toast.success(`Locker ${locker.locker_number} deleted`, {
         description: "You have 15 minutes to undo this from the Audit page.",
         duration: UNDO_TOAST_MS,
@@ -42,6 +45,7 @@ export function DeleteLockerDialog({ open, onOpenChange, locker, onDeleted }: Pr
           onClick: async () => {
             try {
               await undoDeletion(auditId);
+              invalidateLockersCache();
               toast.success(`Restored locker ${locker.locker_number}`);
               onDeleted?.();
             } catch (e) {

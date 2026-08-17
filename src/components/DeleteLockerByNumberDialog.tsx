@@ -8,6 +8,7 @@ import { AlertTriangle, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { softDeleteLocker, undoDeletion, UNDO_TOAST_MS } from "@/lib/delete-actions";
+import { removeLockerFromCache, invalidateLockersCache } from "@/lib/lockers-cache";
 
 type Match = { id: string; locker_number: string; location: string };
 
@@ -52,13 +53,15 @@ export function DeleteLockerByNumberDialog({ onDeleted }: { onDeleted: () => voi
         location: selected.location,
         reason: reason.trim(),
       });
+      removeLockerFromCache(selected.id);
+      invalidateLockersCache();
       toast.success(`Locker ${selected.locker_number} deleted`, {
         description: "You have 15 minutes to undo from Admin → System → Deletion Audit.",
         duration: UNDO_TOAST_MS,
         action: {
           label: "Undo",
           onClick: async () => {
-            try { await undoDeletion(auditId); toast.success(`Restored ${selected.locker_number}`); onDeleted(); }
+            try { await undoDeletion(auditId); invalidateLockersCache(); toast.success(`Restored ${selected.locker_number}`); onDeleted(); }
             catch (e) { toast.error(e instanceof Error ? e.message : "Undo failed"); }
           },
         },

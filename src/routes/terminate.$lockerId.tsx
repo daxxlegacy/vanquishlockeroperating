@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserMinus, ArrowLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { terminateLocker } from "@/lib/termination-actions";
+import { terminateLocker, buildTerminationClearPayload } from "@/lib/termination-actions";
+import { patchLockersInCache, invalidateLockersCache } from "@/lib/lockers-cache";
 import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -104,6 +105,8 @@ function TerminatePage() {
     setBusy(true);
     try {
       await terminateLocker(locker, iso, reason, newStatus);
+      patchLockersInCache([{ ...locker, ...buildTerminationClearPayload(newStatus) }]);
+      invalidateLockersCache();
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       setDone(true);
     } catch (e) {

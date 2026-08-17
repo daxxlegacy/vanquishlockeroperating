@@ -4,7 +4,7 @@
 // that each (locker_number, category) has AT MOST one Active row and one
 // Terminate row at any time.
 import { deriveOccCategoryOr } from "@/lib/locker-category";
-import type { OccCategory } from "@/lib/occupancy-cache";
+import { patchOccupancyInCache, type OccCategory, type OccupancyRow } from "@/lib/occupancy-cache";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
