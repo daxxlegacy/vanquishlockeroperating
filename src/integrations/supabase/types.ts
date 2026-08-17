@@ -1034,6 +1034,7 @@ export type Database = {
       can_access_lockers: { Args: { _user_id: string }; Returns: boolean }
       can_view_national_id: { Args: { _user_id: string }; Returns: boolean }
       count_occupancy_drift: { Args: never; Returns: Json }
+      derive_occ_category: { Args: { _raw: string }; Returns: string }
       find_duplicate_active_occupants: {
         Args: never
         Returns: {
@@ -1067,11 +1068,56 @@ export type Database = {
         }
         Returns: boolean
       }
+      locker_facets: { Args: never; Returns: Json }
+      locker_sort_text: { Args: { _raw: string }; Returns: string }
       mask_national_id: { Args: { _nid: string }; Returns: string }
+      occupancy_facets: { Args: never; Returns: Json }
       reveal_national_id: {
         Args: { _record_id: string; _table_name: string }
         Returns: string
       }
+      search_lockers: {
+        Args: {
+          _key_lock?: string
+          _limit?: number
+          _location?: string
+          _location_in?: string[]
+          _missing_badge?: boolean
+          _missing_nid?: boolean
+          _offset?: number
+          _search?: string
+          _sort_col?: string
+          _sort_dir?: string
+          _status?: string
+          _status_in?: string[]
+        }
+        Returns: Json
+      }
+      search_occupancy: {
+        Args: {
+          _category?: string
+          _limit?: number
+          _location?: string
+          _offset?: number
+          _search?: string
+          _sort_col?: string
+          _sort_dir?: string
+          _status?: string
+        }
+        Returns: Json
+      }
+      search_spare_keys: {
+        Args: {
+          _limit?: number
+          _location?: string
+          _offset?: number
+          _search?: string
+          _spare?: string
+        }
+        Returns: Json
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       submit_locker_identity_claim: {
         Args: {
           _badge_number: string
