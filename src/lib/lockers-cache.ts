@@ -104,60 +104,6 @@ type MaskedClient = {
 
 const masked = () => supabase as unknown as MaskedClient;
 
-/** Exact number of non-deleted lockers, or null when the count query fails. */
-async function fetchExpectedCount(): Promise<number | null> {
-  try {
-    const { count, error } = await masked()
-      .from("lockers_masked")
-      .select("*", { count: "exact", head: true })
-      .is("deleted_at", null);
-    if (error) return null;
-    return typeof count === "number" ? count : null;
-  } catch {
-    return null;
-  }
-}
-
-/** One full pagination pass. Returns rows plus whether every page succeeded. */
-async function fetchOnce(): Promise<{ rows: Locker[]; ok: boolean }> {
-  const all: Locker[] = [];
-  let from = 0;
-  while (true) {
-    // Query the masked view so national_id never arrives full for
-    // non-authorised users. Cast because the view isn't in generated types.
-    const { data, error } = await masked()
-      .from("lockers_masked")
-      .select("*")
-      .is("deleted_at", null)
-      .range(from, from + 999);
-    if (error || !data) {
-      if (error) console.error("Failed to load lockers:", error.message);
-      return { rows: all, ok: false };
-    }
-    all.push(...data);
-    if (data.length < 1000) break;
-    from += 1000;
-  }
-  return { rows: all, ok: true };
-}
-
-const MAX_ATTEMPTS = 3;
-// The table is live: inserts/deletes can happen after the count query but
-// before pagination finishes. Allow modest drift while still rejecting the
-// large shortfalls caused by a failed page (the original partial-load bug).
-const MAX_SHORTFALL_RATIO = 0.05;
-const MIN_SHORTFALL_MARGIN = 10;
-
-function isFetchComplete(actual: number, expected: number | null, pagesOk: boolean) {
-  if (!pagesOk) return false;
-  if (expected == null) return true;
-  const allowedShortfall = Math.max(
-    MIN_SHORTFALL_MARGIN,
-    Math.ceil(expected * MAX_SHORTFALL_RATIO),
-  );
-  return actual >= expected - allowedShortfall;
-}
-
 async function fetchAll(silent = false): Promise<void> {
   if (fetchPromise) return fetchPromise;
   if (silent) {
@@ -166,60 +112,42 @@ async function fetchAll(silent = false): Promise<void> {
     state = { ...state, loading: true, refreshing: true };
   }
   emit();
-  const timerLabel = import.meta.env.DEV
-    ? `[perf] lockers-cache fetchAll${silent ? " (silent)" : ""}`
-    : null;
-  if (timerLabel) console.time(timerLabel);
   fetchPromise = (async () => {
     try {
-      const expected = await fetchExpectedCount();
-      let last: { rows: Locker[]; ok: boolean } = { rows: [], ok: false };
-
-      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        last = await fetchOnce();
-        const complete = isFetchComplete(last.rows.length, expected, last.ok);
-        if (import.meta.env.DEV) {
-          console.info(
-            `[lockers-cache] fetch attempt ${attempt}/${MAX_ATTEMPTS}: expected=${expected ?? "unknown"}, actual=${last.rows.length}, pagesOk=${last.ok}, complete=${complete}`,
-          );
+      const all: Locker[] = [];
+      let from = 0;
+      let failed = false;
+      while (true) {
+        // Query the masked view so national_id never arrives full for
+        // non-authorised users. Cast because the view isn't in generated types.
+        const { data, error } = await masked()
+          .from("lockers_masked")
+          .select("*")
+          .is("deleted_at", null)
+          .range(from, from + 999);
+        if (error || !data) {
+          if (error) console.error("Failed to load lockers:", error.message);
+          failed = true;
+          break;
         }
-        if (complete) {
-          rebuildIndex(last.rows);
-          state = { data: last.rows, loading: false, refreshing: false, incomplete: null };
-          lastFetchAt = Date.now();
-          writeToStorage(last.rows);
-          emit();
-          return;
-        }
-        if (import.meta.env.DEV) {
-          console.warn(
-            `[lockers-cache] incomplete fetch (attempt ${attempt}/${MAX_ATTEMPTS}): expected=${expected ?? "unknown"}, actual=${last.rows.length}`,
-          );
-        }
-        if (attempt < MAX_ATTEMPTS) {
-          await new Promise((r) => setTimeout(r, 400 * attempt));
-        }
+        all.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
       }
 
-      // Still incomplete after retries — never persist or promote a partial
-      // dataset. Keep the last known good data visible and flag the failure.
-      const incomplete = { loaded: last.rows.length, expected };
-      if (state.data && state.data.length > 0) {
-        state = { ...state, loading: false, refreshing: false, incomplete };
-      } else if (last.rows.length > 0) {
-        // Nothing better to show — surface the partial data but mark it as such
-        // and do NOT write it to localStorage.
-        rebuildIndex(last.rows);
-        state = { data: last.rows, loading: false, refreshing: false, incomplete };
-      } else {
-        state = { data: null, loading: false, refreshing: false, incomplete };
+      if (failed && all.length === 0) {
+        state = { ...state, loading: false, refreshing: false, incomplete: null };
+        emit();
+        return;
       }
+
+      rebuildIndex(all);
+      state = { data: all, loading: false, refreshing: false, incomplete: null };
+      lastFetchAt = Date.now();
+      writeToStorage(all);
       emit();
     } finally {
-      // This promise owns all bounded attempts. Clear it only after the final
-      // attempt settles so callers cannot start an overlapping retry.
       fetchPromise = null;
-      if (timerLabel) console.timeEnd(timerLabel);
     }
   })();
   return fetchPromise;
