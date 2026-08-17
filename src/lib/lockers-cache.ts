@@ -220,7 +220,7 @@ export function prefetchLockers() {
   const warm = readFromStorage();
   if (warm && warm.length > 0) {
     rebuildIndex(warm);
-    state = { data: warm, loading: false, refreshing: false };
+    state = { data: warm, loading: false, refreshing: false, incomplete: null };
 
     emit();
     if (!isFresh()) fetchAll(true);
@@ -247,7 +247,7 @@ function startAuthRefresh() {
 
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
-      state = { data: null, loading: false, refreshing: false };
+      state = { data: null, loading: false, refreshing: false, incomplete: null };
       index = new Map();
       clearStorage();
       emit();
@@ -409,7 +409,7 @@ export function useLockers() {
       const warm = readFromStorage();
       if (warm && warm.length > 0) {
         rebuildIndex(warm);
-        state = { data: warm, loading: false, refreshing: false };
+        state = { data: warm, loading: false, refreshing: false, incomplete: null };
         emit();
         // silent background refresh (skip if fetched very recently — realtime keeps it live)
         if (!isFresh()) fetchAll(true);
