@@ -16,7 +16,13 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const ALLOWED_CLAIM_TYPES = new Set(["unknown_owner", "found_own_locker", "other"]);
+const ALLOWED_CLAIM_TYPES = new Set([
+  "unknown_owner",
+  "found_own_locker",
+  "other",
+  // Duplicate Locker Resolution flow (employee picks the locker they still use).
+  "multiple_locker",
+]);
 
 const clean = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 
