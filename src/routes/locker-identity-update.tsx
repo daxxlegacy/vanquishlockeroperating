@@ -157,16 +157,25 @@ function LockerIdentityUpdatePage() {
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto w-full max-w-md px-5 pt-6 pb-24 sm:pb-10">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Kemas Kini Identiti Loker</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {duplicateMode ? "Loker Berganda — Pengesahan Pemilik" : "Kemas Kini Identiti Loker"}
+          </h1>
           <p className="text-sm text-muted-foreground mt-2">
             Sila isikan maklumat loker anda dengan tepat. Maklumat ini diperlukan untuk rekod dalaman.
           </p>
         </div>
 
+        {duplicateMode && (
+          <Alert className="mb-4 border-destructive/40 bg-destructive/5">
+            <AlertDescription className="text-sm leading-relaxed">{DUP_WARNING_BM}</AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <ClipboardCheck className="h-4 w-4" /> Kemas Kini Identiti Loker
+              <ClipboardCheck className="h-4 w-4" />
+              {duplicateMode ? "Pilih Loker Yang Sedang Digunakan" : "Kemas Kini Identiti Loker"}
             </CardTitle>
             <p className="text-xs text-muted-foreground">
               * Menunjukkan soalan wajib
@@ -175,7 +184,9 @@ function LockerIdentityUpdatePage() {
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="locker" className="text-sm font-medium">Nombor Loker *</Label>
+                <Label htmlFor="locker" className="text-sm font-medium">
+                  {duplicateMode ? "Loker yang sedang anda gunakan *" : "Nombor Loker *"}
+                </Label>
                 <Input
                   id="locker"
                   value={lockerNumber}
@@ -191,6 +202,7 @@ function LockerIdentityUpdatePage() {
                   Format: digit + satu huruf (cth. 1411E) atau huruf + digit (cth. B08)
                 </p>
               </div>
+
 
               <div className="space-y-1.5">
                 <Label htmlFor="badge" className="text-sm font-medium">Nombor Pekerja / Nombor Badge *</Label>
