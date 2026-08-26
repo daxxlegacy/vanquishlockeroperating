@@ -32,12 +32,17 @@ const ERR = {
   rate: "Terlalu banyak penghantaran. Sila cuba lagi dalam beberapa minit.",
 };
 
+const DUP_WARNING_BM =
+  "Kami mengesan lebih daripada satu loker didaftarkan atas nama anda. Sila pilih loker yang sedang anda gunakan. Mana-mana loker lain yang didaftarkan atas nama anda akan dinyahaktifkan dan ditanda untuk pembaikan.";
+
 function LockerIdentityUpdatePage() {
   const [lockerNumber, setLockerNumber] = useState("");
   const [badge, setBadge] = useState("");
   const [fullName, setFullName] = useState("");
   const [stillUsing, setStillUsing] = useState<null | boolean>(null);
   const [contact, setContact] = useState("");
+  const [duplicateMode, setDuplicateMode] = useState(false);
+  const [otherLockers, setOtherLockers] = useState<string[]>([""]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +53,10 @@ function LockerIdentityUpdatePage() {
     const params = new URLSearchParams(window.location.search);
     const l = params.get("locker");
     if (l) setLockerNumber(l.trim().toUpperCase());
+    if (params.get("source") === "duplicate_notice") {
+      setDuplicateMode(true);
+      setStillUsing(true);
+    }
   }, []);
 
   const scrollFocusIntoView = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -69,7 +78,7 @@ function LockerIdentityUpdatePage() {
       locker: lockerNumber.trim().toUpperCase(),
       badge,
       name: fullName,
-      still: stillUsing,
+      still: duplicateMode ? true : stillUsing,
       contact,
     });
     if (!parsed.success) {
@@ -77,18 +86,31 @@ function LockerIdentityUpdatePage() {
       return;
     }
 
+    const others = otherLockers.map((v) => v.trim().toUpperCase()).filter((v) => v.length > 0);
+    if (duplicateMode) {
+      if (others.length === 0) {
+        setError(ERR.others);
+        return;
+      }
+      if (others.some((v) => !lockerRe.test(v))) {
+        setError(ERR.lockerFormat);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const { data, error: rpcErr } = await supabase.functions.invoke("submit-locker-identity-claim", {
         body: {
-          claim_type: "unknown_owner",
+          claim_type: duplicateMode ? "multiple_locker" : "unknown_owner",
+          source: duplicateMode ? "duplicate_notice" : "identity_update",
           locker_number: parsed.data.locker,
           badge_number: parsed.data.badge.trim(),
           full_name: parsed.data.name.trim(),
           contact_number: parsed.data.contact.trim(),
           location: "",
           still_using: parsed.data.still,
-          other_locker_numbers: [],
+          other_locker_numbers: duplicateMode ? others : [],
         },
       });
       if (rpcErr) {
@@ -107,6 +129,7 @@ function LockerIdentityUpdatePage() {
       setLoading(false);
     }
   };
+
 
   if (successId) {
     return (
