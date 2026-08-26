@@ -16,7 +16,8 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const ALLOWED_CLAIM_TYPES = new Set(["unknown_owner", "found_own_locker", "other"]);
+const ALLOWED_CLAIM_TYPES = new Set(["unknown_owner", "multiple_locker"]);
+const ALLOWED_SOURCES = new Set(["identity_update", "duplicate_notice"]);
 
 const clean = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 
