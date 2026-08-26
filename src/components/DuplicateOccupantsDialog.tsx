@@ -232,6 +232,7 @@ export function DuplicateOccupantsDialog({
             <TabsList className="self-start">
               <TabsTrigger value="occupants">Duplicate Active Occupants</TabsTrigger>
               <TabsTrigger value="history">Duplicate History Entries</TabsTrigger>
+              <TabsTrigger value="reactivated">Terminated &amp; Reactivated</TabsTrigger>
             </TabsList>
 
             <TabsContent value="occupants" className="flex-1 flex flex-col min-h-0 mt-3 gap-3">
