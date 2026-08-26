@@ -220,6 +220,8 @@ export function DuplicateOccupantsDialog({
             <DialogDescription>
               {tab === "history"
                 ? "Find and clean up events recorded more than once for the same locker."
+                : tab === "reactivated"
+                ? "Review employees who were terminated and later became active again."
                 : loading
                   ? "Scanning all active occupancy records…"
                   : `${groups.length} employee${groups.length === 1 ? "" : "s"} with duplicate active lockers (${sameCount} same-category, ${crossCount} cross-category).`}
