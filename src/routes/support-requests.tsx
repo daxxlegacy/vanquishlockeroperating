@@ -50,7 +50,6 @@ import { ImagePreviewModal, type ImagePreviewItem } from "@/components/ImagePrev
 import { signTicketAttachment } from "@/lib/ticket-attachment";
 import { FindLockerPanel } from "@/components/operations/FindLockerPanel";
 import { IdentityUpdatePanel } from "@/components/support/IdentityUpdatePanel";
-import { DuplicateResolutionPanel } from "@/components/support/DuplicateResolutionPanel";
 import { toast } from "sonner";
 import {
   REQUEST_TYPE_LABEL,
@@ -304,9 +303,6 @@ function SupportRequestsPage() {
             <TabsTrigger value="identity-update" className="gap-1.5">
               <ClipboardCheck className="h-4 w-4" /> Identity Update
             </TabsTrigger>
-            <TabsTrigger value="duplicate-resolution" className="gap-1.5">
-              <QrCode className="h-4 w-4" /> Duplicate Resolution
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="mt-4">
@@ -377,10 +373,6 @@ function SupportRequestsPage() {
 
           <TabsContent value="identity-update" className="mt-4">
             <IdentityUpdatePanel />
-          </TabsContent>
-
-          <TabsContent value="duplicate-resolution" className="mt-4">
-            <DuplicateResolutionPanel />
           </TabsContent>
         </Tabs>
       </main>

@@ -19,14 +19,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DuplicateHistorySection } from "@/components/DuplicateHistorySection";
 import { ReactivatedOccupantsSection } from "@/components/ReactivatedOccupantsSection";
-import { DuplicateResolutionQrDialog, buildResolutionUrl } from "@/components/DuplicateResolutionQrDialog";
 
 import {
   AlertTriangle,
   CheckCircle2,
   Copy,
   Loader2,
-  QrCode,
   RefreshCw,
   ShieldCheck,
   StopCircle,
@@ -123,7 +121,6 @@ export function DuplicateOccupantsDialog({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmRow, setConfirmRow] = useState<DupRow | null>(null);
   const [reason, setReason] = useState(DEFAULT_REASON);
-  const [qrGroup, setQrGroup] = useState<Group | null>(null);
 
 
   const load = useCallback(async () => {
@@ -157,23 +154,6 @@ export function DuplicateOccupantsDialog({
 
   const sameCount = groups.filter((g) => g.bucket === "same").length;
   const crossCount = groups.filter((g) => g.bucket === "cross").length;
-
-  const generateQr = async (g: Group) => {
-    setQrGroup(g);
-    if (!user) return;
-    const lockers = g.rows.map((r) => r.locker_number);
-    const { error: e } = await (supabase as unknown as { from: (t: string) => any })
-      .from("duplicate_resolution_requests")
-      .insert({
-        badge_number: g.badge,
-        employee_name: g.name === "\u2014" ? null : g.name,
-        locker_numbers: lockers,
-        target_url: buildResolutionUrl(g.badge),
-        generated_by: user.id,
-        generated_by_email: user.email ?? null,
-      });
-    if (e) toast.error(`QR created, but logging failed: ${e.message}`);
-  };
 
   const terminate = async () => {
     if (!confirmRow || !user) return;
@@ -377,14 +357,7 @@ export function DuplicateOccupantsDialog({
                     </div>
 
                     {isAdmin && (
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => generateQr(g)}
-                        >
-                          <QrCode className="h-3.5 w-3.5 mr-1" /> Generate Resolution QR
-                        </Button>
+                      <div className="flex justify-end">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -431,14 +404,6 @@ export function DuplicateOccupantsDialog({
 
         </DialogContent>
       </Dialog>
-
-      <DuplicateResolutionQrDialog
-        open={!!qrGroup}
-        onClose={() => setQrGroup(null)}
-        badge={qrGroup?.badge ?? ""}
-        name={qrGroup?.name ?? null}
-        lockerNumbers={qrGroup?.rows.map((r) => r.locker_number) ?? []}
-      />
 
       <Dialog open={!!confirmRow} onOpenChange={(v) => !v && !busyId && setConfirmRow(null)}>
         <DialogContent className="max-w-md">
