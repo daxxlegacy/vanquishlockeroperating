@@ -386,6 +386,13 @@ export function DuplicateOccupantsDialog({
               onViewHistory={onViewHistory}
             />
           </TabsContent>
+
+          <TabsContent value="reactivated" className="flex-1 flex flex-col min-h-0 mt-3">
+            <ReactivatedOccupantsSection
+              active={tab === "reactivated"}
+              onViewHistory={onViewHistory}
+            />
+          </TabsContent>
           </Tabs>
 
           <DialogFooter className="flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
