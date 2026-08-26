@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DuplicateHistorySection } from "@/components/DuplicateHistorySection";
+import { ReactivatedOccupantsSection } from "@/components/ReactivatedOccupantsSection";
 
 import {
   AlertTriangle,
@@ -219,6 +220,8 @@ export function DuplicateOccupantsDialog({
             <DialogDescription>
               {tab === "history"
                 ? "Find and clean up events recorded more than once for the same locker."
+                : tab === "reactivated"
+                ? "Review employees who were terminated and later became active again."
                 : loading
                   ? "Scanning all active occupancy records…"
                   : `${groups.length} employee${groups.length === 1 ? "" : "s"} with duplicate active lockers (${sameCount} same-category, ${crossCount} cross-category).`}
@@ -229,6 +232,7 @@ export function DuplicateOccupantsDialog({
             <TabsList className="self-start">
               <TabsTrigger value="occupants">Duplicate Active Occupants</TabsTrigger>
               <TabsTrigger value="history">Duplicate History Entries</TabsTrigger>
+              <TabsTrigger value="reactivated">Terminated &amp; Reactivated</TabsTrigger>
             </TabsList>
 
             <TabsContent value="occupants" className="flex-1 flex flex-col min-h-0 mt-3 gap-3">
@@ -379,6 +383,13 @@ export function DuplicateOccupantsDialog({
             <DuplicateHistorySection
               active={tab === "history"}
               isAdmin={isAdmin}
+              onViewHistory={onViewHistory}
+            />
+          </TabsContent>
+
+          <TabsContent value="reactivated" className="flex-1 flex flex-col min-h-0 mt-3">
+            <ReactivatedOccupantsSection
+              active={tab === "reactivated"}
               onViewHistory={onViewHistory}
             />
           </TabsContent>
