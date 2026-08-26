@@ -166,6 +166,45 @@ export type Database = {
         }
         Relationships: []
       }
+      duplicate_resolution_requests: {
+        Row: {
+          badge_number: string
+          claim_id: string | null
+          created_at: string
+          employee_name: string | null
+          generated_by: string
+          generated_by_email: string | null
+          id: string
+          locker_numbers: string[]
+          resolved_at: string | null
+          target_url: string | null
+        }
+        Insert: {
+          badge_number: string
+          claim_id?: string | null
+          created_at?: string
+          employee_name?: string | null
+          generated_by: string
+          generated_by_email?: string | null
+          id?: string
+          locker_numbers?: string[]
+          resolved_at?: string | null
+          target_url?: string | null
+        }
+        Update: {
+          badge_number?: string
+          claim_id?: string | null
+          created_at?: string
+          employee_name?: string | null
+          generated_by?: string
+          generated_by_email?: string | null
+          id?: string
+          locker_numbers?: string[]
+          resolved_at?: string | null
+          target_url?: string | null
+        }
+        Relationships: []
+      }
       faq_assistant_log: {
         Row: {
           answer: string | null
@@ -1021,6 +1060,10 @@ export type Database = {
       add_support_ticket_reply_public: {
         Args: { _badge: string; _message: string; _ticket: string }
         Returns: string
+      }
+      approve_duplicate_resolution: {
+        Args: { _claim_id: string }
+        Returns: Json
       }
       approve_multiple_locker_exception: {
         Args: {
