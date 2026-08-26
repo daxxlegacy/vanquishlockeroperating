@@ -30,6 +30,7 @@ const ERR = {
   contact: "Sila masukkan nombor telefon yang sah.",
   generic: "Gagal menghantar — sila cuba lagi sebentar.",
   rate: "Terlalu banyak penghantaran. Sila cuba lagi dalam beberapa minit.",
+  others: "Sila senaraikan sekurang-kurangnya satu loker lain yang didaftarkan atas nama anda.",
 };
 
 const DUP_WARNING_BM =
