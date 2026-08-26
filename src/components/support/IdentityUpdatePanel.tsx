@@ -58,16 +58,22 @@ export function IdentityUpdatePanel() {
       supabase as unknown as {
         from: (t: string) => {
           select: (c: string) => {
-            order: (
+            neq: (
               col: string,
-              o: { ascending: boolean },
-            ) => Promise<{ data: Claim[] | null; error: { message: string } | null }>;
+              v: string,
+            ) => {
+              order: (
+                col: string,
+                o: { ascending: boolean },
+              ) => Promise<{ data: Claim[] | null; error: { message: string } | null }>;
+            };
           };
         };
       }
     )
       .from("locker_identity_claims")
       .select("id,created_at,locker_number,badge_number,full_name,still_using,contact_number,status")
+      .neq("source", "duplicate_notice")
       .order("created_at", { ascending: false });
     setLoading(false);
     if (error) {

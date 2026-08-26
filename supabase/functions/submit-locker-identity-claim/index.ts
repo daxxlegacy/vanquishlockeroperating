@@ -16,7 +16,8 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const ALLOWED_CLAIM_TYPES = new Set(["unknown_owner", "found_own_locker", "other"]);
+const ALLOWED_CLAIM_TYPES = new Set(["unknown_owner", "multiple_locker"]);
+const ALLOWED_SOURCES = new Set(["identity_update", "duplicate_notice"]);
 
 const clean = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 
@@ -56,6 +57,9 @@ Deno.serve(async (req) => {
     return json({ error: "Missing required fields" }, 400);
   }
 
+  const source_raw = clean(body.source, 60);
+  const source = ALLOWED_SOURCES.has(source_raw) ? source_raw : "identity_update";
+
   const { data, error } = await supabase.rpc("submit_locker_identity_claim", {
     _claim_type: claim_type,
     _locker_number: locker_number,
@@ -66,7 +70,9 @@ Deno.serve(async (req) => {
     _still_using: still_using,
     _other_locker_numbers: other_locker_numbers,
     _ip: ip || null,
+    _source: source,
   });
+
 
   if (error) {
     const msg = (error.message || "").toLowerCase();

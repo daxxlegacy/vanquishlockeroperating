@@ -166,6 +166,45 @@ export type Database = {
         }
         Relationships: []
       }
+      duplicate_resolution_requests: {
+        Row: {
+          badge_number: string
+          claim_id: string | null
+          created_at: string
+          employee_name: string | null
+          generated_by: string
+          generated_by_email: string | null
+          id: string
+          locker_numbers: string[]
+          resolved_at: string | null
+          target_url: string | null
+        }
+        Insert: {
+          badge_number: string
+          claim_id?: string | null
+          created_at?: string
+          employee_name?: string | null
+          generated_by: string
+          generated_by_email?: string | null
+          id?: string
+          locker_numbers?: string[]
+          resolved_at?: string | null
+          target_url?: string | null
+        }
+        Update: {
+          badge_number?: string
+          claim_id?: string | null
+          created_at?: string
+          employee_name?: string | null
+          generated_by?: string
+          generated_by_email?: string | null
+          id?: string
+          locker_numbers?: string[]
+          resolved_at?: string | null
+          target_url?: string | null
+        }
+        Relationships: []
+      }
       faq_assistant_log: {
         Row: {
           answer: string | null
@@ -205,6 +244,7 @@ export type Database = {
           other_locker_numbers: string[] | null
           reviewed_at: string | null
           reviewed_by: string | null
+          source: string | null
           status: Database["public"]["Enums"]["locker_claim_status"]
           still_using: boolean | null
           updated_at: string
@@ -223,6 +263,7 @@ export type Database = {
           other_locker_numbers?: string[] | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source?: string | null
           status?: Database["public"]["Enums"]["locker_claim_status"]
           still_using?: boolean | null
           updated_at?: string
@@ -241,6 +282,7 @@ export type Database = {
           other_locker_numbers?: string[] | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source?: string | null
           status?: Database["public"]["Enums"]["locker_claim_status"]
           still_using?: boolean | null
           updated_at?: string
@@ -1022,6 +1064,10 @@ export type Database = {
         Args: { _badge: string; _message: string; _ticket: string }
         Returns: string
       }
+      approve_duplicate_resolution: {
+        Args: { _claim_id: string }
+        Returns: Json
+      }
       approve_multiple_locker_exception: {
         Args: {
           _badge_number: string
@@ -1128,6 +1174,7 @@ export type Database = {
           _location: string
           _locker_number: string
           _other_locker_numbers: string[]
+          _source?: string
           _still_using: boolean
         }
         Returns: Json

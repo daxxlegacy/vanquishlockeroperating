@@ -30,7 +30,11 @@ const ERR = {
   contact: "Sila masukkan nombor telefon yang sah.",
   generic: "Gagal menghantar — sila cuba lagi sebentar.",
   rate: "Terlalu banyak penghantaran. Sila cuba lagi dalam beberapa minit.",
+  others: "Sila senaraikan sekurang-kurangnya satu loker lain yang didaftarkan atas nama anda.",
 };
+
+const DUP_WARNING_BM =
+  "Kami mengesan lebih daripada satu loker didaftarkan atas nama anda. Sila pilih loker yang sedang anda gunakan. Mana-mana loker lain yang didaftarkan atas nama anda akan dinyahaktifkan dan ditanda untuk pembaikan.";
 
 function LockerIdentityUpdatePage() {
   const [lockerNumber, setLockerNumber] = useState("");
@@ -38,6 +42,8 @@ function LockerIdentityUpdatePage() {
   const [fullName, setFullName] = useState("");
   const [stillUsing, setStillUsing] = useState<null | boolean>(null);
   const [contact, setContact] = useState("");
+  const [duplicateMode, setDuplicateMode] = useState(false);
+  const [otherLockers, setOtherLockers] = useState<string[]>([""]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +54,10 @@ function LockerIdentityUpdatePage() {
     const params = new URLSearchParams(window.location.search);
     const l = params.get("locker");
     if (l) setLockerNumber(l.trim().toUpperCase());
+    if (params.get("source") === "duplicate_notice") {
+      setDuplicateMode(true);
+      setStillUsing(true);
+    }
   }, []);
 
   const scrollFocusIntoView = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -69,7 +79,7 @@ function LockerIdentityUpdatePage() {
       locker: lockerNumber.trim().toUpperCase(),
       badge,
       name: fullName,
-      still: stillUsing,
+      still: duplicateMode ? true : stillUsing,
       contact,
     });
     if (!parsed.success) {
@@ -77,18 +87,31 @@ function LockerIdentityUpdatePage() {
       return;
     }
 
+    const others = otherLockers.map((v) => v.trim().toUpperCase()).filter((v) => v.length > 0);
+    if (duplicateMode) {
+      if (others.length === 0) {
+        setError(ERR.others);
+        return;
+      }
+      if (others.some((v) => !lockerRe.test(v))) {
+        setError(ERR.lockerFormat);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const { data, error: rpcErr } = await supabase.functions.invoke("submit-locker-identity-claim", {
         body: {
-          claim_type: "unknown_owner",
+          claim_type: duplicateMode ? "multiple_locker" : "unknown_owner",
+          source: duplicateMode ? "duplicate_notice" : "identity_update",
           locker_number: parsed.data.locker,
           badge_number: parsed.data.badge.trim(),
           full_name: parsed.data.name.trim(),
           contact_number: parsed.data.contact.trim(),
           location: "",
           still_using: parsed.data.still,
-          other_locker_numbers: [],
+          other_locker_numbers: duplicateMode ? others : [],
         },
       });
       if (rpcErr) {
@@ -107,6 +130,7 @@ function LockerIdentityUpdatePage() {
       setLoading(false);
     }
   };
+
 
   if (successId) {
     return (
@@ -133,16 +157,25 @@ function LockerIdentityUpdatePage() {
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto w-full max-w-md px-5 pt-6 pb-24 sm:pb-10">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Kemas Kini Identiti Loker</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {duplicateMode ? "Loker Berganda — Pengesahan Pemilik" : "Kemas Kini Identiti Loker"}
+          </h1>
           <p className="text-sm text-muted-foreground mt-2">
             Sila isikan maklumat loker anda dengan tepat. Maklumat ini diperlukan untuk rekod dalaman.
           </p>
         </div>
 
+        {duplicateMode && (
+          <Alert className="mb-4 border-destructive/40 bg-destructive/5">
+            <AlertDescription className="text-sm leading-relaxed">{DUP_WARNING_BM}</AlertDescription>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <ClipboardCheck className="h-4 w-4" /> Kemas Kini Identiti Loker
+              <ClipboardCheck className="h-4 w-4" />
+              {duplicateMode ? "Pilih Loker Yang Sedang Digunakan" : "Kemas Kini Identiti Loker"}
             </CardTitle>
             <p className="text-xs text-muted-foreground">
               * Menunjukkan soalan wajib
@@ -151,7 +184,9 @@ function LockerIdentityUpdatePage() {
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="locker" className="text-sm font-medium">Nombor Loker *</Label>
+                <Label htmlFor="locker" className="text-sm font-medium">
+                  {duplicateMode ? "Loker yang sedang anda gunakan *" : "Nombor Loker *"}
+                </Label>
                 <Input
                   id="locker"
                   value={lockerNumber}
@@ -167,6 +202,7 @@ function LockerIdentityUpdatePage() {
                   Format: digit + satu huruf (cth. 1411E) atau huruf + digit (cth. B08)
                 </p>
               </div>
+
 
               <div className="space-y-1.5">
                 <Label htmlFor="badge" className="text-sm font-medium">Nombor Pekerja / Nombor Badge *</Label>
@@ -195,29 +231,77 @@ function LockerIdentityUpdatePage() {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Adakah anda masih menggunakan loker ini? *</Label>
-                <div className="grid grid-cols-2 gap-2">
+              {duplicateMode ? (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">
+                    Loker lain yang didaftarkan atas nama anda *
+                  </Label>
+                  <div className="space-y-2">
+                    {otherLockers.map((v, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input
+                          value={v}
+                          onChange={(e) =>
+                            setOtherLockers((prev) =>
+                              prev.map((x, j) => (j === i ? e.target.value.toUpperCase() : x)),
+                            )
+                          }
+                          onFocus={scrollFocusIntoView}
+                          placeholder="cth. 1412E"
+                          autoComplete="off"
+                          className="h-12 text-base"
+                        />
+                        {otherLockers.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-12"
+                            onClick={() => setOtherLockers((prev) => prev.filter((_, j) => j !== i))}
+                          >
+                            Buang
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                   <Button
                     type="button"
-                    variant={stillUsing === true ? "default" : "outline"}
-                    className="h-12 text-base"
-                    onClick={() => setStillUsing(true)}
-                    aria-pressed={stillUsing === true}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOtherLockers((prev) => [...prev, ""])}
                   >
-                    Ya
+                    + Tambah loker lain
                   </Button>
-                  <Button
-                    type="button"
-                    variant={stillUsing === false ? "default" : "outline"}
-                    className="h-12 text-base"
-                    onClick={() => setStillUsing(false)}
-                    aria-pressed={stillUsing === false}
-                  >
-                    Tidak
-                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Loker ini akan dinyahaktifkan dan ditanda untuk pembaikan selepas disemak.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Adakah anda masih menggunakan loker ini? *</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={stillUsing === true ? "default" : "outline"}
+                      className="h-12 text-base"
+                      onClick={() => setStillUsing(true)}
+                      aria-pressed={stillUsing === true}
+                    >
+                      Ya
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={stillUsing === false ? "default" : "outline"}
+                      className="h-12 text-base"
+                      onClick={() => setStillUsing(false)}
+                      aria-pressed={stillUsing === false}
+                    >
+                      Tidak
+                    </Button>
+                  </div>
+                </div>
+              )}
+
 
               <div className="space-y-1.5">
                 <Label htmlFor="contact" className="text-sm font-medium">Nombor Telefon *</Label>
