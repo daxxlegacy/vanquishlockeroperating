@@ -244,6 +244,7 @@ export type Database = {
           other_locker_numbers: string[] | null
           reviewed_at: string | null
           reviewed_by: string | null
+          source: string | null
           status: Database["public"]["Enums"]["locker_claim_status"]
           still_using: boolean | null
           updated_at: string
@@ -262,6 +263,7 @@ export type Database = {
           other_locker_numbers?: string[] | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source?: string | null
           status?: Database["public"]["Enums"]["locker_claim_status"]
           still_using?: boolean | null
           updated_at?: string
@@ -280,6 +282,7 @@ export type Database = {
           other_locker_numbers?: string[] | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source?: string | null
           status?: Database["public"]["Enums"]["locker_claim_status"]
           still_using?: boolean | null
           updated_at?: string
@@ -1161,20 +1164,36 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
-      submit_locker_identity_claim: {
-        Args: {
-          _badge_number: string
-          _claim_type: Database["public"]["Enums"]["locker_claim_type"]
-          _contact_number: string
-          _full_name: string
-          _ip: string
-          _location: string
-          _locker_number: string
-          _other_locker_numbers: string[]
-          _still_using: boolean
-        }
-        Returns: Json
-      }
+      submit_locker_identity_claim:
+        | {
+            Args: {
+              _badge_number: string
+              _claim_type: Database["public"]["Enums"]["locker_claim_type"]
+              _contact_number: string
+              _full_name: string
+              _ip: string
+              _location: string
+              _locker_number: string
+              _other_locker_numbers: string[]
+              _still_using: boolean
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _badge_number: string
+              _claim_type: Database["public"]["Enums"]["locker_claim_type"]
+              _contact_number: string
+              _full_name: string
+              _ip: string
+              _location: string
+              _locker_number: string
+              _other_locker_numbers: string[]
+              _source?: string
+              _still_using: boolean
+            }
+            Returns: Json
+          }
       submit_support_request: {
         Args: {
           _badge_number: string
