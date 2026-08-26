@@ -231,29 +231,77 @@ function LockerIdentityUpdatePage() {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Adakah anda masih menggunakan loker ini? *</Label>
-                <div className="grid grid-cols-2 gap-2">
+              {duplicateMode ? (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">
+                    Loker lain yang didaftarkan atas nama anda *
+                  </Label>
+                  <div className="space-y-2">
+                    {otherLockers.map((v, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input
+                          value={v}
+                          onChange={(e) =>
+                            setOtherLockers((prev) =>
+                              prev.map((x, j) => (j === i ? e.target.value.toUpperCase() : x)),
+                            )
+                          }
+                          onFocus={scrollFocusIntoView}
+                          placeholder="cth. 1412E"
+                          autoComplete="off"
+                          className="h-12 text-base"
+                        />
+                        {otherLockers.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-12"
+                            onClick={() => setOtherLockers((prev) => prev.filter((_, j) => j !== i))}
+                          >
+                            Buang
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                   <Button
                     type="button"
-                    variant={stillUsing === true ? "default" : "outline"}
-                    className="h-12 text-base"
-                    onClick={() => setStillUsing(true)}
-                    aria-pressed={stillUsing === true}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOtherLockers((prev) => [...prev, ""])}
                   >
-                    Ya
+                    + Tambah loker lain
                   </Button>
-                  <Button
-                    type="button"
-                    variant={stillUsing === false ? "default" : "outline"}
-                    className="h-12 text-base"
-                    onClick={() => setStillUsing(false)}
-                    aria-pressed={stillUsing === false}
-                  >
-                    Tidak
-                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Loker ini akan dinyahaktifkan dan ditanda untuk pembaikan selepas disemak.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Adakah anda masih menggunakan loker ini? *</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={stillUsing === true ? "default" : "outline"}
+                      className="h-12 text-base"
+                      onClick={() => setStillUsing(true)}
+                      aria-pressed={stillUsing === true}
+                    >
+                      Ya
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={stillUsing === false ? "default" : "outline"}
+                      className="h-12 text-base"
+                      onClick={() => setStillUsing(false)}
+                      aria-pressed={stillUsing === false}
+                    >
+                      Tidak
+                    </Button>
+                  </div>
+                </div>
+              )}
+
 
               <div className="space-y-1.5">
                 <Label htmlFor="contact" className="text-sm font-medium">Nombor Telefon *</Label>
