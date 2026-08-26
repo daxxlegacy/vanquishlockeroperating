@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DuplicateHistorySection } from "@/components/DuplicateHistorySection";
+import { ReactivatedOccupantsSection } from "@/components/ReactivatedOccupantsSection";
 
 import {
   AlertTriangle,
