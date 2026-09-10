@@ -20,6 +20,7 @@ import { formatBatchIntake } from "@/lib/locker-utils";
 import { useLockers } from "@/lib/lockers-cache";
 import { NationalIdCell } from "@/components/NationalIdCell";
 import type { Database } from "@/integrations/supabase/types";
+import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import {
   clearTransferSwapHistoryRange,
   invalidateTransferSwapHistory,
@@ -89,7 +90,23 @@ function OccupantCells({ o }: { o: Occupant }) {
 }
 
 
-const GRID = "grid grid-cols-[5.5rem_7rem_1fr_7rem_9rem_6.5rem] gap-3 items-center";
+const GRID =
+  "grid grid-cols-[5.5rem_7rem_1fr_7rem_9rem_9rem_11rem_6.5rem] gap-3 items-center";
+
+/** Old-locker action rendered with the shared status label styling. */
+function OldActionCell({ value }: { value: string | null | undefined }) {
+  const raw = (value ?? "").trim();
+  if (!raw || raw === "swap") return <span className="text-muted-foreground">—</span>;
+  const swatch = STATUS_SWATCH[raw as LockerStatus] ?? "bg-muted-foreground";
+  const label = STATUS_LABEL[raw as LockerStatus] ?? raw;
+  return (
+    <Badge variant="outline" className="gap-1.5 w-fit text-[10px]">
+      <span className={`h-2 w-2 rounded-full ${swatch}`} />
+      {label}
+    </Badge>
+  );
+}
+
 
 export function TransferSwapHistoryPanel() {
   const { user, role } = useAuth();
@@ -130,7 +147,9 @@ export function TransferSwapHistoryPanel() {
         a.badgeNumber,
         b.employeeName,
         b.badgeNumber,
+        r.performed_by_email,
       ]
+
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -212,7 +231,7 @@ export function TransferSwapHistoryPanel() {
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <div className="min-w-[54rem]">
+            <div className="min-w-[70rem]">
               <div
                 className={`${GRID} px-4 py-2 border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground`}
               >
@@ -221,6 +240,8 @@ export function TransferSwapHistoryPanel() {
                 <span>Employee Name</span>
                 <span>Badge</span>
                 <span>National ID</span>
+                <span>Old Locker Set To</span>
+                <span>Admin</span>
                 <span>Date</span>
               </div>
               <div className="divide-y max-h-[32rem] overflow-auto">
@@ -229,6 +250,12 @@ export function TransferSwapHistoryPanel() {
                   const a = occupantOf(r.locker_number, byNumber, snapA(r));
                   const b = occupantOf(r.other_locker_number, byNumber, snapB(r));
                   const date = formatBatchIntake(r.occurred_on);
+                  const oldAction = (r as unknown as Record<string, string | null>)['old_locker_action'];
+                  const admin = (
+                    <span className="text-xs text-muted-foreground truncate" title={r.performed_by_email ?? ""}>
+                      {r.performed_by_email ?? "—"}
+                    </span>
+                  );
 
                   if (isSwap) {
                     // ONE row per swap event: both sides stacked inside it,
@@ -246,6 +273,8 @@ export function TransferSwapHistoryPanel() {
                             <OccupantCells o={b} />
                           </div>
                         </div>
+                        <OldActionCell value={oldAction} />
+                        {admin}
                         <span className="text-muted-foreground whitespace-nowrap">{date}</span>
                       </div>
                     );
@@ -273,10 +302,13 @@ export function TransferSwapHistoryPanel() {
                         {person.badgeNumber ?? <span className="text-muted-foreground font-sans">—</span>}
                       </span>
                       <NationalIdCell value={person.nationalId} recordId={person.id} table="lockers" />
+                      <OldActionCell value={oldAction} />
+                      {admin}
                       <span className="text-muted-foreground whitespace-nowrap">{date}</span>
                     </div>
                   );
                 })}
+
               </div>
             </div>
           </div>

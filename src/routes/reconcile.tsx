@@ -13,9 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ArrowRightLeft, UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2, Loader2, Users } from "lucide-react";
+import { ArrowRightLeft, UserMinus, AlertTriangle, UserCheck, HelpCircle, Search, Download, FileSpreadsheet, ShieldAlert, RotateCcw, Info, FileX2, Loader2, Users, History } from "lucide-react";
 import { DuplicatesSection } from "@/components/reconcile/DuplicatesSection";
 import { TransferSwapHistoryPanel } from "@/components/operations/TransferSwapHistoryPanel";
+import { StatusChangeLogPanel } from "@/components/operations/StatusChangeLogPanel";
+
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
@@ -419,6 +421,8 @@ function ReconcilePage() {
             <TabsTrigger value="mednefits" className="gap-2"><FileX2 className="h-4 w-4" /> Mednefits</TabsTrigger>
             <TabsTrigger value="duplicates" className="gap-2"><Users className="h-4 w-4" /> Duplicates</TabsTrigger>
             <TabsTrigger value="terminations" className="gap-2"><ArrowRightLeft className="h-4 w-4" /> Transfer and Swap History</TabsTrigger>
+            <TabsTrigger value="status_log" className="gap-2"><History className="h-4 w-4" /> Status Change Log</TabsTrigger>
+
             
           </TabsList>
 
@@ -540,6 +544,11 @@ function ReconcilePage() {
           <TabsContent value="terminations" className="mt-4">
             <TransferSwapHistoryPanel />
           </TabsContent>
+
+          <TabsContent value="status_log" className="mt-4">
+            <StatusChangeLogPanel />
+          </TabsContent>
+
         </Tabs>
       </main>
     </div>

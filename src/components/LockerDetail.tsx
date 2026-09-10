@@ -48,12 +48,14 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
   const [clearing, setClearing] = useState(false);
   const isAdmin = role === "admin";
   const editedRef = useRef(false);
+  // Status the locker had when the dialog opened — used to audit real changes.
+  const originalStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!lockerId || !open) return;
     editedRef.current = false;
     const cached = getLockerById(lockerId);
-    if (cached) setLocker(cached);
+    if (cached) { setLocker(cached); originalStatusRef.current = cached.status; }
     // Admins can read the full national_id from the base table (RLS allows).
     // Everyone else reads from the masked view so national_id is never exposed.
     const source = isAdmin ? "lockers" : "lockers_masked";
@@ -61,9 +63,10 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
       .from(source).select("*").eq("id", lockerId).single().then(({ data }) => {
         // Guard against overwriting in-progress edits: if the admin has
         // started editing before the fresh fetch resolves, keep local state.
-        if (data && !editedRef.current) setLocker(data);
+        if (data && !editedRef.current) { setLocker(data); originalStatusRef.current = data.status; }
       });
   }, [lockerId, open, isAdmin]);
+
 
   if (!locker) {
     return (
@@ -97,6 +100,8 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     };
     const snap = locker;
     const optimistic = { ...snap, ...updatePayload } as Locker;
+    // Status as it was when the dialog opened (before any local edits).
+    const prevStatus = originalStatusRef.current;
 
     // Optimistic: patch cache + close instantly so admin can key in the next locker.
     patchLockersInCache([optimistic]);
@@ -108,6 +113,22 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     void (async () => {
       const { error } = await supabase.from("lockers").update(updatePayload).eq("id", snap.id);
       if (error) { toast.error(`Save failed: ${error.message}`); return; }
+
+      // Audit the status change (same shape as the bulk status update tool).
+      if (prevStatus !== snap.status) {
+        const { data: auth } = await supabase.auth.getUser();
+        const { error: logErr } = await supabase.from("status_change_log").insert({
+          locker_id: snap.id,
+          locker_number: snap.locker_number,
+          previous_status: prevStatus,
+          new_status: snap.status,
+          source: "locker_detail_manual",
+          changed_by: auth.user?.id ?? "",
+          changed_by_email: auth.user?.email ?? null,
+        });
+        if (logErr) console.warn("status_change_log insert failed:", logErr.message);
+      }
+
       if (snap.status === "active" && (snap.employee_name || snap.badge_number)) {
         await syncActivationToOccupancy(snap);
         await syncMetadataToOccupancy(snap);
@@ -116,6 +137,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
       }
     })();
   };
+
 
   const handleClearDetails = async () => {
     if (!isAdmin) return;
