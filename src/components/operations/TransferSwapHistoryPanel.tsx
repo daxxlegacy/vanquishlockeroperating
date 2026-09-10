@@ -147,7 +147,9 @@ export function TransferSwapHistoryPanel() {
         a.badgeNumber,
         b.employeeName,
         b.badgeNumber,
+        r.performed_by_email,
       ]
+
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
