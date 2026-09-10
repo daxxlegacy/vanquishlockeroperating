@@ -48,12 +48,14 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
   const [clearing, setClearing] = useState(false);
   const isAdmin = role === "admin";
   const editedRef = useRef(false);
+  // Status the locker had when the dialog opened — used to audit real changes.
+  const originalStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!lockerId || !open) return;
     editedRef.current = false;
     const cached = getLockerById(lockerId);
-    if (cached) setLocker(cached);
+    if (cached) { setLocker(cached); originalStatusRef.current = cached.status; }
     // Admins can read the full national_id from the base table (RLS allows).
     // Everyone else reads from the masked view so national_id is never exposed.
     const source = isAdmin ? "lockers" : "lockers_masked";
@@ -61,9 +63,10 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
       .from(source).select("*").eq("id", lockerId).single().then(({ data }) => {
         // Guard against overwriting in-progress edits: if the admin has
         // started editing before the fresh fetch resolves, keep local state.
-        if (data && !editedRef.current) setLocker(data);
+        if (data && !editedRef.current) { setLocker(data); originalStatusRef.current = data.status; }
       });
   }, [lockerId, open, isAdmin]);
+
 
   if (!locker) {
     return (
