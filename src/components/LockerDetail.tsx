@@ -37,7 +37,7 @@ const STATUSES = LOCKER_STATUSES;
 
 export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full" }: Props) {
   const isSpare = mode === "spare";
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [locker, setLocker] = useState<Locker | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -115,18 +115,32 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
       if (error) { toast.error(`Save failed: ${error.message}`); return; }
 
       // Audit the status change (same shape as the bulk status update tool).
-      if (prevStatus !== snap.status) {
-        const { data: auth } = await supabase.auth.getUser();
-        const { error: logErr } = await supabase.from("status_change_log").insert({
-          locker_id: snap.id,
-          locker_number: snap.locker_number,
-          previous_status: prevStatus,
-          new_status: snap.status,
-          source: "locker_detail_manual",
-          changed_by: auth.user?.id ?? "",
-          changed_by_email: auth.user?.email ?? null,
-        });
-        if (logErr) console.warn("status_change_log insert failed:", logErr.message);
+      // Every save with a different status writes its own row, so an accidental
+      // change and its later correction both appear as separate entries.
+      if (prevStatus !== updatePayload.status) {
+        // Prefer the live session user; fall back to a fresh auth read so the
+        // audit still lands if the context hasn't hydrated yet.
+        let uid = user?.id ?? null;
+        let email = user?.email ?? null;
+        if (!uid) {
+          const { data: auth } = await supabase.auth.getUser();
+          uid = auth.user?.id ?? null;
+          email = auth.user?.email ?? null;
+        }
+        if (!uid) {
+          toast.error("Status change not logged: no signed-in user");
+        } else {
+          const { error: logErr } = await supabase.from("status_change_log").insert({
+            locker_id: snap.id,
+            locker_number: snap.locker_number,
+            previous_status: prevStatus,
+            new_status: updatePayload.status,
+            source: "locker_detail_manual",
+            changed_by: uid,
+            changed_by_email: email,
+          });
+          if (logErr) toast.error(`Status change not logged: ${logErr.message}`);
+        }
       }
 
       if (snap.status === "active" && (snap.employee_name || snap.badge_number)) {
