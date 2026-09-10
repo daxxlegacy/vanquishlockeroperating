@@ -229,7 +229,7 @@ export function TransferSwapHistoryPanel() {
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <div className="min-w-[54rem]">
+            <div className="min-w-[70rem]">
               <div
                 className={`${GRID} px-4 py-2 border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground`}
               >
@@ -238,6 +238,8 @@ export function TransferSwapHistoryPanel() {
                 <span>Employee Name</span>
                 <span>Badge</span>
                 <span>National ID</span>
+                <span>Old Locker Set To</span>
+                <span>Admin</span>
                 <span>Date</span>
               </div>
               <div className="divide-y max-h-[32rem] overflow-auto">
@@ -246,6 +248,12 @@ export function TransferSwapHistoryPanel() {
                   const a = occupantOf(r.locker_number, byNumber, snapA(r));
                   const b = occupantOf(r.other_locker_number, byNumber, snapB(r));
                   const date = formatBatchIntake(r.occurred_on);
+                  const oldAction = (r as unknown as Record<string, string | null>)['old_locker_action'];
+                  const admin = (
+                    <span className="text-xs text-muted-foreground truncate" title={r.performed_by_email ?? ""}>
+                      {r.performed_by_email ?? "—"}
+                    </span>
+                  );
 
                   if (isSwap) {
                     // ONE row per swap event: both sides stacked inside it,
@@ -263,6 +271,8 @@ export function TransferSwapHistoryPanel() {
                             <OccupantCells o={b} />
                           </div>
                         </div>
+                        <OldActionCell value={oldAction} />
+                        {admin}
                         <span className="text-muted-foreground whitespace-nowrap">{date}</span>
                       </div>
                     );
@@ -290,10 +300,13 @@ export function TransferSwapHistoryPanel() {
                         {person.badgeNumber ?? <span className="text-muted-foreground font-sans">—</span>}
                       </span>
                       <NationalIdCell value={person.nationalId} recordId={person.id} table="lockers" />
+                      <OldActionCell value={oldAction} />
+                      {admin}
                       <span className="text-muted-foreground whitespace-nowrap">{date}</span>
                     </div>
                   );
                 })}
+
               </div>
             </div>
           </div>
