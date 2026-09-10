@@ -101,7 +101,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
     const snap = locker;
     const optimistic = { ...snap, ...updatePayload } as Locker;
     // Status as it was when the dialog opened (before any local edits).
-    const prevStatus = getLockerById(snap.id)?.status ?? null;
+    const prevStatus = originalStatusRef.current;
 
     // Optimistic: patch cache + close instantly so admin can key in the next locker.
     patchLockersInCache([optimistic]);
