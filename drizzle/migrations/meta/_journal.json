@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789000614300,
+      "tag": "0000_transfer_swap_old_action_and_status_log",
+      "breakpoints": true
+    }
+  ]
+}

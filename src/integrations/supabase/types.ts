@@ -769,6 +769,7 @@ export type Database = {
           national_id_a: string | null
           national_id_b: string | null
           occurred_on: string
+          old_locker_action: string | null
           other_locker_number: string | null
           performed_by: string | null
           performed_by_email: string | null
@@ -786,6 +787,7 @@ export type Database = {
           national_id_a?: string | null
           national_id_b?: string | null
           occurred_on?: string
+          old_locker_action?: string | null
           other_locker_number?: string | null
           performed_by?: string | null
           performed_by_email?: string | null
@@ -803,6 +805,7 @@ export type Database = {
           national_id_a?: string | null
           national_id_b?: string | null
           occurred_on?: string
+          old_locker_action?: string | null
           other_locker_number?: string | null
           performed_by?: string | null
           performed_by_email?: string | null
