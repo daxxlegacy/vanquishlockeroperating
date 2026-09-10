@@ -20,6 +20,7 @@ import { formatBatchIntake } from "@/lib/locker-utils";
 import { useLockers } from "@/lib/lockers-cache";
 import { NationalIdCell } from "@/components/NationalIdCell";
 import type { Database } from "@/integrations/supabase/types";
+import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import {
   clearTransferSwapHistoryRange,
   invalidateTransferSwapHistory,
@@ -89,7 +90,23 @@ function OccupantCells({ o }: { o: Occupant }) {
 }
 
 
-const GRID = "grid grid-cols-[5.5rem_7rem_1fr_7rem_9rem_6.5rem] gap-3 items-center";
+const GRID =
+  "grid grid-cols-[5.5rem_7rem_1fr_7rem_9rem_9rem_11rem_6.5rem] gap-3 items-center";
+
+/** Old-locker action rendered with the shared status label styling. */
+function OldActionCell({ value }: { value: string | null | undefined }) {
+  const raw = (value ?? "").trim();
+  if (!raw || raw === "swap") return <span className="text-muted-foreground">—</span>;
+  const swatch = STATUS_SWATCH[raw as LockerStatus] ?? "bg-muted-foreground";
+  const label = STATUS_LABEL[raw as LockerStatus] ?? raw;
+  return (
+    <Badge variant="outline" className="gap-1.5 w-fit text-[10px]">
+      <span className={`h-2 w-2 rounded-full ${swatch}`} />
+      {label}
+    </Badge>
+  );
+}
+
 
 export function TransferSwapHistoryPanel() {
   const { user, role } = useAuth();
