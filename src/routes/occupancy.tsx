@@ -1172,7 +1172,9 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
 
 
                 </li>
-              ))}
+                );
+              })}
+
             </ul>
           )}
         </div>
