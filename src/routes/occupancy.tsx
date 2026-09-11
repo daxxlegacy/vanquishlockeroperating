@@ -923,7 +923,7 @@ function MField({ label, value, wide, mono }: { label: string; value: string | n
 
 type HistoryEvent = {
   id: string;
-  source: "occupancy" | "termination";
+  source: "occupancy" | "termination" | "transfer" | "swap";
   status: string;
   employee_name: string | null;
   badge_number: string | null;
@@ -933,7 +933,10 @@ type HistoryEvent = {
   date_label: string;
   remarks: string | null;
   by: string | null;
+  /** Movement (transfer/swap) events only: extra line describing the move. */
+  movement_detail?: string | null;
 };
+
 
 
 function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: string | null; isAdmin: boolean; onClose: () => void }) {
@@ -950,6 +953,8 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
       .on("postgres_changes", { event: "*", schema: "public", table: "locker_occupancy", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
       .on("postgres_changes", { event: "*", schema: "public", table: "terminations", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
       .on("postgres_changes", { event: "*", schema: "public", table: "lockers", filter: `locker_number=eq.${lockerNumber}` }, () => setTick((t) => t + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "transfer_swap_history" }, () => setTick((t) => t + 1))
+
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [lockerNumber]);
@@ -958,10 +963,16 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
     if (!lockerNumber) { setEvents(null); return; }
     (async () => {
       setEvents(null);
-      const [{ data: occ }, { data: term }] = await Promise.all([
+      const [{ data: occ }, { data: term }, { data: moves }] = await Promise.all([
         supabase.from("locker_occupancy").select("*").eq("locker_number", lockerNumber).order("updated_at", { ascending: false }),
         supabase.from("terminations").select("*").eq("locker_number", lockerNumber).is("undone_at", null).order("termination_date", { ascending: false }),
+        supabase
+          .from("transfer_swap_history")
+          .select("*")
+          .or(`locker_number.eq.${lockerNumber},other_locker_number.eq.${lockerNumber}`)
+          .order("occurred_on", { ascending: false }),
       ]);
+
       const out: HistoryEvent[] = [];
       // Map badge → occupancy row so termination events can show a masked
       // National ID (terminations table doesn't store one).
@@ -1001,6 +1012,37 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
           by: t.terminated_by_email,
         });
       }
+      // Transfer & Swap movements involving this locker (read-only; deletion of
+      // these records happens only on the Reconcile → Transfer and Swap History tab).
+      for (const m of moves ?? []) {
+        const isSwap = (m.event_type ?? "").toLowerCase().includes("swap");
+        const isOrigin = (m.locker_number ?? "") === lockerNumber;
+        const kind = isSwap ? "Swap" : "Transfer";
+        const name = isOrigin ? m.employee_a : (isSwap ? m.employee_b : m.employee_a);
+        const badge = isOrigin ? m.badge_a : (isSwap ? m.badge_b : m.badge_a);
+        const nid = isOrigin ? m.national_id_a : (isSwap ? m.national_id_b : m.national_id_a);
+        const other = isOrigin ? m.other_locker_number : m.locker_number;
+        const parts: string[] = [];
+        parts.push(isOrigin ? `To locker ${other ?? "—"}` : `From locker ${other ?? "—"}`);
+        if (isOrigin && !isSwap && m.old_locker_action) parts.push(`This locker set to: ${m.old_locker_action}`);
+        if (m.performed_by_email) parts.push(`By ${m.performed_by_email}`);
+        out.push({
+          id: `m-${m.id}-${isOrigin ? "out" : "in"}`,
+          source: isSwap ? "swap" : "transfer",
+          status: `${kind === "Swap" ? "Swapped" : "Transferred"} ${isOrigin ? "Out" : "In"}`,
+          employee_name: name ?? null,
+          badge_number: badge ?? null,
+          national_id: nid ?? null,
+          nid_record_id: null,
+          date: m.occurred_on,
+          date_label: kind,
+          remarks: null,
+          by: m.performed_by_email,
+          movement_detail: parts.join(" · "),
+        });
+      }
+
+
 
       out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
       // Defensive: never render an empty shell card (no name, badge, status or date).
@@ -1074,7 +1116,7 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
           <DialogTitle className="font-display flex items-center gap-2">
             <History className="h-5 w-5" /> Locker {lockerNumber} — Full history
           </DialogTitle>
-          <DialogDescription>All occupancy and termination events recorded for this locker.</DialogDescription>
+          <DialogDescription>All occupancy, termination, transfer and swap events recorded for this locker.</DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] overflow-y-auto">
           {!events ? (
@@ -1083,19 +1125,26 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
             <div className="text-center text-muted-foreground py-8 text-sm">No history recorded.</div>
           ) : (
             <ul className="space-y-2">
-              {events.map((e) => (
+              {events.map((e) => {
+                const isMovement = e.source === "transfer" || e.source === "swap";
+                return (
                 <li key={e.id} className="border rounded-md p-3 bg-card">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <StatusBadge status={e.status} />
+                      {isMovement
+                        ? <StatusBadge status={null} customStatus={e.status} />
+                        : <StatusBadge status={e.status} />}
                       <span className="font-medium">{e.employee_name ?? "—"}</span>
                       {e.badge_number && <span className="font-mono text-xs text-muted-foreground">#{e.badge_number}</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] uppercase">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] uppercase ${isMovement ? "border-sky-500/50 bg-sky-500/10 text-sky-700 dark:text-sky-300" : ""}`}
+                      >
                         {/^\s*terminate/i.test(e.status ?? "") ? "termination" : e.source}
                       </Badge>
-                      {isAdmin && (
+                      {isAdmin && !isMovement && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -1111,13 +1160,21 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       NID:
-                      <NationalIdCell value={e.national_id} recordId={e.nid_record_id} table="locker_occupancy" />
+                      {isMovement
+                        ? <span className="font-mono">{e.national_id ?? "—"}</span>
+                        : <NationalIdCell value={e.national_id} recordId={e.nid_record_id} table="locker_occupancy" />}
                     </span>
                     <span>{e.date_label}: {fmtDate(e.date)}</span>
                   </div>
+                  {isMovement && e.movement_detail && (
+                    <div className="mt-1 text-xs text-muted-foreground">{e.movement_detail}</div>
+                  )}
+
 
                 </li>
-              ))}
+                );
+              })}
+
             </ul>
           )}
         </div>
