@@ -1012,6 +1012,37 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
           by: t.terminated_by_email,
         });
       }
+      // Transfer & Swap movements involving this locker (read-only; deletion of
+      // these records happens only on the Reconcile → Transfer and Swap History tab).
+      for (const m of moves ?? []) {
+        const isSwap = (m.event_type ?? "").toLowerCase().includes("swap");
+        const isOrigin = (m.locker_number ?? "") === lockerNumber;
+        const kind = isSwap ? "Swap" : "Transfer";
+        const name = isOrigin ? m.employee_a : (isSwap ? m.employee_b : m.employee_a);
+        const badge = isOrigin ? m.badge_a : (isSwap ? m.badge_b : m.badge_a);
+        const nid = isOrigin ? m.national_id_a : (isSwap ? m.national_id_b : m.national_id_a);
+        const other = isOrigin ? m.other_locker_number : m.locker_number;
+        const parts: string[] = [];
+        parts.push(isOrigin ? `To locker ${other ?? "—"}` : `From locker ${other ?? "—"}`);
+        if (isOrigin && !isSwap && m.old_locker_action) parts.push(`This locker set to: ${m.old_locker_action}`);
+        if (m.performed_by_email) parts.push(`By ${m.performed_by_email}`);
+        out.push({
+          id: `m-${m.id}-${isOrigin ? "out" : "in"}`,
+          source: isSwap ? "swap" : "transfer",
+          status: `${kind === "Swap" ? "Swapped" : "Transferred"} ${isOrigin ? "Out" : "In"}`,
+          employee_name: name ?? null,
+          badge_number: badge ?? null,
+          national_id: nid ?? null,
+          nid_record_id: null,
+          date: m.occurred_on,
+          date_label: kind,
+          remarks: null,
+          by: m.performed_by_email,
+          movement_detail: parts.join(" · "),
+        });
+      }
+
+
 
       out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
       // Defensive: never render an empty shell card (no name, badge, status or date).
