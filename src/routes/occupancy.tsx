@@ -923,7 +923,7 @@ function MField({ label, value, wide, mono }: { label: string; value: string | n
 
 type HistoryEvent = {
   id: string;
-  source: "occupancy" | "termination";
+  source: "occupancy" | "termination" | "transfer" | "swap";
   status: string;
   employee_name: string | null;
   badge_number: string | null;
@@ -933,7 +933,10 @@ type HistoryEvent = {
   date_label: string;
   remarks: string | null;
   by: string | null;
+  /** Movement (transfer/swap) events only: extra line describing the move. */
+  movement_detail?: string | null;
 };
+
 
 
 function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: string | null; isAdmin: boolean; onClose: () => void }) {
