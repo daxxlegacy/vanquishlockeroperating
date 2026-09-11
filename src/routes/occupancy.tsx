@@ -1047,7 +1047,17 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
 
 
 
-      out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+      // Two-tier ordering: Active / Transfer / Swap events first (newest first),
+      // then Terminate events below them (also newest first).
+      const isTerminateEvent = (e: HistoryEvent) =>
+        (e.status ?? "").trim().toLowerCase() === "terminate";
+      const byDateDesc = (a: HistoryEvent, b: HistoryEvent) =>
+        (b.date ?? "").localeCompare(a.date ?? "");
+      const tierOne = out.filter((e) => !isTerminateEvent(e)).sort(byDateDesc);
+      const tierTwo = out.filter(isTerminateEvent).sort(byDateDesc);
+      out.length = 0;
+      out.push(...tierOne, ...tierTwo);
+
       // Defensive: never render an empty shell card (no name, badge, status or date).
       const meaningful = out.filter(
         (e) =>
