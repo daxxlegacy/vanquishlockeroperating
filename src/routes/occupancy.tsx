@@ -963,10 +963,16 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
     if (!lockerNumber) { setEvents(null); return; }
     (async () => {
       setEvents(null);
-      const [{ data: occ }, { data: term }] = await Promise.all([
+      const [{ data: occ }, { data: term }, { data: moves }] = await Promise.all([
         supabase.from("locker_occupancy").select("*").eq("locker_number", lockerNumber).order("updated_at", { ascending: false }),
         supabase.from("terminations").select("*").eq("locker_number", lockerNumber).is("undone_at", null).order("termination_date", { ascending: false }),
+        supabase
+          .from("transfer_swap_history")
+          .select("*")
+          .or(`locker_number.eq.${lockerNumber},other_locker_number.eq.${lockerNumber}`)
+          .order("occurred_on", { ascending: false }),
       ]);
+
       const out: HistoryEvent[] = [];
       // Map badge → occupancy row so termination events can show a masked
       // National ID (terminations table doesn't store one).
