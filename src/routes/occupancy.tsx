@@ -1116,7 +1116,7 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
           <DialogTitle className="font-display flex items-center gap-2">
             <History className="h-5 w-5" /> Locker {lockerNumber} — Full history
           </DialogTitle>
-          <DialogDescription>All occupancy and termination events recorded for this locker.</DialogDescription>
+          <DialogDescription>All occupancy, termination, transfer and swap events recorded for this locker.</DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] overflow-y-auto">
           {!events ? (
