@@ -1125,19 +1125,26 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
             <div className="text-center text-muted-foreground py-8 text-sm">No history recorded.</div>
           ) : (
             <ul className="space-y-2">
-              {events.map((e) => (
+              {events.map((e) => {
+                const isMovement = e.source === "transfer" || e.source === "swap";
+                return (
                 <li key={e.id} className="border rounded-md p-3 bg-card">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <StatusBadge status={e.status} />
+                      {isMovement
+                        ? <StatusBadge status={null} customStatus={e.status} />
+                        : <StatusBadge status={e.status} />}
                       <span className="font-medium">{e.employee_name ?? "—"}</span>
                       {e.badge_number && <span className="font-mono text-xs text-muted-foreground">#{e.badge_number}</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] uppercase">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] uppercase ${isMovement ? "border-sky-500/50 bg-sky-500/10 text-sky-700 dark:text-sky-300" : ""}`}
+                      >
                         {/^\s*terminate/i.test(e.status ?? "") ? "termination" : e.source}
                       </Badge>
-                      {isAdmin && (
+                      {isAdmin && !isMovement && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -1153,10 +1160,16 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       NID:
-                      <NationalIdCell value={e.national_id} recordId={e.nid_record_id} table="locker_occupancy" />
+                      {isMovement
+                        ? <span className="font-mono">{e.national_id ?? "—"}</span>
+                        : <NationalIdCell value={e.national_id} recordId={e.nid_record_id} table="locker_occupancy" />}
                     </span>
                     <span>{e.date_label}: {fmtDate(e.date)}</span>
                   </div>
+                  {isMovement && e.movement_detail && (
+                    <div className="mt-1 text-xs text-muted-foreground">{e.movement_detail}</div>
+                  )}
+
 
                 </li>
               ))}
