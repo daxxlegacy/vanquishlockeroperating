@@ -1016,12 +1016,15 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
       // these records happens only on the Reconcile → Transfer and Swap History tab).
       for (const m of moves ?? []) {
         const isSwap = (m.event_type ?? "").toLowerCase().includes("swap");
-        const isOrigin = (m.locker_number ?? "") === lockerNumber;
+        // NOTE: for transfers the DB stores locker_number = destination and
+        // other_locker_number = origin (see transfer_locker()).
+        const isSideA = (m.locker_number ?? "") === lockerNumber;
+        const isOrigin = isSwap ? isSideA : !isSideA;
         const kind = isSwap ? "Swap" : "Transfer";
-        const name = isOrigin ? m.employee_a : (isSwap ? m.employee_b : m.employee_a);
-        const badge = isOrigin ? m.badge_a : (isSwap ? m.badge_b : m.badge_a);
-        const nid = isOrigin ? m.national_id_a : (isSwap ? m.national_id_b : m.national_id_a);
-        const other = isOrigin ? m.other_locker_number : m.locker_number;
+        const name = isSwap ? (isSideA ? m.employee_a : m.employee_b) : m.employee_a;
+        const badge = isSwap ? (isSideA ? m.badge_a : m.badge_b) : m.badge_a;
+        const nid = isSwap ? (isSideA ? m.national_id_a : m.national_id_b) : m.national_id_a;
+        const other = isSideA ? m.other_locker_number : m.locker_number;
         const parts: string[] = [];
         parts.push(isOrigin ? `To locker ${other ?? "—"}` : `From locker ${other ?? "—"}`);
         if (isOrigin && !isSwap && m.old_locker_action) parts.push(`This locker set to: ${m.old_locker_action}`);
