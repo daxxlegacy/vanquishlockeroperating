@@ -70,7 +70,7 @@ function traceBatch(stage: string, locker: string, value: unknown, extra?: Recor
     });
   }
   // eslint-disable-next-line no-console
-  console.log("[batch_intake]", { ...base, ...extra, tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  console.log("[batch_intake]", JSON.stringify({ ...base, ...extra, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }));
 }
 
 function findHeaderRow(aoa: unknown[][]): number {
