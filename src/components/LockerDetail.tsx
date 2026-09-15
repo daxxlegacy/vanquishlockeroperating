@@ -205,7 +205,19 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
               <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
               <Field label="Work Location" value={locker.work_location ?? ""} onChange={(v) => update("work_location", v)} disabled={!isAdmin} />
               <SelectField label="Status" value={locker.status} options={STATUSES} onChange={(v) => update("status", v)} disabled={!isAdmin} />
+              {/* TEMPORARY: batch intake display trace */}
+              {(() => {
+                // eslint-disable-next-line no-console
+                console.log("[batch_intake]", {
+                  stage: "e: display in LockerDetail",
+                  locker: locker.locker_number,
+                  fromDatabase: locker.batch_intake,
+                  shown: (locker.batch_intake ?? "").replace(/^(\d{4})-(\d{2})-(\d{2}).*$/, "$3/$2/$1"),
+                });
+                return null;
+              })()}
               <DateField label="Batch Intake" value={locker.batch_intake ?? ""} onChange={(v) => update("batch_intake", v)} disabled={!isAdmin} />
+
               {isAdmin ? (
                 <Field label="National ID" value={locker.national_id ?? ""} onChange={(v) => update("national_id", v)} disabled={false} />
               ) : (
