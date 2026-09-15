@@ -67,9 +67,18 @@ export function parseBatchIntake(value: unknown): string | null {
 
   if (value instanceof Date) {
     if (isNaN(value.getTime())) return null;
-    // xlsx with cellDates:true returns dates at local midnight; use local components
-    // so a negative UTC offset doesn't shift the day back by one.
-    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+    // SheetJS converts Excel date serials through a float, so a pure calendar
+    // date can land a few seconds either side of local midnight
+    // (e.g. 15/09/2026 arrives as "14 Sep 2026 23:59:35" in UTC+8). Snap to the
+    // nearest local midnight when within an hour of a day boundary, then read
+    // LOCAL components — never toISOString(), which shifts the day in UTC+8.
+    const localMs = value.getTime() - value.getTimezoneOffset() * 60000;
+    const DAY = 86400000;
+    const rem = ((localMs % DAY) + DAY) % DAY;
+    let d = value;
+    if (rem >= DAY - 3600000) d = new Date(value.getTime() + (DAY - rem));
+    else if (rem > 0 && rem <= 3600000) d = new Date(value.getTime() - rem);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
   const s = String(value).trim();
