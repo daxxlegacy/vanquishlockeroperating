@@ -54,6 +54,26 @@ type PreviewRow = IntakeRow & {
 const CLEAN = (v: unknown): string =>
   v == null ? "" : String(v).replace(/\u2060/g, "").trim();
 
+// TEMPORARY diagnostic trace for the Batch Intake date pipeline.
+// Remove once the date-shift investigation is closed.
+function traceBatch(stage: string, locker: string, value: unknown, extra?: Record<string, unknown>) {
+  if (!import.meta.env.DEV) return;
+  const base: Record<string, unknown> = {
+    stage, locker, raw: value, type: value instanceof Date ? "Date" : typeof value,
+  };
+  if (value instanceof Date) {
+    Object.assign(base, {
+      iso: value.toISOString(),
+      local: value.toString(),
+      getFullYear: value.getFullYear(), getUTCFullYear: value.getUTCFullYear(),
+      getMonth: value.getMonth() + 1, getUTCMonth: value.getUTCMonth() + 1,
+      getDate: value.getDate(), getUTCDate: value.getUTCDate(),
+    });
+  }
+  // eslint-disable-next-line no-console
+  console.log("[batch_intake]", JSON.stringify({ ...base, ...extra, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }));
+}
+
 function findHeaderRow(aoa: unknown[][]): number {
   for (let i = 0; i < aoa.length; i++) {
     const row = aoa[i] ?? [];
@@ -149,6 +169,8 @@ export function RecordIntakeTab() {
           work_location: work,
           batch_intake: batch,
         });
+        // (a) raw cell value from SheetJS + (b) parseBatchIntake result
+        traceBatch("a/b: xlsx cell -> parseBatchIntake", locker, batch, { parsed: parseBatchIntake(batch) });
       }
 
       // Live lookup against DB
@@ -236,6 +258,7 @@ export function RecordIntakeTab() {
         await Promise.all(slice.map(async (r) => {
           const existing = dbMap.get(r.locker_number);
           const batchIso = parseBatchIntake(r.batch_intake);
+          traceBatch("c: sending to database", r.locker_number, r.batch_intake, { sending: batchIso });
           const payload = {
             employee_name: r.employee_name,
             badge_number: r.badge_number || existing?.badge_number || null,
@@ -256,6 +279,9 @@ export function RecordIntakeTab() {
           else {
             updated++;
             const updatedLocker = updatedRows?.[0];
+            traceBatch("d: stored in database", r.locker_number, updatedLocker?.batch_intake ?? null, {
+              display: formatBatchIntake(updatedLocker?.batch_intake ?? null),
+            });
             if (updatedLocker) {
               try { await syncActivationToOccupancy(updatedLocker); } catch { /* non-fatal */ }
             }
