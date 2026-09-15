@@ -54,6 +54,25 @@ type PreviewRow = IntakeRow & {
 const CLEAN = (v: unknown): string =>
   v == null ? "" : String(v).replace(/\u2060/g, "").trim();
 
+// TEMPORARY diagnostic trace for the Batch Intake date pipeline.
+// Remove once the date-shift investigation is closed.
+function traceBatch(stage: string, locker: string, value: unknown, extra?: Record<string, unknown>) {
+  const base: Record<string, unknown> = {
+    stage, locker, raw: value, type: value instanceof Date ? "Date" : typeof value,
+  };
+  if (value instanceof Date) {
+    Object.assign(base, {
+      iso: value.toISOString(),
+      local: value.toString(),
+      getFullYear: value.getFullYear(), getUTCFullYear: value.getUTCFullYear(),
+      getMonth: value.getMonth() + 1, getUTCMonth: value.getUTCMonth() + 1,
+      getDate: value.getDate(), getUTCDate: value.getUTCDate(),
+    });
+  }
+  // eslint-disable-next-line no-console
+  console.log("[batch_intake]", { ...base, ...extra, tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+}
+
 function findHeaderRow(aoa: unknown[][]): number {
   for (let i = 0; i < aoa.length; i++) {
     const row = aoa[i] ?? [];
