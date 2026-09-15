@@ -168,6 +168,19 @@ export function RecordIntakeTab() {
           work_location: work,
           batch_intake: batch,
         });
+        traceBatch("a: after XLSX.read", locker, batch, { parsed: parseBatchIntake(batch) });
+        void 0 as unknown as void;
+        continue;
+        // eslint-disable-next-line no-unreachable
+        intakeRows.push({
+          rowIndex: i + 1,
+          locker_number: locker,
+          employee_name: name,
+          badge_number: badge,
+          national_id: nid,
+          work_location: work,
+          batch_intake: batch,
+        });
       }
 
       // Live lookup against DB
