@@ -57,6 +57,7 @@ const CLEAN = (v: unknown): string =>
 // TEMPORARY diagnostic trace for the Batch Intake date pipeline.
 // Remove once the date-shift investigation is closed.
 function traceBatch(stage: string, locker: string, value: unknown, extra?: Record<string, unknown>) {
+  if (!import.meta.env.DEV) return;
   const base: Record<string, unknown> = {
     stage, locker, raw: value, type: value instanceof Date ? "Date" : typeof value,
   };

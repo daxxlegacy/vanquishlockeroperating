@@ -208,7 +208,7 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
               {/* TEMPORARY: batch intake display trace */}
               {(() => {
                 // eslint-disable-next-line no-console
-                console.log("[batch_intake]", {
+                if (import.meta.env.DEV) console.log("[batch_intake]", {
                   stage: "e: display in LockerDetail",
                   locker: locker.locker_number,
                   fromDatabase: locker.batch_intake,
