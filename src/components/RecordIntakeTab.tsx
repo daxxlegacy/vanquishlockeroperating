@@ -257,6 +257,7 @@ export function RecordIntakeTab() {
         await Promise.all(slice.map(async (r) => {
           const existing = dbMap.get(r.locker_number);
           const batchIso = parseBatchIntake(r.batch_intake);
+          traceBatch("c: sending to database", r.locker_number, r.batch_intake, { sending: batchIso });
           const payload = {
             employee_name: r.employee_name,
             badge_number: r.badge_number || existing?.badge_number || null,
@@ -277,6 +278,9 @@ export function RecordIntakeTab() {
           else {
             updated++;
             const updatedLocker = updatedRows?.[0];
+            traceBatch("d: stored in database", r.locker_number, updatedLocker?.batch_intake ?? null, {
+              display: formatBatchIntake(updatedLocker?.batch_intake ?? null),
+            });
             if (updatedLocker) {
               try { await syncActivationToOccupancy(updatedLocker); } catch { /* non-fatal */ }
             }
