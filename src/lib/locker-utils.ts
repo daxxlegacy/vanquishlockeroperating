@@ -87,16 +87,33 @@ export function parseBatchIntake(value: unknown): string | null {
     return `${y.toString().padStart(4, "0")}-${mo.toString().padStart(2, "0")}-${d.toString().padStart(2, "0")}`;
   }
 
-  // yyyy-mm-dd
-  m = s.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/);
+  // yyyy-mm-dd (optionally with a time part, e.g. 2026-09-15T00:00:00)
+  m = s.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/);
   if (m) {
     const [, y, mo, d] = m;
     return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
   }
 
-  // Fallback: let Date try
+  // dd-MMM-yyyy / dd MMM yyyy (e.g. 15-Sep-2026)
+  const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  m = s.match(/^(\d{1,2})[\s\-/.]*([A-Za-z]{3,})[\s\-/.]*(\d{4})$/);
+  if (m) {
+    const mo = MONTHS.indexOf(m[2].slice(0, 3).toLowerCase()) + 1;
+    if (mo > 0) return `${m[3]}-${String(mo).padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  }
+  // MMM dd, yyyy (e.g. Sep 15 2026)
+  m = s.match(/^([A-Za-z]{3,})[\s\-/.]*(\d{1,2}),?[\s\-/.]*(\d{4})$/);
+  if (m) {
+    const mo = MONTHS.indexOf(m[1].slice(0, 3).toLowerCase()) + 1;
+    if (mo > 0) return `${m[3]}-${String(mo).padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+  }
+
+  // Fallback: let Date try — read LOCAL components, never toISOString(), which
+  // shifts a local-midnight date back a day in positive-offset zones (UTC+8).
   const d = new Date(s);
-  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  if (!isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
 
   return null;
 }
