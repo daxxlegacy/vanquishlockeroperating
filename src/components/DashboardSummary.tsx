@@ -48,7 +48,7 @@ async function fetchCounts() {
       .from("lockers")
       .select("*", { count: "exact", head: true })
       .is("deleted_at", null)
-      .not("key_lock", "ilike", "%numeric%")
+      .or("key_lock.is.null,key_lock.not.ilike.%numeric%")
       .in("spare_key_status", ["missing", "with_employee", "damaged"]),
     sb.from("terminations").select("*", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
   ]);
