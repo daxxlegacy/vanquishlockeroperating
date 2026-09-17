@@ -236,7 +236,7 @@ export function SwapLockerDialog({ open, onOpenChange, locker, onSwapped }: Prop
                   </Link>
                 </div>
               </div>
-              {((!isCombinationLock(locker.key_lock) && SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") ||
+              {((!isCombinationLock(locker.key_lock) && SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown")) ||
                 (!isCombinationLock(target?.key_lock) && SPARE_KEY_WARNING_STATUSES.includes(target?.spare_key_status ?? "unknown"))) && (
                 <p className="text-xs text-warning flex items-start gap-1">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
