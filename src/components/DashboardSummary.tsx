@@ -43,7 +43,13 @@ async function fetchCounts() {
     sb.from("support_requests").select("*", { count: "exact", head: true }).in("status", ["new", "in_progress"]),
     sb.from("locker_identity_claims").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase.rpc("count_occupancy_drift"),
-    sb.from("lockers").select("*", { count: "exact", head: true }).in("spare_key_status", ["missing", "with_employee", "damaged"]),
+    // Combination / numerical locks have no physical spare key — exclude them.
+    sb
+      .from("lockers")
+      .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .not("key_lock", "ilike", "%numeric%")
+      .in("spare_key_status", ["missing", "with_employee", "damaged"]),
     sb.from("terminations").select("*", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
   ]);
 
