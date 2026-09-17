@@ -188,14 +188,28 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
           </DialogHeader>
           {isSpare ? (
             <div className="py-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Update the spare key status for this locker.</p>
-              <SelectField
-                label="Spare Key Status"
-                value={locker.spare_key_status ?? "unknown"}
-                options={SPARE_DETAIL_OPTIONS}
-                onChange={(v) => update("spare_key_status", v)}
-                disabled={!isAdmin}
-              />
+              {isCombinationLock(locker.key_lock) ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    This locker uses a push-button combination lock, so there is no physical spare key to track.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
+                    <KeyBadge status={locker.spare_key_status} keyLock={locker.key_lock} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">Update the spare key status for this locker.</p>
+                  <SelectField
+                    label="Spare Key Status"
+                    value={locker.spare_key_status ?? "unknown"}
+                    options={SPARE_DETAIL_OPTIONS}
+                    onChange={(v) => update("spare_key_status", v)}
+                    disabled={!isAdmin}
+                  />
+                </>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
