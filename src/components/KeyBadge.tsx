@@ -10,7 +10,24 @@ export const SPARE_KEY_SWATCH: Record<string, string> = {
   unknown: "bg-muted-foreground",
 };
 
-export function KeyBadge({ status }: { status: string | null }) {
+/**
+ * Numerical / push-button combination locks have no physical spare key, so
+ * spare-key tracking does not apply to them at all. Stored variants seen in
+ * the lockers table: "Numeric Lock", "Numerical Lock".
+ */
+export function isCombinationLock(keyLock: string | null | undefined): boolean {
+  return /numeric/i.test(keyLock ?? "");
+}
+
+export function KeyBadge({ status, keyLock }: { status: string | null; keyLock?: string | null }) {
+  if (isCombinationLock(keyLock)) {
+    return (
+      <Badge variant="outline" className="gap-1.5 text-muted-foreground">
+        <span className="h-2 w-2 rounded-full bg-muted-foreground" />
+        N/A — combination lock
+      </Badge>
+    );
+  }
   const s = status ?? "unknown";
   return (
     <Badge variant="outline" className="gap-1.5 capitalize">

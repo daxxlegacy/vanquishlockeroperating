@@ -13,7 +13,7 @@ import { parseBatchIntake } from "@/lib/locker-utils";
 import { terminateLocker, buildTerminationClearPayload } from "@/lib/termination-actions";
 import { patchLockersInCache, invalidateLockersCache } from "@/lib/lockers-cache";
 import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
-import { KeyBadge } from "@/components/KeyBadge";
+import { KeyBadge, isCombinationLock } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
 
 const SPARE_KEY_WARNING_STATUSES = ["missing", "with_employee"];
@@ -72,9 +72,9 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
         <div className="rounded-md border bg-muted/30 p-3 space-y-2 text-sm">
           <div className="flex items-center gap-2">
             <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
-            <KeyBadge status={locker.spare_key_status} />
+            <KeyBadge status={locker.spare_key_status} keyLock={locker.key_lock} />
           </div>
-          {SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") && (
+          {!isCombinationLock(locker.key_lock) && SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") && (
             <p className="text-xs text-warning flex items-start gap-1">
               <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>
