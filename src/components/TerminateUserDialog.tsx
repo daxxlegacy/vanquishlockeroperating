@@ -13,7 +13,7 @@ import { parseBatchIntake } from "@/lib/locker-utils";
 import { terminateLocker, buildTerminationClearPayload } from "@/lib/termination-actions";
 import { patchLockersInCache, invalidateLockersCache } from "@/lib/lockers-cache";
 import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
-import { KeyBadge } from "@/components/KeyBadge";
+import { KeyBadge, isCombinationLock } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
 
 const SPARE_KEY_WARNING_STATUSES = ["missing", "with_employee"];

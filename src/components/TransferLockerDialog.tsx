@@ -14,7 +14,7 @@ import { useDebounced } from "@/hooks/use-debounced";
 import { compareLockerNumbers } from "@/lib/locker-utils";
 import { syncActivationToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
-import { KeyBadge } from "@/components/KeyBadge";
+import { KeyBadge, isCombinationLock } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
 
 const SPARE_KEY_WARNING_STATUSES = ["missing", "with_employee"];
@@ -265,7 +265,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                   </div>
                   <div className="flex items-center gap-2 pt-1">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
-                    <KeyBadge status={locker.spare_key_status} />
+                    <KeyBadge status={locker.spare_key_status} keyLock={locker.key_lock} />
                   </div>
                   <Link
                     to="/spare-keys"
@@ -285,7 +285,7 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                   </div>
                   <div className="flex items-center gap-2 pt-1">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Spare Key:</span>
-                    <KeyBadge status={target?.spare_key_status ?? null} />
+                    <KeyBadge status={target?.spare_key_status ?? null} keyLock={target?.key_lock} />
                   </div>
                   <Link
                     to="/spare-keys"
@@ -302,8 +302,8 @@ export function TransferLockerDialog({ open, onOpenChange, locker, onTransferred
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Old locker action</div>
                 <div className="font-semibold">{STATUS_LABEL[oldAction]}</div>
               </div>
-              {(SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") ||
-                SPARE_KEY_WARNING_STATUSES.includes(target?.spare_key_status ?? "unknown")) && (
+              {((!isCombinationLock(locker.key_lock) && SPARE_KEY_WARNING_STATUSES.includes(locker.spare_key_status ?? "unknown") ||
+                (!isCombinationLock(target?.key_lock) && SPARE_KEY_WARNING_STATUSES.includes(target?.spare_key_status ?? "unknown"))) && (
                 <p className="text-xs text-warning flex items-start gap-1">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>
