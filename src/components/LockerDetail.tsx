@@ -17,6 +17,7 @@ import { TransferLockerDialog } from "@/components/TransferLockerDialog";
 import { SwapLockerDialog } from "@/components/SwapLockerDialog";
 import { syncActivationToOccupancy, syncMetadataToOccupancy, syncStatusChangeToOccupancy } from "@/lib/occupancy-sync";
 import { LOCKER_STATUSES } from "@/lib/locker-status";
+import { KeyBadge, isCombinationLock } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
 import { NationalIdCell } from "@/components/NationalIdCell";
 
