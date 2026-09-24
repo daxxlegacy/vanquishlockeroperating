@@ -88,26 +88,21 @@ export function DuplicateLockerQrPanel() {
     a.click();
   };
 
-  const approve = async (r: Claim) => {
-    const others = (r.other_locker_numbers ?? []).filter((x) => x && x.toUpperCase() !== r.locker_number.toUpperCase());
-    if (
-      !confirm(
-        `Keep ${r.locker_number} for ${r.full_name}.\n\nThese lockers will be set to REPAIR and blocked:\n${others.join(", ") || "(none)"}\n\nContinue?`,
-      )
-    )
-      return;
+  // Administrative acknowledgment only — updates this submission's status.
+  // Does NOT touch lockers or locker_occupancy.
+  const markDone = async (r: Claim) => {
     setBusy(r.id);
-    const { data, error } = await supabase.rpc("approve_duplicate_resolution", { _claim_id: r.id });
+    const { error } = await supabase
+      .from("locker_identity_claims")
+      .update({ status: "approved" })
+      .eq("id", r.id);
     setBusy(null);
     if (error) {
       toast.error(error.message);
       return;
     }
-    const blocked = (data as { blocked?: string[] } | null)?.blocked ?? [];
-    toast.success(
-      blocked.length ? `Kept ${r.locker_number}; blocked for repair: ${blocked.join(", ")}` : `Kept ${r.locker_number}`,
-    );
-    load();
+    toast.success(`Marked ${r.locker_number} submission as done`);
+    setRows((prev) => (prev ? prev.map((x) => (x.id === r.id ? { ...x, status: "approved" } : x)) : prev));
   };
 
   const remove = async (id: string) => {
@@ -135,8 +130,7 @@ export function DuplicateLockerQrPanel() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               Post this QR generally. Employees who know they hold more than one locker scan it, pick the locker they
-              actually use, and list the rest. On approval the other lockers are set to <strong>repair</strong> and
-              blocked pending a check.
+              actually use, and list the rest. Submissions are for reference only — marking one as done does not change any locker.
             </p>
             <p className="text-xs text-muted-foreground break-all">{url}</p>
             <Button variant="outline" size="sm" onClick={download}>
@@ -183,7 +177,7 @@ export function DuplicateLockerQrPanel() {
                         {o}
                       </Badge>
                     ))}
-                    {done ? <Badge variant="secondary">Approved</Badge> : null}
+                    {done ? <Badge variant="secondary">Done</Badge> : null}
                   </div>
                   <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
                     <Clock className="h-3 w-3" /> {formatDateTime(r.created_at)}
@@ -202,8 +196,8 @@ export function DuplicateLockerQrPanel() {
                 </div>
                 <div className="mt-3 flex items-center justify-end gap-2">
                   {!done && (
-                    <Button size="sm" onClick={() => approve(r)} disabled={busy === r.id}>
-                      <Check className="h-4 w-4 mr-1" /> Approve &amp; block others
+                    <Button size="sm" onClick={() => markDone(r)} disabled={busy === r.id}>
+                      <Check className="h-4 w-4 mr-1" /> Mark as Done
                     </Button>
                   )}
                   <Button

@@ -88,15 +88,9 @@ function LockerIdentityUpdatePage() {
     }
 
     const others = otherLockers.map((v) => v.trim().toUpperCase()).filter((v) => v.length > 0);
-    if (duplicateMode) {
-      if (others.length === 0) {
-        setError(ERR.others);
-        return;
-      }
-      if (others.some((v) => !lockerRe.test(v))) {
-        setError(ERR.lockerFormat);
-        return;
-      }
+    if (duplicateMode && others.some((v) => !lockerRe.test(v))) {
+      setError(ERR.lockerFormat);
+      return;
     }
 
     setLoading(true);
@@ -234,7 +228,7 @@ function LockerIdentityUpdatePage() {
               {duplicateMode ? (
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">
-                    Loker lain yang didaftarkan atas nama anda *
+                    Loker lain yang didaftarkan atas nama anda (pilihan)
                   </Label>
                   <div className="space-y-2">
                     {otherLockers.map((v, i) => (
