@@ -88,26 +88,21 @@ export function DuplicateLockerQrPanel() {
     a.click();
   };
 
-  const approve = async (r: Claim) => {
-    const others = (r.other_locker_numbers ?? []).filter((x) => x && x.toUpperCase() !== r.locker_number.toUpperCase());
-    if (
-      !confirm(
-        `Keep ${r.locker_number} for ${r.full_name}.\n\nThese lockers will be set to REPAIR and blocked:\n${others.join(", ") || "(none)"}\n\nContinue?`,
-      )
-    )
-      return;
+  // Administrative acknowledgment only — updates this submission's status.
+  // Does NOT touch lockers or locker_occupancy.
+  const markDone = async (r: Claim) => {
     setBusy(r.id);
-    const { data, error } = await supabase.rpc("approve_duplicate_resolution", { _claim_id: r.id });
+    const { error } = await supabase
+      .from("locker_identity_claims")
+      .update({ status: "approved" })
+      .eq("id", r.id);
     setBusy(null);
     if (error) {
       toast.error(error.message);
       return;
     }
-    const blocked = (data as { blocked?: string[] } | null)?.blocked ?? [];
-    toast.success(
-      blocked.length ? `Kept ${r.locker_number}; blocked for repair: ${blocked.join(", ")}` : `Kept ${r.locker_number}`,
-    );
-    load();
+    toast.success(`Marked ${r.locker_number} submission as done`);
+    setRows((prev) => (prev ? prev.map((x) => (x.id === r.id ? { ...x, status: "approved" } : x)) : prev));
   };
 
   const remove = async (id: string) => {
