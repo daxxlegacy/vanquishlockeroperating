@@ -261,10 +261,14 @@ function MapPage() {
                     </th>
                   ))}
                   <th className="py-2 pl-3 font-semibold text-right">Total</th>
+                  <th className="py-2 pl-3 font-semibold text-right whitespace-nowrap">Units</th>
                 </tr>
               </thead>
               <tbody>
-                {(["Full", "Staff", "Shoe", "HR"] as const).map((cat) => (
+                {(["Full", "Staff", "Shoe", "HR"] as const).map((cat) => {
+                  const per = cat === "Full" || cat === "Staff" ? 18 : 40;
+                  const units = Math.ceil((categorySummary[cat].total || 0) / per);
+                  return (
                   <tr key={cat} className="border-b last:border-0">
                     <td className="py-2 pr-3 font-medium">{cat} Locker</td>
                     {LOCKER_STATUSES.map((s) => (
@@ -273,14 +277,27 @@ function MapPage() {
                       </td>
                     ))}
                     <td className="py-2 pl-3 text-right font-semibold tabular-nums">{categorySummary[cat].total}</td>
+                    <td className="py-2 pl-3 text-right tabular-nums whitespace-nowrap">
+                      <span className="font-semibold">{units}</span>{" "}
+                      <span className="text-xs text-muted-foreground">({per}/cabinet)</span>
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
                 <tr className="bg-muted/50 font-semibold">
                   <td className="py-2 pr-3">Total</td>
                   {LOCKER_STATUSES.map((s) => (
                     <td key={s} className="py-2 px-2 text-center tabular-nums">{summary?.[s] || 0}</td>
                   ))}
                   <td className="py-2 pl-3 text-right tabular-nums">{summary?.total ?? 0}</td>
+                  <td className="py-2 pl-3 text-right tabular-nums whitespace-nowrap">
+                    {(["Full", "Staff", "Shoe", "HR"] as const).reduce(
+                      (acc, cat) =>
+                        acc + Math.ceil((categorySummary[cat].total || 0) / (cat === "Full" || cat === "Staff" ? 18 : 40)),
+                      0,
+                    )}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">units</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
