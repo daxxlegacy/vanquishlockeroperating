@@ -126,6 +126,7 @@ export type Database = {
           deleted_by: string
           deleted_by_email: string | null
           deletion_kind: string
+          details: Json | null
           id: string
           location: string
           locker_id: string | null
@@ -141,6 +142,7 @@ export type Database = {
           deleted_by: string
           deleted_by_email?: string | null
           deletion_kind: string
+          details?: Json | null
           id?: string
           location: string
           locker_id?: string | null
@@ -156,6 +158,7 @@ export type Database = {
           deleted_by?: string
           deleted_by_email?: string | null
           deletion_kind?: string
+          details?: Json | null
           id?: string
           location?: string
           locker_id?: string | null
@@ -1083,6 +1086,10 @@ export type Database = {
       can_access_lockers: { Args: { _user_id: string }; Returns: boolean }
       can_view_national_id: { Args: { _user_id: string }; Returns: boolean }
       count_occupancy_drift: { Args: never; Returns: Json }
+      delete_terminated_occupancy_rows: {
+        Args: { ids: string[] }
+        Returns: number
+      }
       derive_occ_category: { Args: { _raw: string }; Returns: string }
       find_duplicate_active_occupants: {
         Args: never
@@ -1096,6 +1103,20 @@ export type Database = {
           locker_number: string
           national_id: string
           status: string
+        }[]
+      }
+      find_duplicate_terminated: {
+        Args: { match_by?: string }
+        Returns: {
+          badge_number: string
+          created_at: string
+          employee_name: string
+          group_key: string
+          id: string
+          locker_number: string
+          national_id_masked: string
+          source: string
+          termination_date: string
         }[]
       }
       gen_support_ticket_number: { Args: never; Returns: string }

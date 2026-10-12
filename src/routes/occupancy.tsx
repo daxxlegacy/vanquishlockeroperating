@@ -15,11 +15,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil, MoreVertical, PlayCircle, StopCircle, CheckCircle2, Users2 } from "lucide-react";
+import { Search, Upload as UploadIcon, History, Trash2, Eye, Download, FilterX, RefreshCw, Pencil, MoreVertical, PlayCircle, StopCircle, CheckCircle2, Users2, CopyX } from "lucide-react";
 import { SyncOccupancyDialog } from "@/components/SyncOccupancyDialog";
 import { EditOccupancyRowDialog, DeleteOccupancyRowDialog } from "@/components/EditOccupancyRowDialog";
 import { ForceTerminateDialog, ForceActivateDialog } from "@/components/ForceOccupancyDialogs";
 import { DuplicateOccupantsDialog } from "@/components/DuplicateOccupantsDialog";
+import { DuplicateTerminatedDialog, useDuplicateTerminatedCount } from "@/components/DuplicateTerminatedDialog";
 import { toast } from "sonner";
 import { compareLockerNumbers, parseBatchIntake, NATIONAL_ID_HEADERS } from "@/lib/locker-utils";
 import { downloadCsv } from "@/lib/csv-export";
@@ -124,6 +125,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   
   const [syncOpen, setSyncOpen] = useState(false);
   const [dupOpen, setDupOpen] = useState(false);
+  const [dupTermGroups, setDupTermGroups] = useDuplicateTerminatedCount(isAdmin);
+  const [dupTermOpen, setDupTermOpen] = useState(false);
   const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
   const [forceTerminateRow, setForceTerminateRow] = useState<OccupancyRow | null>(null);
@@ -647,6 +650,10 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
             >
               <Users2 className="h-4 w-4 mr-1.5" /> Check Duplicates
             </Button>
+            <Button variant="outline" onClick={() => setDupTermOpen(true)} title="Find duplicate terminated records">
+              <CopyX className="h-4 w-4 mr-1.5" /> Duplicate Terminated
+              {dupTermGroups != null && <Badge variant="secondary" className="ml-1.5">{dupTermGroups} groups</Badge>}
+            </Button>
           </>
         )}
         <Button variant="outline" onClick={exportCsv} disabled={total === 0}>
@@ -732,6 +739,9 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
           isAdmin={isAdmin}
           onViewHistory={(n) => setHistoryFor(n)}
         />
+      )}
+      {isAdmin && (
+        <DuplicateTerminatedDialog open={dupTermOpen} onClose={() => setDupTermOpen(false)} onGroupsChange={setDupTermGroups} />
 
       )}
     </div>
