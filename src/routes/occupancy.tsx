@@ -125,6 +125,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   
   const [syncOpen, setSyncOpen] = useState(false);
   const [dupOpen, setDupOpen] = useState(false);
+  const [dupTermGroups, setDupTermGroups] = useDuplicateTerminatedCount(isAdmin);
   const [dupTermOpen, setDupTermOpen] = useState(false);
   const [editRow, setEditRow] = useState<OccupancyRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<OccupancyRow | null>(null);
