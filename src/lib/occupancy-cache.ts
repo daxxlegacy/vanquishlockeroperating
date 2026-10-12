@@ -250,6 +250,20 @@ export function patchOccupancyInCache(rows: OccupancyRow[]) {
   }
 }
 
+/** Optimistically drop occupancy rows (by id) from every cached category. */
+export function removeOccupancyFromCache(ids: string[]) {
+  const set = new Set(ids);
+  for (const c of ["main", "staff", "shoe", "hr"] as OccCategory[]) {
+    const cur = states[c]?.data;
+    if (!cur) continue;
+    const next = cur.filter((r) => !set.has(r.id));
+    if (next.length === cur.length) continue;
+    states[c] = { ...states[c], data: next };
+    writeStorage(c, next);
+    emit(c);
+  }
+}
+
 export function invalidateOccupancyCache(cat?: OccCategory) {
   const cats: OccCategory[] = cat ? [cat] : ["main", "staff", "shoe", "hr"];
   for (const c of cats) {
