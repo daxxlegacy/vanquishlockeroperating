@@ -131,7 +131,7 @@ export function DeletionsPanel() {
           {filteredItems.map((a) => {
             const ageMs = now - new Date(a.created_at).getTime();
             const remainingMs = UNDO_WINDOW_MS - ageMs;
-            const restorable = !a.undone_at && remainingMs > 0;
+            const restorable = !a.undone_at && remainingMs > 0 && a.deletion_kind !== "occupancy_row";
             return (
               <Card key={a.id} className="p-4">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
