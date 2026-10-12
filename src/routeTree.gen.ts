@@ -9,98 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UploadRouteImport } from './routes/upload'
-import { Route as TicketRouteImport } from './routes/ticket'
-import { Route as TerminationsRouteImport } from './routes/terminations'
-import { Route as SupportRequestsRouteImport } from './routes/support-requests'
-import { Route as SpareKeysRouteImport } from './routes/spare-keys'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ReconcileRouteImport } from './routes/reconcile'
-import { Route as OccupancyRouteImport } from './routes/occupancy'
-import { Route as LockersRouteImport } from './routes/lockers'
-import { Route as LockerIdentityUpdateRouteImport } from './routes/locker-identity-update'
-import { Route as FindLockerRouteImport } from './routes/find-locker'
-import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
-import { Route as AutomationRouteImport } from './routes/automation'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuditRouteImport } from './routes/audit'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuditRouteImport } from './routes/audit'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AutomationRouteImport } from './routes/automation'
+import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
+import { Route as FindLockerRouteImport } from './routes/find-locker'
+import { Route as LockerIdentityUpdateRouteImport } from './routes/locker-identity-update'
+import { Route as LockersRouteImport } from './routes/lockers'
+import { Route as OccupancyRouteImport } from './routes/occupancy'
+import { Route as ReconcileRouteImport } from './routes/reconcile'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SpareKeysRouteImport } from './routes/spare-keys'
+import { Route as SupportRequestsRouteImport } from './routes/support-requests'
+import { Route as TerminationsRouteImport } from './routes/terminations'
+import { Route as TicketRouteImport } from './routes/ticket'
+import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TerminateLockerIdRouteImport } from './routes/terminate.$lockerId'
 
-const UploadRoute = UploadRouteImport.update({
-  id: '/upload',
-  path: '/upload',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TicketRoute = TicketRouteImport.update({
-  id: '/ticket',
-  path: '/ticket',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TerminationsRoute = TerminationsRouteImport.update({
-  id: '/terminations',
-  path: '/terminations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SupportRequestsRoute = SupportRequestsRouteImport.update({
-  id: '/support-requests',
-  path: '/support-requests',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SpareKeysRoute = SpareKeysRouteImport.update({
-  id: '/spare-keys',
-  path: '/spare-keys',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReconcileRoute = ReconcileRouteImport.update({
-  id: '/reconcile',
-  path: '/reconcile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OccupancyRoute = OccupancyRouteImport.update({
-  id: '/occupancy',
-  path: '/occupancy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LockersRoute = LockersRouteImport.update({
-  id: '/lockers',
-  path: '/lockers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LockerIdentityUpdateRoute = LockerIdentityUpdateRouteImport.update({
-  id: '/locker-identity-update',
-  path: '/locker-identity-update',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FindLockerRoute = FindLockerRouteImport.update({
-  id: '/find-locker',
-  path: '/find-locker',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationHistoryRoute = AutomationHistoryRouteImport.update({
-  id: '/automation-history',
-  path: '/automation-history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationRoute = AutomationRouteImport.update({
-  id: '/automation',
-  path: '/automation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuditRoute = AuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -108,9 +38,79 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomationRoute = AutomationRouteImport.update({
+  id: '/automation',
+  path: '/automation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomationHistoryRoute = AutomationHistoryRouteImport.update({
+  id: '/automation-history',
+  path: '/automation-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FindLockerRoute = FindLockerRouteImport.update({
+  id: '/find-locker',
+  path: '/find-locker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LockerIdentityUpdateRoute = LockerIdentityUpdateRouteImport.update({
+  id: '/locker-identity-update',
+  path: '/locker-identity-update',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LockersRoute = LockersRouteImport.update({
+  id: '/lockers',
+  path: '/lockers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OccupancyRoute = OccupancyRouteImport.update({
+  id: '/occupancy',
+  path: '/occupancy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReconcileRoute = ReconcileRouteImport.update({
+  id: '/reconcile',
+  path: '/reconcile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpareKeysRoute = SpareKeysRouteImport.update({
+  id: '/spare-keys',
+  path: '/spare-keys',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRequestsRoute = SupportRequestsRouteImport.update({
+  id: '/support-requests',
+  path: '/support-requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TerminationsRoute = TerminationsRouteImport.update({
+  id: '/terminations',
+  path: '/terminations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TicketRoute = TicketRouteImport.update({
+  id: '/ticket',
+  path: '/ticket',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UploadRoute = UploadRouteImport.update({
+  id: '/upload',
+  path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TerminateLockerIdRoute = TerminateLockerIdRouteImport.update({
@@ -266,109 +266,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/upload': {
-      id: '/upload'
-      path: '/upload'
-      fullPath: '/upload'
-      preLoaderRoute: typeof UploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ticket': {
-      id: '/ticket'
-      path: '/ticket'
-      fullPath: '/ticket'
-      preLoaderRoute: typeof TicketRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terminations': {
-      id: '/terminations'
-      path: '/terminations'
-      fullPath: '/terminations'
-      preLoaderRoute: typeof TerminationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/support-requests': {
-      id: '/support-requests'
-      path: '/support-requests'
-      fullPath: '/support-requests'
-      preLoaderRoute: typeof SupportRequestsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/spare-keys': {
-      id: '/spare-keys'
-      path: '/spare-keys'
-      fullPath: '/spare-keys'
-      preLoaderRoute: typeof SpareKeysRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reconcile': {
-      id: '/reconcile'
-      path: '/reconcile'
-      fullPath: '/reconcile'
-      preLoaderRoute: typeof ReconcileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/occupancy': {
-      id: '/occupancy'
-      path: '/occupancy'
-      fullPath: '/occupancy'
-      preLoaderRoute: typeof OccupancyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lockers': {
-      id: '/lockers'
-      path: '/lockers'
-      fullPath: '/lockers'
-      preLoaderRoute: typeof LockersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/locker-identity-update': {
-      id: '/locker-identity-update'
-      path: '/locker-identity-update'
-      fullPath: '/locker-identity-update'
-      preLoaderRoute: typeof LockerIdentityUpdateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/find-locker': {
-      id: '/find-locker'
-      path: '/find-locker'
-      fullPath: '/find-locker'
-      preLoaderRoute: typeof FindLockerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automation-history': {
-      id: '/automation-history'
-      path: '/automation-history'
-      fullPath: '/automation-history'
-      preLoaderRoute: typeof AutomationHistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automation': {
-      id: '/automation'
-      path: '/automation'
-      fullPath: '/automation'
-      preLoaderRoute: typeof AutomationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/audit': {
-      id: '/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AuditRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -378,11 +280,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automation': {
+      id: '/automation'
+      path: '/automation'
+      fullPath: '/automation'
+      preLoaderRoute: typeof AutomationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automation-history': {
+      id: '/automation-history'
+      path: '/automation-history'
+      fullPath: '/automation-history'
+      preLoaderRoute: typeof AutomationHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/find-locker': {
+      id: '/find-locker'
+      path: '/find-locker'
+      fullPath: '/find-locker'
+      preLoaderRoute: typeof FindLockerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locker-identity-update': {
+      id: '/locker-identity-update'
+      path: '/locker-identity-update'
+      fullPath: '/locker-identity-update'
+      preLoaderRoute: typeof LockerIdentityUpdateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lockers': {
+      id: '/lockers'
+      path: '/lockers'
+      fullPath: '/lockers'
+      preLoaderRoute: typeof LockersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/occupancy': {
+      id: '/occupancy'
+      path: '/occupancy'
+      fullPath: '/occupancy'
+      preLoaderRoute: typeof OccupancyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reconcile': {
+      id: '/reconcile'
+      path: '/reconcile'
+      fullPath: '/reconcile'
+      preLoaderRoute: typeof ReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spare-keys': {
+      id: '/spare-keys'
+      path: '/spare-keys'
+      fullPath: '/spare-keys'
+      preLoaderRoute: typeof SpareKeysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support-requests': {
+      id: '/support-requests'
+      path: '/support-requests'
+      fullPath: '/support-requests'
+      preLoaderRoute: typeof SupportRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terminations': {
+      id: '/terminations'
+      path: '/terminations'
+      fullPath: '/terminations'
+      preLoaderRoute: typeof TerminationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ticket': {
+      id: '/ticket'
+      path: '/ticket'
+      fullPath: '/ticket'
+      preLoaderRoute: typeof TicketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upload': {
+      id: '/upload'
+      path: '/upload'
+      fullPath: '/upload'
+      preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terminate/$lockerId': {
