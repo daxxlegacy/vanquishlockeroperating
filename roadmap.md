@@ -1,3 +1,8 @@
+# Move Spare Key sync and remove Upload History
+- [ ] Extract the existing sync into an admin-only Spare Keys dialog; preserve parsing, preview, guarded writes, auditing and cache updates.
+- [ ] Add tested large-change confirmation thresholds and remove Upload's Spare Key/History UI and exclusive state; preserve history writes.
+- [ ] Verify export preview, remaining Upload tabs, mobile dialog, and passing tests/build; list changed files.
+
 # Spare Key export-compatible sync
 - [x] Accept export and legacy headers (including source typo Physicial Key) through shared title-aware multi-sheet worker; show detected columns and legacy last-row-wins duplicate overrides.
 - [x] Preview all changes including unlisted-to-missing, require Confirm, apply with previous-status guards, patch returned committed rows and audit spare-key transitions; no Occupancy writes or page/cache modifications.

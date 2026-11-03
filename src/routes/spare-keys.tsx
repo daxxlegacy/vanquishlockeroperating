@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { LockerDetail } from "@/components/LockerDetail";
+import { SpareKeySyncDialog } from "@/components/SpareKeySyncDialog";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Key, Plus, Download } from "lucide-react";
+import { Search, Key, Plus, Download, Upload } from "lucide-react";
 import { getXLSX } from "@/lib/xlsx-lazy";
 import { toast } from "sonner";
 import { List, type RowComponentProps } from "react-window";
@@ -48,6 +49,10 @@ export const Route = createFileRoute("/spare-keys")({
     meta: [
       { title: "Spare Keys — LockerOps" },
       { name: "description", content: "Listing of every locker's spare key status, synced from the spare key sheet." },
+      { property: "og:title", content: "Spare Keys — LockerOps" },
+      { property: "og:description", content: "View, export and synchronize locker spare key statuses." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (<PageGuard permission="page_spare_keys"><SpareKeysPage /></PageGuard>),
@@ -58,6 +63,7 @@ function SpareKeysPage() {
   const navigate = useNavigate();
   const isAdmin = role === "admin";
   const [addOpen, setAddOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const [search, setSearch] = useState(() => {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("search") ?? "";
@@ -106,6 +112,7 @@ function SpareKeysPage() {
             >
               <Download className="h-4 w-4 mr-1" /> Export to Excel
             </Button>
+            {isAdmin && <Button variant="outline" onClick={() => setSyncOpen(true)}><Upload className="h-4 w-4 mr-1" /> Upload & Sync</Button>}
             {isAdmin && (
               <Dialog open={addOpen} onOpenChange={setAddOpen}>
                 <DialogTrigger asChild>
@@ -217,6 +224,7 @@ function SpareKeysPage() {
         </Card>
 
       </main>
+      {syncOpen && <SpareKeySyncDialog open={syncOpen} onOpenChange={setSyncOpen} />}
       <LockerDetail lockerId={selected} open={!!selected} onClose={() => setSelected(null)} onUpdated={() => invalidateLockersCache()} mode="spare" />
     </div>
   );

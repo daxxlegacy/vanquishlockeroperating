@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSpareKeySheets, planSpareKeySync } from "./spare-key-sync";
+import { parseSpareKeySheets, planSpareKeySync, requiresSpareKeyConfirmation, canConfirmSpareKeySync } from "./spare-key-sync";
 
 test("Spare Keys export headers round-trip every exported status under a title row", () => {
   const statuses = ["available", "missing", "with_employee", "damaged", "unknown", "taken", "taken_for_cleaning"];
@@ -26,4 +26,19 @@ test("invalid statuses block preview and duplicates preserve legacy last-row-win
   const r = parseSpareKeySheets([{sheet:"S",cells:[["Locker #","Spare Key Status"],["1A","available"],["1A","missing"],["2A","nonsense"]]}]);
   assert.equal(r.errors.length,1); assert.equal(r.duplicateOverrides,1);
   assert.equal(r.rows[0].spare_key_status,"missing");
+});
+test("more than 300 changes requires typed confirmation, exactly 300 does not", () => {
+  const changes = Array.from({ length: 300 }, () => ({ spare_key_status: "available" as const }));
+  assert.equal(requiresSpareKeyConfirmation(changes), false);
+  assert.equal(requiresSpareKeyConfirmation([...changes, { spare_key_status: "available" }]), true);
+});
+test("more than 100 becoming missing requires confirmation including listed lockers", () => {
+  const changes = Array.from({ length: 100 }, () => ({ spare_key_status: "missing" as const }));
+  assert.equal(requiresSpareKeyConfirmation(changes), false);
+  assert.equal(requiresSpareKeyConfirmation([...changes, { spare_key_status: "missing" }]), true);
+});
+test("large changes require exactly CONFIRM", () => {
+  const changes = Array.from({ length: 301 }, () => ({ spare_key_status: "available" as const }));
+  for (const text of ["", "confirm", " CONFIRM", "CONFIRM "]) assert.equal(canConfirmSpareKeySync(changes, text), false);
+  assert.equal(canConfirmSpareKeySync(changes, "CONFIRM"), true);
 });
