@@ -18,7 +18,7 @@ import { TransferSwapHistoryPanel } from "@/components/operations/TransferSwapHi
 import { StatusChangeLogPanel } from "@/components/operations/StatusChangeLogPanel";
 
 import { toast } from "sonner";
-import { parseBatchIntake, formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
+import { formatBatchIntake, compareLockerNumbers } from "@/lib/locker-utils";
 import { saveReconcileState, loadReconcileState, clearReconcileState, readReconcileMeta } from "@/lib/reconcile-store";
 import { getLockersSnapshot, invalidateLockersCache } from "@/lib/lockers-cache";
 import { terminateLocker } from "@/lib/termination-actions";
@@ -31,7 +31,7 @@ import { localDateIso, REASON_CODES, reasonClash, type ReasonCode } from "@/lib/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TerminationReasonBadge } from "@/components/TerminationReasonBadge";
 import { NationalIdCell } from "@/components/NationalIdCell";
-import { maskNationalId, confirmNidExport } from "@/lib/national-id";
+import { confirmNidExport } from "@/lib/national-id";
 
 export const Route = createFileRoute("/reconcile")({
   head: () => ({
