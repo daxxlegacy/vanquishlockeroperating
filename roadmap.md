@@ -1,3 +1,7 @@
+# Restore verification test lockers
+- [x] Restored 1000A, 1000B, 1000C, 1001A and 1001B in one transaction using equivalent admin snapshot logic; recovered national IDs from the preserved occupancy rows, reactivated those same rows without inserts, and marked all five terminations undone.
+- [x] Added one status audit note per locker: Restored after verification testing, under Farid's admin identity. Verified all five saved names/badges/statuses and matching national IDs; signed-in Occupancy shows Active 9,526 and Duplicate Terminated 0 groups, and Admin marks restored history. No browser errors.
+
 # WX locker rename
 - [x] Preview 216 lockers and confirm no collisions.
 - [x] Rename all 216 lockers and exact linked references atomically, preserving unit_type, categories, dates, and audit mapping.
