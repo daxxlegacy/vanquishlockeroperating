@@ -67,6 +67,14 @@ export function parseSpareKeySheets(sheets: { sheet: string; cells: unknown[][] 
 }
 
 export type SpareKeyChange = { id: string; locker_number: string; prevSpare: string | null; spare_key_status: SpareKeyStatus; unlisted: boolean };
+export function requiresSpareKeyConfirmation(changes: Pick<SpareKeyChange, "spare_key_status">[]) {
+  return changes.length > 300 || changes.filter(change => change.spare_key_status === "missing").length > 100;
+}
+
+export function canConfirmSpareKeySync(changes: Pick<SpareKeyChange, "spare_key_status">[], confirmation: string) {
+  return !requiresSpareKeyConfirmation(changes) || confirmation === "CONFIRM";
+}
+
 export function planSpareKeySync(incoming: SpareKeyFileResult["rows"], lockers: { id: string; locker_number: string; spare_key_status: string | null }[]) {
   const byNumber = new Map(incoming.map(r => [r.locker_number.trim().toUpperCase(), r.spare_key_status]));
   const known = new Set(lockers.map(l => l.locker_number.trim().toUpperCase()));
