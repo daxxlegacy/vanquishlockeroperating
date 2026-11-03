@@ -1,3 +1,8 @@
+# Remove Reconcile Duplicates tab
+- [x] Remove the tab, content, unused imports, and its exclusive component/export helpers; preserve Occupancy duplicate tools and shared dependencies.
+- [x] Audited whole-codebase leftovers: no exclusive external helpers, i18n, links, RPCs or tables; retained historical/generated page_duplicates permission references and all shared dependencies. No database changes.
+- [x] Signed-in verification passed: default and stale duplicate URLs open HR Listing; all four remaining tabs and Occupancy duplicate tools open, with live history/reactivation results. Preview build OK, targeted unused-import lint clean, 13 preserved-rule tests passed, no browser errors. Outer tabs were never persisted; HR bucket persistence unchanged.
+
 # Termination type, reason and category
 - [x] Added safe multi-layout HR parser, exact reason mapping, warnings, Needs check list, no HR national ID output and local-date defaults; 14 combined rule tests passed.
 - [x] Added nullable metadata and exact-only backfill in 0005; extended atomic termination and existing paged occupancy search, role-masked history RPC; 0006 preserves HR OTHER rows with missing type while manual forms require it.
