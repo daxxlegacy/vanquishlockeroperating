@@ -4,7 +4,8 @@ import { deduplicateTerminationEvents, sameTerminationPerson } from "./terminati
 
 const event = (id: string, source = "occupancy", overrides = {}) => ({
   id, source, status: "Terminate", badge_number: " B123 ", employee_name: " Employee ",
-  date: "2026-11-03", remarks: null as string | null, by: null as string | null, ...overrides,
+  date: "2026-11-03", remarks: null as string | null, by: null as string | null,
+  reason_code:null as string|null,termination_type:null as string|null,reason_detail:null as string|null,reason_category:null as string|null,...overrides,
 });
 
 describe("termination history rules", () => {
