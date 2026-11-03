@@ -1,7 +1,8 @@
 // Status Change Log panel (Reconcile page).
 //
 // REQUIREMENT: the manual, date-range scoped "Clear History" action below is the
-// ONLY way rows are ever removed from `status_change_log`. No scheduled job,
+// ONLY ongoing way rows are removed from `status_change_log`. The explicitly
+// requested one-time duplicate-noise removal is separate. No scheduled job,
 // cron entry, expiry trigger, or automatic cleanup may touch this table.
 // This clear action is fully separate from the Transfer & Swap History clear.
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,6 +27,7 @@ import { toast } from "sonner";
 import { formatDateTime } from "@/lib/format-date";
 import { formatBatchIntake } from "@/lib/locker-utils";
 import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
+import { visibleStatusChangeRows } from "@/lib/status-change-log";
 
 type Row = {
   id: string;
@@ -77,6 +79,7 @@ export function StatusChangeLogPanel() {
     const { data, error } = await supabase
       .from("status_change_log")
       .select("id, locker_number, previous_status, new_status, source, changed_by_email, created_at")
+      .neq("new_status", "(duplicate removed)")
       .order("created_at", { ascending: false })
       .limit(3000);
     if (error) {
@@ -84,7 +87,7 @@ export function StatusChangeLogPanel() {
       setItems([]);
       return;
     }
-    setItems((data ?? []) as Row[]);
+    setItems(visibleStatusChangeRows((data ?? []) as Row[]));
   }, []);
 
   useEffect(() => {

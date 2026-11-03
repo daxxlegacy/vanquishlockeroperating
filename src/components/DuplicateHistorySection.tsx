@@ -312,22 +312,6 @@ export function DuplicateHistorySection({
       }
     }
 
-    if (drop.length) {
-      await supabase.from("status_change_log").insert(
-        drop.map((r) => ({
-          locker_number: g.locker_number,
-          previous_status: r.status,
-          new_status: "(duplicate removed)",
-          source:
-            r.source === "occupancy"
-              ? "duplicate_history_cleanup_occupancy"
-              : "duplicate_history_cleanup_termination",
-          changed_by: user.id ?? "",
-          changed_by_email: user.email ?? null,
-        })),
-      );
-    }
-
     return { removed, keep };
   };
 
