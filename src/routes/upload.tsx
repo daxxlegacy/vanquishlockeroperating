@@ -26,6 +26,9 @@ import { Progress } from "@/components/ui/progress";
 import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
 import { saveBatchIntakeWarnings, clearBatchIntakeWarnings } from "@/lib/batch-intake-warnings";
 import { terminateLocker } from "@/lib/termination-actions";
+import { readRosterFile } from "@/lib/roster-reader";
+import type { RosterSheetSummary } from "@/lib/roster-parser";
+import { confirmNidExport, maskNationalId, useCanRevealNationalId } from "@/lib/national-id";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -104,7 +107,7 @@ const ROSTER_SYNC_SHEETS = new Set<string>([
   "hr locker",
 ]);
 
-type RosterPerson = { badge: string | null; name: string | null; rowIndex: number };
+type RosterPerson = { badge: string | null; name: string | null; rowIndex: number; sheet: string; location: string | null; jobName: string | null; assignmentType: string | null };
 type RosterMatchMode = "badge" | "name" | "both";
 
 interface RosterCheckResult {
@@ -140,6 +143,11 @@ interface SpareSyncResult {
 
 function UploadPage() {
   const { user, role, loading } = useAuth();
+  const canRevealNid = useCanRevealNationalId();
+  const displayNid = (value: string | null) => canRevealNid ? value ?? "—" : maskNationalId(value) || "—";
+  const [checkSummary, setCheckSummary] = useState<RosterSheetSummary[]>([]);
+  const [nidSummary, setNidSummary] = useState<RosterSheetSummary[]>([]);
+  const [badgeSummary, setBadgeSummary] = useState<RosterSheetSummary[]>([]);
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
@@ -681,19 +689,14 @@ function UploadPage() {
   const runRosterCheck = async (f: File) => {
     setCheckBusy(true);
     setCheckResult(null);
+    setCheckSummary([]);
     try {
-      // Read every sheet in the roster file so multi-sheet workbooks are supported.
-      const sheets = await parseFileAllSheets(f);
-      const allRows: Record<string, unknown>[] = [];
-      for (const { rows } of sheets) allRows.push(...rows);
+      const roster = await readRosterFile(f);
+      setCheckSummary(roster.summaries);
+      const allRows = roster.rows;
       if (allRows.length === 0) { toast.error("Roster file is empty."); setCheckBusy(false); return; }
-
-      // Detect across the union of headers in all sheets.
-      const headerSet = new Set<string>();
-      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
-      const detected = detectColumns([...headerSet]);
-      const badgeKey = detected.badge_number;
-      const nameKey = detected.employee_name;
+      const badgeKey = roster.summaries.some(s => s.badgeColumn);
+      const nameKey = roster.summaries.some(s => s.nameColumn);
 
       if (matchMode === "badge" && !badgeKey) {
         toast.error("Match mode is 'Badge' but no badge column was found.");
@@ -714,13 +717,11 @@ function UploadPage() {
       const peopleInFile: RosterPerson[] = [];
       const fileBadges = new Set<string>();
       const fileNames = new Set<string>();
-      let rowIdx = 0;
       for (const r of allRows) {
-        rowIdx++;
-        const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, normCfg);
-        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, normCfg);
+        const badge = normalizeBadge(r.badge, normCfg);
+        const name = normalizeName(r.name, normCfg);
         if (!badge && !name) continue;
-        peopleInFile.push({ badge, name, rowIndex: rowIdx });
+        peopleInFile.push({ badge, name, rowIndex: r.rowIndex, sheet: r.sheet, location: r.location, jobName: r.jobName, assignmentType: r.assignmentType });
         if (badge) fileBadges.add(badgeKeyOf(badge, normCfg));
         if (name) fileNames.add(nameKeyOf(name, normCfg));
       }
@@ -764,16 +765,16 @@ function UploadPage() {
         if (!consideredMatched) inFileNotInDb.push(p);
 
         // Partial-match diagnostics are always computed when both columns exist.
-        if (bMatch && p.name && bMatch.employee_name &&
+        if (bMatch && p.badge && p.name && bMatch.employee_name &&
             nameKeyOf(bMatch.employee_name, normCfg) !== nameKeyOf(p.name, normCfg)) {
           badgeMatchedNameDiffers.push({
-            badge: p.badge!, fileName: p.name, dbName: bMatch.employee_name, locker_number: bMatch.locker_number,
+            badge: p.badge, fileName: p.name, dbName: bMatch.employee_name, locker_number: bMatch.locker_number,
           });
         }
-        if (nMatch && p.badge && nMatch.badge_number &&
+        if (nMatch && p.name && p.badge && nMatch.badge_number &&
             badgeKeyOf(nMatch.badge_number, normCfg) !== badgeKeyOf(p.badge, normCfg)) {
           nameMatchedBadgeDiffers.push({
-            name: p.name!, fileBadge: p.badge, dbBadge: nMatch.badge_number, locker_number: nMatch.locker_number,
+            name: p.name, fileBadge: p.badge, dbBadge: nMatch.badge_number, locker_number: nMatch.locker_number,
           });
         }
       }
@@ -838,17 +839,15 @@ function UploadPage() {
   const runNationalIdFill = async (f: File) => {
     setNidBusy(true);
     setNidResult(null);
+    setNidSummary([]);
     try {
-      const allRows = await parseFileWithHeaderDetection(f, ["nric", "nationalid", "personnumber", "legalfullname", "badgenumber", "employeename"]);
+      const roster = await readRosterFile(f, true);
+      setNidSummary(roster.summaries);
+      const allRows = roster.rows;
       if (allRows.length === 0) { toast.error("File is empty."); setNidBusy(false); return; }
-
-      const headerSet = new Set<string>();
-      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
-      const detected = detectColumns([...headerSet]);
-      const badgeKey = detected.badge_number;
-      const nameKey = detected.employee_name;
-      const nidKey = detected.national_id;
-      const hireKey = detected.batch_intake; // HireDate / BatchIntake
+      const badgeKey = roster.summaries.some(s => s.badgeColumn);
+      const nameKey = roster.summaries.some(s => s.nameColumn);
+      const nidKey = roster.summaries.some(s => s.nationalIdColumn);
 
       if (!nidKey) { toast.error("No National ID column found (looked for NationalID/NRIC/IC/MyKad)."); setNidBusy(false); return; }
       if (!badgeKey && !nameKey) { toast.error("No badge or name column found to match against lockers."); setNidBusy(false); return; }
@@ -862,9 +861,9 @@ function UploadPage() {
       const fileByName = new Map<string, FileEntry>();
       let noNationalId = 0;
       for (const r of allRows) {
-        const badge = normalizeBadge(badgeKey ? getStr(r, badgeKey) : null, nidCfg);
-        const name = normalizeName(nameKey ? getStr(r, nameKey) : null, nidCfg);
-        const nid = getStr(r, nidKey);
+        const badge = normalizeBadge(r.badge, nidCfg);
+        const name = normalizeName(r.name, nidCfg);
+        const nid = r.nationalId;
         if (!badge && !name) continue;
         if (!nid) { noNationalId++; continue; }
         const entry: FileEntry = { badge, name, national_id: nid };
@@ -877,9 +876,6 @@ function UploadPage() {
           if (!fileByName.has(k)) fileByName.set(k, entry);
         }
       }
-      // Suppress unused hireKey warning (kept for potential future use)
-      void hireKey;
-
       // Pull all active assigned lockers
       const dbPeople: { locker_number: string; employee_name: string | null; badge_number: string | null; batch_intake: string | null }[] = [];
       let from = 0;
@@ -957,34 +953,18 @@ function UploadPage() {
   const runBadgeFill = async (f: File) => {
     setBadgeBusy(true);
     setBadgeResult(null);
+    setBadgeSummary([]);
     try {
-      const allRows = await parseFileWithHeaderDetection(f, ["badgenumber", "badge", "employeename", "legalfullname", "nric", "nationalid"]);
+      const roster = await readRosterFile(f, true);
+      setBadgeSummary(roster.summaries);
+      const allRows = roster.rows;
       if (allRows.length === 0) { toast.error("File is empty."); setBadgeBusy(false); return; }
-
-      const headerSet = new Set<string>();
-      for (const r of allRows.slice(0, 200)) for (const k of Object.keys(r)) headerSet.add(k);
-      const detected = detectColumns([...headerSet]);
-      const badgeKey = detected.badge_number;
-      const nidKey = detected.national_id;
-
-      // Match using BOTH Employee Name and Legal Full Name columns from HR listing
-      const nameKeys: string[] = [];
-      const seenNameKeys = new Set<string>();
-      for (const h of headerSet) {
-        const n = norm(h);
-        if (
-          n.includes("employeename") ||
-          n.includes("fullname") ||
-          n.includes("legalname") ||
-          n === "name" ||
-          n.includes("ocname")
-        ) {
-          if (!seenNameKeys.has(h)) { nameKeys.push(h); seenNameKeys.add(h); }
-        }
-      }
+      const badgeKey = roster.summaries.some(s => s.badgeColumn);
+      const nidKey = roster.summaries.some(s => s.nationalIdColumn);
+      const hasName = roster.summaries.some(s => s.nameColumn);
 
       if (!badgeKey) { toast.error("No Badge Number column found."); setBadgeBusy(false); return; }
-      if (nameKeys.length === 0 && !nidKey) { toast.error("No name (Employee Name / Legal Full Name) or National ID column found to match against lockers."); setBadgeBusy(false); return; }
+      if (!hasName && !nidKey) { toast.error("No name (Employee Name / Legal Full Name) or National ID column found to match against lockers."); setBadgeBusy(false); return; }
 
       type FileEntry = { badge: string; name: string | null; national_id: string | null };
       const badgeCfg: NormalizationConfig = { ...normCfg, uppercaseName: false };
@@ -992,13 +972,13 @@ function UploadPage() {
       const fileByNid = new Map<string, FileEntry>();
       let noBadge = 0;
       for (const r of allRows) {
-        const badge = normalizeBadge(getStr(r, badgeKey), badgeCfg);
+        const badge = normalizeBadge(r.badge, badgeCfg);
         const names: string[] = [];
-        for (const nk of nameKeys) {
-          const nm = normalizeName(getStr(r, nk), badgeCfg);
+        for (const value of r.names) {
+          const nm = normalizeName(value, badgeCfg);
           if (nm) names.push(nm);
         }
-        const nid = nidKey ? getStr(r, nidKey) : null;
+        const nid = r.nationalId;
         if (names.length === 0 && !nid) continue;
         if (!badge) { noBadge++; continue; }
         const entry: FileEntry = { badge, name: names[0] ?? null, national_id: nid };
@@ -1084,12 +1064,12 @@ function UploadPage() {
   };
 
   const exportBadgeCsv = () => {
-    if (!badgeResult) return;
+    if (!badgeResult || !confirmNidExport()) return;
     const rows = badgeResult.matched.map((m) => ({
       locker_number: m.locker_number,
       badge_number: m.badge_number,
       employee_name: m.employee_name ?? "",
-      national_id: m.national_id ?? "",
+      national_id: canRevealNid ? m.national_id ?? "" : maskNationalId(m.national_id),
       batch_intake: m.batch_intake ?? "",
       matched_by: m.matched_by,
     }));
@@ -1100,13 +1080,13 @@ function UploadPage() {
   };
 
   const exportNationalIdCsv = () => {
-    if (!nidResult) return;
+    if (!nidResult || !confirmNidExport()) return;
     const rows = nidResult.matched.map((m) => ({
       locker_number: m.locker_number,
       badge_number: m.badge_number ?? "",
       employee_name: m.employee_name ?? "",
       batch_intake: m.batch_intake ?? "",
-      national_id: m.national_id,
+      national_id: canRevealNid ? m.national_id : maskNationalId(m.national_id),
       matched_by: m.matched_by,
     }));
     const csv = Papa.unparse(rows);
@@ -1537,7 +1517,7 @@ function UploadPage() {
               </Button>
             )}
           </div>
-
+          <RosterSummary summaries={checkSummary} />
           {checkResult && (
             <div className="mt-5 space-y-4">
               <div className="grid md:grid-cols-3 gap-3">
@@ -1563,12 +1543,16 @@ function UploadPage() {
                 </summary>
                 <div className="max-h-64 overflow-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th></tr></thead>
+                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th><Th>Sheet / Row</Th><Th>Location</Th><Th>Job</Th><Th>Assignment</Th></tr></thead>
                     <tbody>
                       {checkResult.inFileNotInDb.slice(0, 200).map((p, i) => (
                         <tr key={i} className="border-t">
                           <td className="px-3 py-1.5 font-mono">{p.badge ?? "—"}</td>
                           <td className="px-3 py-1.5">{p.name ?? "—"}</td>
+                          <td className="px-3 py-1.5">{p.sheet} / {p.rowIndex}</td>
+                          <td className="px-3 py-1.5">{p.location ?? "—"}</td>
+                          <td className="px-3 py-1.5">{p.jobName ?? "—"}</td>
+                          <td className="px-3 py-1.5">{p.assignmentType ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1673,7 +1657,7 @@ function UploadPage() {
               </Button>
             )}
           </div>
-
+          <RosterSummary summaries={nidSummary} />
           {nidResult && (
             <div className="mt-5 space-y-4">
               <div className="grid md:grid-cols-3 gap-3">
@@ -1706,7 +1690,7 @@ function UploadPage() {
                           <td className="px-3 py-1.5">{m.badge_number ?? "—"}</td>
                           <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
                           <td className="px-3 py-1.5 text-xs">{m.batch_intake ?? "—"}</td>
-                          <td className="px-3 py-1.5 font-mono text-xs">{m.national_id}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs">{displayNid(m.national_id)}</td>
                           <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
                         </tr>
                       ))}
@@ -1733,7 +1717,7 @@ function UploadPage() {
                           <tr key={i} className="border-t">
                             <td className="px-3 py-1.5">{u.badge ?? "—"}</td>
                             <td className="px-3 py-1.5">{u.name ?? "—"}</td>
-                            <td className="px-3 py-1.5 font-mono text-xs">{u.national_id}</td>
+                            <td className="px-3 py-1.5 font-mono text-xs">{displayNid(u.national_id)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1767,7 +1751,7 @@ function UploadPage() {
               </Button>
             )}
           </div>
-
+          <RosterSummary summaries={badgeSummary} />
           {badgeResult && (
             <div className="mt-5 space-y-4">
               <div className="grid md:grid-cols-3 gap-3">
@@ -1799,7 +1783,7 @@ function UploadPage() {
                           <td className="px-3 py-1.5 font-medium">{m.locker_number}</td>
                           <td className="px-3 py-1.5 font-mono text-xs">{m.badge_number}</td>
                           <td className="px-3 py-1.5">{m.employee_name ?? "—"}</td>
-                          <td className="px-3 py-1.5 font-mono text-xs">{m.national_id ?? "—"}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs">{displayNid(m.national_id)}</td>
                           <td className="px-3 py-1.5 text-xs">{m.batch_intake ?? "—"}</td>
                           <td className="px-3 py-1.5 text-xs text-muted-foreground">{m.matched_by}</td>
                         </tr>
@@ -1827,7 +1811,7 @@ function UploadPage() {
                           <tr key={i} className="border-t">
                             <td className="px-3 py-1.5 font-mono text-xs">{u.badge}</td>
                             <td className="px-3 py-1.5">{u.name ?? "—"}</td>
-                            <td className="px-3 py-1.5 font-mono text-xs">{u.national_id ?? "—"}</td>
+                            <td className="px-3 py-1.5 font-mono text-xs">{displayNid(u.national_id)}</td>
                           </tr>
                         ))}
                       </tbody>
