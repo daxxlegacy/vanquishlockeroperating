@@ -9,6 +9,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { subscribeRowsChanged } from "@/lib/row-events";
+import { subscribeLockerPatches } from "@/lib/lockers-cache";
+import { compareLockerNumbers } from "@/lib/locker-utils";
 import type { Database } from "@/integrations/supabase/types";
 
 export type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -236,6 +238,29 @@ export function useLockersPage(q: LockersQuery, pageSize = PAGE_SIZE) {
   }, [load]);
 
   // Local single-row mutations (dialogs) refresh the current page immediately.
+  useEffect(() => subscribeLockerPatches((patched) => {
+    // Only the first natural-sort page has a known lower bound. Other pages and
+    // custom sorts are reconciled by the normal server refresh, not appended.
+    if (q.page !== 1 || q.sortCol !== "num") return;
+    setResult((current) => {
+      if (!current) return current;
+      const search = q.search.trim().toLowerCase();
+      const matches = patched.filter((r) => !r.deleted_at
+        && (q.statusFilter === "all" || r.status === q.statusFilter)
+        && (q.locFilter === "all" || r.location === q.locFilter)
+        && (q.keyLockFilter === "all" || r.key_lock === q.keyLockFilter)
+        && (!q.statusIn?.length || q.statusIn.includes(r.status))
+        && (!q.locationIn?.length || q.locationIn.includes(r.location))
+        && (!q.missingNid || !r.national_id?.trim())
+        && (!q.missingBadge || !r.badge_number?.trim())
+        && (!search || [r.locker_number, r.employee_name, r.badge_number, r.key_lock, r.location].some(v => v?.toLowerCase().includes(search))));
+      const byId = new Map(current.rows.map(r => [r.id, r]));
+      for (const row of matches) byId.set(row.id, row);
+      const rows = [...byId.values()].sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number) * (q.sortDir === "desc" ? -1 : 1)).slice(0, pageSize);
+      return { ...current, rows };
+    });
+  }), [key, pageSize]);
+
   useEffect(() => subscribeRowsChanged((table, ids) => {
     if (table !== "lockers") return;
     if (ids.includes("*") || ids.some((id) => rowsRef.current.some((r) => r.id === id))) void load(false);

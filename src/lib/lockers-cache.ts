@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { emitRowsChanged, emitTableChanged } from "@/lib/row-events";
+import { compareLockerNumbers } from "@/lib/locker-utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -18,6 +19,12 @@ let state: State = { data: null, loading: false, refreshing: false };
 
 let index: Map<string, number> = new Map();
 const subscribers = new Set<(s: State) => void>();
+const patchSubscribers = new Set<(rows: Locker[]) => void>();
+
+export function subscribeLockerPatches(callback: (rows: Locker[]) => void) {
+  patchSubscribers.add(callback);
+  return () => { patchSubscribers.delete(callback); };
+}
 let channel: ReturnType<typeof supabase.channel> | null = null;
 let fetchPromise: Promise<void> | null = null;
 let realtimePaused = 0; // counter for nested pauses
@@ -199,10 +206,12 @@ export function patchLockersInCache(rows: Locker[]) {
         next.push(row);
       }
     }
+    next.sort((a, b) => compareLockerNumbers(a.locker_number, b.locker_number));
     rebuildIndex(next);
     state = { ...state, data: next };
     emit();
   }
+  for (const callback of patchSubscribers) callback(rows);
   emitRowsChanged("lockers", rows.map((r) => r.id));
 }
 
