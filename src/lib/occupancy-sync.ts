@@ -1,10 +1,10 @@
 // Sync locker mutations from the /lockers page into the locker_occupancy
 // history. Operates across ALL categories (main, staff, shoe) because a
 // single locker_number can live in any category. Maintains the invariant
-// that each (locker_number, category) has AT MOST one Active row and one
-// Terminate row at any time.
+// that current Active rows are unique while prior people's history is retained.
 import { deriveOccCategoryOr } from "@/lib/locker-category";
-import { patchOccupancyInCache, type OccCategory, type OccupancyRow } from "@/lib/occupancy-cache";
+import { patchOccupancyInCache, removeOccupancyFromCache, type OccCategory, type OccupancyRow } from "@/lib/occupancy-cache";
+import { sameTerminationPerson } from "@/lib/termination-history";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -131,10 +131,8 @@ export async function recordSwapHistory(
  * Mark a locker as terminated in occupancy history across every category
  * where it appears.
  * - Flips existing Active row(s) to Terminate, preserving each row's category.
- * - Removes any prior Terminate rows for the same (locker_number, category)
- *   so only the most recent termination remains.
- * - If no occupancy rows exist at all for this locker_number, inserts a
- *   fresh Terminate row under category='main' as a fallback.
+ * - Removes prior Terminate rows only for the outgoing person, across categories.
+ * - Without an active row, inserts once per locker/person/date.
  */
 export async function syncTerminationToOccupancy(
   locker: Locker,
@@ -142,27 +140,36 @@ export async function syncTerminationToOccupancy(
   reason: string | null,
 ): Promise<void> {
   // 1. Find active rows across ALL categories for this locker
-  const { data: activeRows } = await supabase
+  const { data: activeRows, error: activeError } = await supabase
     .from("locker_occupancy")
-    .select("id, category")
+    .select("id, category, badge_number, employee_name")
     .eq("locker_number", locker.locker_number)
     .ilike("status", "active");
+  if (activeError) throw activeError;
+
+  const { data: terminatedRows, error: terminatedError } = await supabase
+    .from("locker_occupancy")
+    .select("id, badge_number, employee_name, termination_date")
+    .eq("locker_number", locker.locker_number)
+    .or("status.ilike.terminate,status.ilike.terminated");
+  if (terminatedError) throw terminatedError;
 
   if (activeRows && activeRows.length > 0) {
-    // For each category that has an active row, clear prior terminate rows
-    // (in that same category) and flip the active row to terminate.
-    const categories = [...new Set(activeRows.map((r) => r.category))];
-    for (const cat of categories) {
-      await supabase
+    const priorIds = (terminatedRows ?? [])
+      .filter((r) => activeRows.some((active) => sameTerminationPerson(active, r)))
+      .map((r) => r.id);
+    if (priorIds.length > 0) {
+      const { data: deleted, error: deleteError } = await supabase
         .from("locker_occupancy")
         .delete()
-        .eq("category", cat)
-        .eq("locker_number", locker.locker_number)
-        .or("status.ilike.terminate,status.ilike.terminated");
+        .in("id", priorIds)
+        .select("id");
+      if (deleteError) throw deleteError;
+      removeOccupancyFromCache((deleted ?? []).map((r) => r.id));
     }
 
     const ids = activeRows.map((r) => r.id);
-    const { data: updated } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from("locker_occupancy")
       .update({
         status: "Terminate",
@@ -171,11 +178,16 @@ export async function syncTerminationToOccupancy(
       })
       .in("id", ids)
       .select("*");
+    if (updateError) throw updateError;
     if (updated && updated.length > 0) {
       patchOccupancyInCache(updated as unknown as OccupancyRow[]);
     }
     return;
   }
+
+  if ((terminatedRows ?? []).some((r) =>
+    r.termination_date === terminationDateIso && sameTerminationPerson(locker, r),
+  )) return;
 
   // 2. No active row anywhere — insert a fresh historical record.
   // Default to category='main' (most common); if any other-category row
@@ -198,8 +210,7 @@ export async function syncTerminationToOccupancy(
     return;
   }
 
-  const { data: inserted } = await supabase.from("locker_occupancy").insert({
-
+  const { data: inserted, error: insertError } = await supabase.rpc("insert_terminated_occupancy_if_absent", { _row: {
     category,
     locker_number: locker.locker_number,
     locker_row: locker.row_label,
@@ -214,7 +225,8 @@ export async function syncTerminationToOccupancy(
     termination_date: terminationDateIso,
     remarks: reason,
     source_filename: "manual-termination",
-  }).select("*");
+  } });
+  if (insertError) throw insertError;
   if (inserted && inserted.length > 0) {
     patchOccupancyInCache(inserted as unknown as OccupancyRow[]);
   }
