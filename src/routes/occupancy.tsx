@@ -1197,6 +1197,11 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
                   {isMovement && e.movement_detail && (
                     <div className="mt-1 text-xs text-muted-foreground">{e.movement_detail}</div>
                   )}
+                  {!isMovement && (e.remarks || e.by) && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {[e.remarks, e.by ? `By ${e.by}` : null].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
 
 
                 </li>
