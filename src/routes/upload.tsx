@@ -1545,7 +1545,7 @@ function UploadPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th><Th>Sheet / Row</Th><Th>Location</Th><Th>Job</Th><Th>Assignment</Th></tr></thead>
                     <tbody>
-                      {checkResult.inFileNotInDb.slice(0, 200).map((p, i) => (
+                      {checkResult.inFileNotInDb.slice(0, 100).map((p, i) => (
                         <tr key={i} className="border-t">
                           <td className="px-3 py-1.5 font-mono">{p.badge ?? "—"}</td>
                           <td className="px-3 py-1.5">{p.name ?? "—"}</td>
@@ -1557,8 +1557,8 @@ function UploadPage() {
                       ))}
                     </tbody>
                   </table>
-                  {checkResult.inFileNotInDb.length > 200 && (
-                    <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {checkResult.inFileNotInDb.length - 200} more</div>
+                  {checkResult.inFileNotInDb.length > 100 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {checkResult.inFileNotInDb.length - 100} more</div>
                   )}
                 </div>
               </details>
@@ -1571,7 +1571,7 @@ function UploadPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 sticky top-0"><tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th></tr></thead>
                     <tbody>
-                      {checkResult.inDbNotInFile.slice(0, 200).map((p) => (
+                      {checkResult.inDbNotInFile.slice(0, 100).map((p) => (
                         <tr key={p.locker_number} className="border-t">
                           <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
                           <td className="px-3 py-1.5 font-mono text-muted-foreground">{p.badge_number ?? "—"}</td>
@@ -1580,8 +1580,8 @@ function UploadPage() {
                       ))}
                     </tbody>
                   </table>
-                  {checkResult.inDbNotInFile.length > 200 && (
-                    <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {checkResult.inDbNotInFile.length - 200} more</div>
+                  {checkResult.inDbNotInFile.length > 100 && (
+                    <div className="p-2 text-xs text-center text-muted-foreground border-t">… and {checkResult.inDbNotInFile.length - 100} more</div>
                   )}
                 </div>
               </details>
@@ -1595,7 +1595,7 @@ function UploadPage() {
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Locker</Th><Th>Name in file</Th><Th>Name in DB</Th></tr></thead>
                       <tbody>
-                        {checkResult.badgeMatchedNameDiffers.map((p, i) => (
+                        {checkResult.badgeMatchedNameDiffers.slice(0, 100).map((p, i) => (
                           <tr key={i} className="border-t">
                             <td className="px-3 py-1.5 font-mono">{p.badge}</td>
                             <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
@@ -1618,7 +1618,7 @@ function UploadPage() {
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 sticky top-0"><tr><Th>Name</Th><Th>Locker</Th><Th>Badge in file</Th><Th>Badge in DB</Th></tr></thead>
                       <tbody>
-                        {checkResult.nameMatchedBadgeDiffers.map((p, i) => (
+                        {checkResult.nameMatchedBadgeDiffers.slice(0, 100).map((p, i) => (
                           <tr key={i} className="border-t">
                             <td className="px-3 py-1.5">{p.name}</td>
                             <td className="px-3 py-1.5 font-medium">{p.locker_number}</td>
@@ -1684,7 +1684,7 @@ function UploadPage() {
                       <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>Batch Intake</Th><Th>National ID</Th><Th>By</Th></tr>
                     </thead>
                     <tbody>
-                      {nidResult.matched.slice(0, 300).map((m) => (
+                      {nidResult.matched.slice(0, 100).map((m) => (
                         <tr key={m.locker_number} className="border-t">
                           <td className="px-3 py-1.5 font-medium">{m.locker_number}</td>
                           <td className="px-3 py-1.5">{m.badge_number ?? "—"}</td>
@@ -1696,9 +1696,9 @@ function UploadPage() {
                       ))}
                     </tbody>
                   </table>
-                  {nidResult.matched.length > 300 && (
+                  {nidResult.matched.length > 100 && (
                     <div className="p-2 text-xs text-center text-muted-foreground border-t">
-                      … and {nidResult.matched.length - 300} more (full list in CSV)
+                      … and {nidResult.matched.length - 100} more (full list in CSV)
                     </div>
                   )}
                 </div>
@@ -1713,7 +1713,7 @@ function UploadPage() {
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th><Th>National ID</Th></tr></thead>
                       <tbody>
-                        {nidResult.unmatched.slice(0, 200).map((u, i) => (
+                        {nidResult.unmatched.slice(0, 100).map((u, i) => (
                           <tr key={i} className="border-t">
                             <td className="px-3 py-1.5">{u.badge ?? "—"}</td>
                             <td className="px-3 py-1.5">{u.name ?? "—"}</td>
@@ -1778,7 +1778,7 @@ function UploadPage() {
                       <tr><Th>Locker</Th><Th>Badge</Th><Th>Name</Th><Th>National ID</Th><Th>Batch Intake</Th><Th>By</Th></tr>
                     </thead>
                     <tbody>
-                      {badgeResult.matched.slice(0, 300).map((m) => (
+                      {badgeResult.matched.slice(0, 100).map((m) => (
                         <tr key={m.locker_number} className="border-t">
                           <td className="px-3 py-1.5 font-medium">{m.locker_number}</td>
                           <td className="px-3 py-1.5 font-mono text-xs">{m.badge_number}</td>
@@ -1790,9 +1790,9 @@ function UploadPage() {
                       ))}
                     </tbody>
                   </table>
-                  {badgeResult.matched.length > 300 && (
+                  {badgeResult.matched.length > 100 && (
                     <div className="p-2 text-xs text-center text-muted-foreground border-t">
-                      … and {badgeResult.matched.length - 300} more (full list in CSV)
+                      … and {badgeResult.matched.length - 100} more (full list in CSV)
                     </div>
                   )}
                 </div>
@@ -1807,7 +1807,7 @@ function UploadPage() {
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 sticky top-0"><tr><Th>Badge</Th><Th>Name</Th><Th>National ID</Th></tr></thead>
                       <tbody>
-                        {badgeResult.unmatched.slice(0, 200).map((u, i) => (
+                        {badgeResult.unmatched.slice(0, 100).map((u, i) => (
                           <tr key={i} className="border-t">
                             <td className="px-3 py-1.5 font-mono text-xs">{u.badge}</td>
                             <td className="px-3 py-1.5">{u.name ?? "—"}</td>
@@ -1986,49 +1986,6 @@ async function parseFileAllSheets(f: File): Promise<{ sheet: string; rows: Recor
   }));
 }
 
-// Parses a file but auto-detects the header row by scanning the first ~20 rows
-// for known marker tokens (e.g., "NRIC", "PersonNumber"). Useful for sheets
-// that start with a title banner above the real headers.
-async function parseFileWithHeaderDetection(f: File, markerTokens: string[]): Promise<Record<string, unknown>[]> {
-  const ext = f.name.split(".").pop()?.toLowerCase();
-  const normTok = (s: unknown) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const markers = new Set(markerTokens.map((t) => t.toLowerCase().replace(/[^a-z0-9]/g, "")));
-  if (ext === "csv") {
-    // Papa with header:true is fine for CSVs; fallback to plain parse.
-    return await parseFile(f);
-  }
-  const buf = await f.arrayBuffer();
-  const XLSX = await getXLSX();
-  const wb = XLSX.read(buf, { type: "array", cellDates: false });
-  const out: Record<string, unknown>[] = [];
-  for (const sn of wb.SheetNames) {
-    const ws = wb.Sheets[sn];
-    const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "", raw: true, blankrows: false });
-    if (!aoa.length) continue;
-    let headerIdx = 0;
-    for (let i = 0; i < Math.min(aoa.length, 20); i++) {
-      const row: unknown[] = aoa[i] ?? [];
-      const tokens = row.map(normTok).filter(Boolean);
-      const hits = tokens.filter((t) => markers.has(t)).length;
-      if (hits >= 2) { headerIdx = i; break; }
-    }
-    const headers = ((aoa[headerIdx] ?? []) as unknown[]).map((h) => String(h ?? "").trim());
-    for (let i = headerIdx + 1; i < aoa.length; i++) {
-      const row = aoa[i] ?? [];
-      const rec: Record<string, unknown> = {};
-      let any = false;
-      for (let c = 0; c < headers.length; c++) {
-        const k = headers[c];
-        if (!k) continue;
-        const v = row[c];
-        rec[k] = v ?? "";
-        if (v !== null && v !== undefined && String(v) !== "") any = true;
-      }
-      if (any) out.push(rec);
-    }
-  }
-  return out;
-}
 
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -2248,4 +2205,8 @@ function isTerminatedStatus(raw: unknown): boolean {
     n === "exit" ||
     n.includes("offboard")
   );
+}
+
+function RosterSummary({ summaries }: { summaries: RosterSheetSummary[] }) {
+  return <div className="mt-2 space-y-1 text-xs text-muted-foreground">{summaries.map(s => <p key={s.sheet}>{s.headerRow === null ? `No recognised header in first 30 rows · sheet ${s.sheet} · missing badge/name/national ID headers` : `Detected header on row ${s.headerRow} · sheet ${s.sheet} · ${s.rows.toLocaleString("en-US")} rows · badge column: ${s.badgeColumn ?? "missing"} · name column: ${s.nameColumn ?? "missing"} · national ID column: ${s.nationalIdColumn ?? "missing"}`}</p>)}</div>;
 }
