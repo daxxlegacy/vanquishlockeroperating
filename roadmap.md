@@ -1,7 +1,7 @@
 # Roster Check shared reader
-- [ ] Add tested header-name reader for all sheets/CSV, safe badges, summaries and background parsing.
-- [ ] Use it in all three cards, retain matching/exports/privacy and cap scrollable results at 100 rows.
-- [ ] Verify signed-in imports/exports with 11,200-row equivalent fixture; original October workbook is not uploaded.
+- [x] Added shared header-name reader for all sheets/CSV and repeated contractor headers, safe badges, summaries and ephemeral background worker parsing; six new rule tests passed.
+- [x] All three cards use the reader; matching priorities/settings and full exports retained, permission-aware ID display/export masking and confirmations preserved, all result tables scrollable with 100 rendered rows.
+- [x] Signed-in imports passed for 11,200-row equivalent workbook, all match modes, title-row CSV and specific missing-ID feedback. Both fill downloads verified against existing locker matches without writes; no browser errors, build OK, 12 combined rule tests passed. Original October workbook absent, so exact 11,196-row sample verification remains unavailable.
 
 # Remove Reconcile Duplicates tab
 - [x] Remove the tab, content, unused imports, and its exclusive component/export helpers; preserve Occupancy duplicate tools and shared dependencies.
