@@ -316,6 +316,39 @@ export type Database = {
         }
         Relationships: []
       }
+      locker_number_rename_audit: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          locker_count: number
+          mapping: Json
+          performed_by: string
+          performed_by_email: string
+          verification: Json
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          locker_count: number
+          mapping: Json
+          performed_by: string
+          performed_by_email: string
+          verification?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          locker_count?: number
+          mapping?: Json
+          performed_by?: string
+          performed_by_email?: string
+          verification?: Json
+        }
+        Relationships: []
+      }
       locker_occupancy: {
         Row: {
           badge_number: string | null

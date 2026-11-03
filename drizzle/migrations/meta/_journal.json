@@ -15,6 +15,13 @@
       "when": 1791771073002,
       "tag": "0001_duplicate_terminated_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793673748901,
+      "tag": "0002_locker_number_rename_audit",
+      "breakpoints": true
     }
   ]
 }
