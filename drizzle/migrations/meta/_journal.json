@@ -36,6 +36,13 @@
       "when": 1793683716103,
       "tag": "0004_atomic_locker_termination",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793684925148,
+      "tag": "0005_termination_reason_metadata",
+      "breakpoints": true
     }
   ]
 }

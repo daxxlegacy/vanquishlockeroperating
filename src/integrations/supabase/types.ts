@@ -366,10 +366,13 @@ export type Database = {
           locker_row: string | null
           locker_unit: string | null
           national_id: string | null
+          reason_category: string | null
+          reason_code: string | null
           remarks: string | null
           source_filename: string | null
           status: string | null
           termination_date: string | null
+          termination_type: string | null
           updated_at: string
           work_location: string | null
         }
@@ -389,10 +392,13 @@ export type Database = {
           locker_row?: string | null
           locker_unit?: string | null
           national_id?: string | null
+          reason_category?: string | null
+          reason_code?: string | null
           remarks?: string | null
           source_filename?: string | null
           status?: string | null
           termination_date?: string | null
+          termination_type?: string | null
           updated_at?: string
           work_location?: string | null
         }
@@ -412,10 +418,13 @@ export type Database = {
           locker_row?: string | null
           locker_unit?: string | null
           national_id?: string | null
+          reason_category?: string | null
+          reason_code?: string | null
           remarks?: string | null
           source_filename?: string | null
           status?: string | null
           termination_date?: string | null
+          termination_type?: string | null
           updated_at?: string
           work_location?: string | null
         }
@@ -745,10 +754,14 @@ export type Database = {
           prior_employee_name: string | null
           prior_status: Database["public"]["Enums"]["locker_status"] | null
           reason: string | null
+          reason_category: string | null
+          reason_code: string | null
+          reason_detail: string | null
           row_label: string | null
           terminated_by: string
           terminated_by_email: string | null
           termination_date: string
+          termination_type: string | null
           undone_at: string | null
           undone_by: string | null
         }
@@ -764,10 +777,14 @@ export type Database = {
           prior_employee_name?: string | null
           prior_status?: Database["public"]["Enums"]["locker_status"] | null
           reason?: string | null
+          reason_category?: string | null
+          reason_code?: string | null
+          reason_detail?: string | null
           row_label?: string | null
           terminated_by: string
           terminated_by_email?: string | null
           termination_date: string
+          termination_type?: string | null
           undone_at?: string | null
           undone_by?: string | null
         }
@@ -783,10 +800,14 @@ export type Database = {
           prior_employee_name?: string | null
           prior_status?: Database["public"]["Enums"]["locker_status"] | null
           reason?: string | null
+          reason_category?: string | null
+          reason_code?: string | null
+          reason_detail?: string | null
           row_label?: string | null
           terminated_by?: string
           terminated_by_email?: string | null
           termination_date?: string
+          termination_type?: string | null
           undone_at?: string | null
           undone_by?: string | null
         }
@@ -970,10 +991,13 @@ export type Database = {
           locker_row: string | null
           locker_unit: string | null
           national_id: string | null
+          reason_category: string | null
+          reason_code: string | null
           remarks: string | null
           source_filename: string | null
           status: string | null
           termination_date: string | null
+          termination_type: string | null
           updated_at: string | null
           work_location: string | null
         }
@@ -993,10 +1017,13 @@ export type Database = {
           locker_row?: string | null
           locker_unit?: string | null
           national_id?: never
+          reason_category?: string | null
+          reason_code?: string | null
           remarks?: string | null
           source_filename?: string | null
           status?: string | null
           termination_date?: string | null
+          termination_type?: string | null
           updated_at?: string | null
           work_location?: string | null
         }
@@ -1016,10 +1043,13 @@ export type Database = {
           locker_row?: string | null
           locker_unit?: string | null
           national_id?: never
+          reason_category?: string | null
+          reason_code?: string | null
           remarks?: string | null
           source_filename?: string | null
           status?: string | null
           termination_date?: string | null
+          termination_type?: string | null
           updated_at?: string | null
           work_location?: string | null
         }
@@ -1157,6 +1187,10 @@ export type Database = {
         Args: { _badge: string; _ticket: string }
         Returns: Json
       }
+      get_termination_history_masked: {
+        Args: { _locker_number: string }
+        Returns: Json
+      }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["app_permission"]
@@ -1189,10 +1223,13 @@ export type Database = {
           locker_row: string | null
           locker_unit: string | null
           national_id: string | null
+          reason_category: string | null
+          reason_code: string | null
           remarks: string | null
           source_filename: string | null
           status: string | null
           termination_date: string | null
+          termination_type: string | null
           updated_at: string
           work_location: string | null
         }[]
@@ -1229,6 +1266,20 @@ export type Database = {
         Returns: Json
       }
       search_occupancy: {
+        Args: {
+          _category?: string
+          _limit?: number
+          _location?: string
+          _offset?: number
+          _reason?: string
+          _search?: string
+          _sort_col?: string
+          _sort_dir?: string
+          _status?: string
+        }
+        Returns: Json
+      }
+      search_occupancy_legacy: {
         Args: {
           _category?: string
           _limit?: number
@@ -1282,6 +1333,19 @@ export type Database = {
       }
       swap_lockers: { Args: { _a_id: string; _b_id: string }; Returns: Json }
       terminate_locker_atomic: {
+        Args: {
+          _locker_id: string
+          _new_status?: Database["public"]["Enums"]["locker_status"]
+          _reason: string
+          _reason_category?: string
+          _reason_code?: string
+          _reason_detail?: string
+          _termination_date: string
+          _termination_type?: string
+        }
+        Returns: Json
+      }
+      terminate_locker_atomic_legacy: {
         Args: {
           _locker_id: string
           _new_status?: Database["public"]["Enums"]["locker_status"]
