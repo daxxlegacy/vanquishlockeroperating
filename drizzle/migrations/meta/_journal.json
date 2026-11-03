@@ -22,6 +22,13 @@
       "when": 1793673748901,
       "tag": "0002_locker_number_rename_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793674815130,
+      "tag": "0003_guard_duplicate_terminated_occupancy",
+      "breakpoints": true
     }
   ]
 }

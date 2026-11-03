@@ -1171,6 +1171,38 @@ export type Database = {
         }
         Returns: boolean
       }
+      insert_terminated_occupancy_if_absent: {
+        Args: { _row: Json }
+        Returns: {
+          badge_number: string | null
+          batch_intake_date: string | null
+          category: string
+          contact: string | null
+          created_at: string
+          department: string | null
+          employee_name: string | null
+          gradeset: string | null
+          id: string
+          key_lock_type: string | null
+          locker_location_by_row: string | null
+          locker_number: string
+          locker_row: string | null
+          locker_unit: string | null
+          national_id: string | null
+          remarks: string | null
+          source_filename: string | null
+          status: string | null
+          termination_date: string | null
+          updated_at: string
+          work_location: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "locker_occupancy"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       locker_facets: { Args: never; Returns: Json }
       locker_sort_text: { Args: { _raw: string }; Returns: string }
       mask_national_id: { Args: { _nid: string }; Returns: string }
