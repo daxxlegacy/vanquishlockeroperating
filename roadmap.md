@@ -14,3 +14,8 @@
 - [x] Three-field form with validated number, existing location/key dropdowns, and friendly duplicates.
 - [x] Empty unassigned insert with derived unit category and immediate naturally sorted first-page update, followed by server reconciliation.
 - [x] Nine rule tests passed; signed-in invalid/duplicate/add flow and desktop/mobile dialog verified; test locker removed. Build OK.
+
+# Admin cleanup
+- [x] Confirm RunHistoryPanel has no other consumers; remove automation card, state key, run-history block, unused imports, and automation wording.
+- [x] Delete both automation redirect routes and the unused run-history panel; leave occupancy synchronization and retained audit panels unchanged.
+- [ ] Verify generated routes and signed-in Admin System section.
