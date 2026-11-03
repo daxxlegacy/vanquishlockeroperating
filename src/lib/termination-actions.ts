@@ -1,7 +1,11 @@
 // Undo a recent termination (15 minute window) — restores employee, badge, and prior status.
 // Also exposes terminateLocker() for one-shot terminations (used by bulk + dialog flows).
 import { supabase } from "@/integrations/supabase/client";
-import { syncTerminationToOccupancy, syncActivationToOccupancy } from "@/lib/occupancy-sync";
+import { syncActivationToOccupancy } from "@/lib/occupancy-sync";
+import { patchLockersInCache } from "@/lib/lockers-cache";
+import { patchOccupancyInCache, removeOccupancyFromCache } from "@/lib/occupancy-cache";
+import { emitTableChanged } from "@/lib/row-events";
+import { applyTerminationResult, type AtomicTerminationResult } from "@/lib/termination-result";
 import type { Database } from "@/integrations/supabase/types";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
@@ -43,85 +47,33 @@ export function buildTerminationClearPayload(
 }
 
 /**
- * Insert a terminations row, but skip if an identical record already exists
- * (same locker_number + badge_number + termination_date and not undone).
- * Prevents duplicate history entries from double-clicks or re-run rosters.
- * Returns the id of the existing or newly created row.
- */
-export async function insertTerminationOnce(row: {
-  locker_id: string | null;
-  locker_number: string;
-  location: string | null;
-  row_label: string | null;
-  employee_name: string | null;
-  badge_number: string | null;
-  termination_date: string;
-  reason: string | null;
-  terminated_by: string;
-  terminated_by_email: string | null;
-  prior_status: LockerStatus | null;
-  prior_employee_name: string | null;
-  prior_badge_number: string | null;
-}): Promise<string | null> {
-  let dupQuery = supabase
-    .from("terminations")
-    .select("id")
-    .eq("locker_number", row.locker_number)
-    .eq("termination_date", row.termination_date)
-    .is("undone_at", null)
-    .limit(1);
-  dupQuery = row.badge_number
-    ? dupQuery.eq("badge_number", row.badge_number)
-    : dupQuery.is("badge_number", null);
-  const { data: existing } = await dupQuery.maybeSingle();
-  if (existing?.id) return existing.id;
-
-  const { data, error } = await supabase.from("terminations").insert(row).select("id").single();
-  if (error) throw error;
-  return data?.id ?? null;
-}
-
-/**
- * Terminate a single locker occupant. Inserts a terminations row (with
- * prior_* snapshot so undo works), clears occupant fields, sets the
- * post-termination status with spare-key auto-rule, and syncs occupancy.
+ * The database locks the current occupant and commits every termination write
+ * together. Never trust the caller's possibly stale occupant snapshot.
  */
 export async function terminateLocker(
   locker: Pick<Locker, "id" | "locker_number" | "location" | "row_label" | "employee_name" | "badge_number"> & Partial<Locker>,
   terminationDateIso: string,
   reason: string | null,
   newStatus: LockerStatus = "empty",
-): Promise<void> {
-  const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("Not signed in");
-  if (!locker.employee_name) throw new Error(`Locker ${locker.locker_number} has no occupant`);
-
-  const cleanReason = reason && reason.trim() ? reason.trim() : null;
-
-  await insertTerminationOnce({
-    locker_id: locker.id,
-    locker_number: locker.locker_number,
-    location: locker.location,
-    row_label: locker.row_label ?? null,
-    employee_name: locker.employee_name,
-    badge_number: locker.badge_number ?? null,
-    termination_date: terminationDateIso,
-    reason: cleanReason,
-    terminated_by: u.user.id,
-    terminated_by_email: u.user.email ?? null,
-    prior_status: locker.status ?? null,
-    prior_employee_name: locker.employee_name,
-    prior_badge_number: locker.badge_number ?? null,
+): Promise<AtomicTerminationResult> {
+  const { data, error } = await supabase.rpc("terminate_locker_atomic", {
+    _locker_id: locker.id,
+    _termination_date: terminationDateIso,
+    _reason: reason?.trim() || "",
+    _new_status: newStatus,
   });
-
-
-  const { error: e2 } = await supabase
-    .from("lockers")
-    .update(buildTerminationClearPayload(newStatus))
-    .eq("id", locker.id);
-  if (e2) throw e2;
-
-  await syncTerminationToOccupancy(locker as Locker, terminationDateIso, cleanReason);
+  if (error) throw new Error(`Locker ${locker.locker_number}: ${error.message}`);
+  if (!data || typeof data !== "object" || Array.isArray(data) || !("locker" in data)) {
+    throw new Error(`Locker ${locker.locker_number}: termination returned no saved state`);
+  }
+  const result = data as unknown as AtomicTerminationResult;
+  applyTerminationResult(result, {
+    removeOccupancy: removeOccupancyFromCache,
+    patchOccupancy: patchOccupancyInCache,
+    patchLockers: patchLockersInCache,
+    refreshOccupancy: () => emitTableChanged("locker_occupancy"),
+  });
+  return result;
 }
 
 
