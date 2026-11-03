@@ -24,3 +24,9 @@
 - [x] Remove status-log writes from duplicate-history and duplicate-occupant cleanup; confirm terminated cleanup RPC logs only deletion audit.
 - [x] Hide duplicate-removed entries in the viewer without touching Lockers/Occupancy search, pagination, or caching.
 - [x] Deleted 2,262 matching status-log entries; zero remain. Filter rule test passed, signed-in viewer excludes cleanup noise, no browser errors, and build OK. Applied as a one-time data cleanup, not a schema migration.
+
+# Atomic termination
+- [x] Capture real before/after records for Lockers 1000A and HR Listing 1000B; both produced one occupancy row, one independent termination, no fallback insert. One unrelated same-name/different-badge history pair exists across lockers.
+- [ ] Add admin-only atomic RPC and unique guards; report exact duplicate cleanup counts.
+- [ ] Switch every terminateLocker caller to returned database state and surface errors; preserve unrelated history and spare keys.
+- [ ] Verify Lockers single, HR two-locker bulk, concurrent retry, rollback/security, counts and history; list changed files and migration.
