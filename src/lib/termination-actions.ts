@@ -7,7 +7,7 @@ import { patchOccupancyInCache, removeOccupancyFromCache } from "@/lib/occupancy
 import { emitTableChanged } from "@/lib/row-events";
 import { applyTerminationResult, type AtomicTerminationResult } from "@/lib/termination-result";
 import type { Database } from "@/integrations/supabase/types";
-import { validTerminationMetadata, type TerminationMetadata } from "./termination-reasons";
+import type { TerminationMetadata } from "./termination-reasons";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 type LockerStatus = Database["public"]["Enums"]["locker_status"];
@@ -58,7 +58,6 @@ export async function terminateLocker(
   newStatus: LockerStatus = "empty",
   metadata: TerminationMetadata = {},
 ): Promise<AtomicTerminationResult> {
-  if (!validTerminationMetadata(metadata)) throw new Error("Termination type is required for OTHER");
   const { data, error } = await supabase.rpc("terminate_locker_atomic", {
     _locker_id: locker.id,
     _termination_date: terminationDateIso,

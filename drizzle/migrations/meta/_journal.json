@@ -43,6 +43,13 @@
       "when": 1793684925148,
       "tag": "0005_termination_reason_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793685080811,
+      "tag": "0006_hr_other_type_optional",
+      "breakpoints": true
     }
   ]
 }

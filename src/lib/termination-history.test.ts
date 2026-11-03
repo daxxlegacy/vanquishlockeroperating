@@ -22,6 +22,13 @@ describe("termination history rules", () => {
     const result = deduplicateTerminationEvents([event("o-1"), event("o-2"), event("o-3", "occupancy", { date: "2026-11-02" }), event("o-4", "occupancy", { badge_number: "B999" })]);
     assert.deepEqual(result.map(e => e.id), ["o-1", "o-3", "o-4"]);
   });
+  test("merged termination retains reason metadata and private note without changing its occupancy ID", () => {
+    const rows=deduplicateTerminationEvents([event("o-1", "occupancy", {reason_code:"RESIGN",reason_category:"Another Job"}),event("t-1","termination",{termination_type:"Voluntary",reason_detail:"Verification note"})]);
+    assert.equal(rows[0].id,"o-1");
+    assert.equal(rows[0].reason_code,"RESIGN");
+    assert.equal(rows[0].termination_type,"Voluntary");
+    assert.equal(rows[0].reason_detail,"Verification note");
+  });
   test("falls back to case-insensitive name without badge", () => {
     assert.equal(deduplicateTerminationEvents([event("o-1", "occupancy", { badge_number: null }), event("t-1", "termination", { badge_number: "", employee_name: "employee", status: "Terminated" })]).length, 1);
   });

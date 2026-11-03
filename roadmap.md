@@ -1,4 +1,3 @@
-# Restore verification test lockers
 # Termination type, reason and category
 - [ ] Add safe multi-layout HR parser, reason mapping, warnings, Needs check list and local-date handling with rule tests.
 - [ ] Extend atomic termination and masked reads; add reason-filtered occupancy search and exact-only backfill.
