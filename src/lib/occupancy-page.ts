@@ -21,6 +21,7 @@ export type OccupancyQuery = {
   page: number;
   search: string;
   statusFilter: string;
+  reasonFilter?: string;
   categoryFilter: "all" | OccCategory;
   locFilter: string;
   sortCol: string;
@@ -46,6 +47,7 @@ function args(q: OccupancyQuery, limit: number, offset: number) {
   return {
     _search: q.search.trim(),
     _status: q.statusFilter,
+    _reason: q.reasonFilter ?? "all",
     _category: q.categoryFilter,
     _location: q.locFilter,
     _sort_col: q.sortCol,

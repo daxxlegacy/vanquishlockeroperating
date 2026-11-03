@@ -7,6 +7,7 @@ import { patchOccupancyInCache, removeOccupancyFromCache } from "@/lib/occupancy
 import { emitTableChanged } from "@/lib/row-events";
 import { applyTerminationResult, type AtomicTerminationResult } from "@/lib/termination-result";
 import type { Database } from "@/integrations/supabase/types";
+import type { TerminationMetadata } from "./termination-reasons";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 type LockerStatus = Database["public"]["Enums"]["locker_status"];
@@ -55,12 +56,17 @@ export async function terminateLocker(
   terminationDateIso: string,
   reason: string | null,
   newStatus: LockerStatus = "empty",
+  metadata: TerminationMetadata = {},
 ): Promise<AtomicTerminationResult> {
   const { data, error } = await supabase.rpc("terminate_locker_atomic", {
     _locker_id: locker.id,
     _termination_date: terminationDateIso,
     _reason: reason?.trim() || "",
     _new_status: newStatus,
+    _termination_type: metadata.termination_type ?? undefined,
+    _reason_code: metadata.reason_code ?? undefined,
+    _reason_category: metadata.reason_category ?? undefined,
+    _reason_detail: metadata.reason_detail ?? undefined,
   });
   if (error) throw new Error(`Locker ${locker.locker_number}: ${error.message}`);
   if (!data || typeof data !== "object" || Array.isArray(data) || !("locker" in data)) {

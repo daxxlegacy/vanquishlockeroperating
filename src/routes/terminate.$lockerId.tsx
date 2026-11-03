@@ -17,6 +17,8 @@ import { terminateLocker } from "@/lib/termination-actions";
 import { invalidateLockersCache } from "@/lib/lockers-cache";
 import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
+import { TerminationMetadataFields } from "@/components/TerminationMetadataFields";
+import { suggestedType, validTerminationMetadata, type TerminationMetadata, type ReasonCode } from "@/lib/termination-reasons";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
@@ -50,7 +52,8 @@ function TerminatePage() {
     return `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
   })();
   const [date, setDate] = useState(initialDateStr);
-  const [reason, setReason] = useState<"AWOL" | "RESIGN" | "RTV" | "">("");
+  const [reason, setReason] = useState<ReasonCode | "">("");
+  const [metadata, setMetadata] = useState<TerminationMetadata>({});
   const [newStatus, setNewStatus] = useState<Database["public"]["Enums"]["locker_status"]>(() => defaultPostTerminationStatus(null));
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -82,6 +85,30 @@ function TerminatePage() {
     supabase.from("lockers").select("*").eq("id", lockerId).maybeSingle().then(({ data }) => setLocker(data));
   }, [user, lockerId]);
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const code = p.get("reason");
+    if (code && ["RESIGN","AWOL","RTV","OTHER"].includes(code)) {
+      setReason(code as ReasonCode);
+      const type=p.get("type");
+      setMetadata({reason_code:code as ReasonCode,termination_type:type==="Voluntary"||type==="Involuntary"?type:suggestedType(code),reason_category:p.get("category")});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || !window.opener) return;
+    const receive=(event:MessageEvent)=>{
+      if (event.origin!==window.location.origin || event.source!==window.opener || event.data?.type!=="termination-metadata" || event.data?.lockerId!==lockerId) return;
+      const meta=event.data.metadata as TerminationMetadata;
+      if (!meta || !meta.reason_code || !["RESIGN","AWOL","RTV","OTHER"].includes(meta.reason_code)) return;
+      setReason(meta.reason_code);
+      setMetadata({...meta,reason_detail:role==="admin"?meta.reason_detail:null});
+    };
+    window.addEventListener("message",receive);
+    window.opener.postMessage({type:"termination-metadata-request",lockerId},window.location.origin);
+    return ()=>window.removeEventListener("message",receive);
+  },[user,role,lockerId]);
+
   if (loading || !user || locker === undefined) {
     return <div className="min-h-screen"><AppHeader /><main className="max-w-2xl mx-auto px-4 sm:px-6 py-8"><Skeleton className="h-96" /></main></div>;
   }
@@ -102,13 +129,13 @@ function TerminatePage() {
   }
 
   const isAdmin = role === "admin";
-  const canSubmit = !dateError && !busy && !!locker.employee_name && confirmText.trim() === locker.locker_number && isAdmin && !!reason;
+  const canSubmit = !dateError && !busy && !!locker.employee_name && confirmText.trim() === locker.locker_number && isAdmin && !!reason && validTerminationMetadata(metadata);
 
   const handleTerminate = async () => {
     if (!canSubmit || !iso || !reason) return;
     setBusy(true);
     try {
-      await terminateLocker(locker, iso, reason, newStatus);
+      await terminateLocker(locker, iso, reason === "OTHER" ? "OTHERS" : reason, newStatus, metadata);
       invalidateLockersCache();
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       setDone(true);
@@ -190,15 +217,17 @@ function TerminatePage() {
               </div>
               <div>
                 <Label htmlFor="tr">Reason *</Label>
-                <Select value={reason} onValueChange={(v) => setReason(v as "AWOL" | "RESIGN" | "RTV")}>
+                <Select value={reason} onValueChange={(v) => { setReason(v as ReasonCode); setMetadata(prev=>({...prev,reason_code:v as ReasonCode,termination_type:suggestedType(v),reason_detail:null})); }}>
                   <SelectTrigger id="tr"><SelectValue placeholder="Select a reason" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="AWOL">AWOL (Absence Without Leave)</SelectItem>
                     <SelectItem value="RESIGN">RESIGN</SelectItem>
                     <SelectItem value="RTV">RTV (Return to Vendor)</SelectItem>
+                    <SelectItem value="OTHER">OTHERS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              <TerminationMetadataFields id="termination" value={metadata} onChange={setMetadata} />
               <div>
                 <Label htmlFor="tc">Type the locker number <span className="font-mono font-semibold">{locker.locker_number}</span> to confirm *</Label>
                 <Input id="tc" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className="font-mono" />

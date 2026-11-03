@@ -26,6 +26,11 @@ import { terminateLocker } from "@/lib/termination-actions";
 import { defaultPostTerminationStatus } from "@/lib/locker-status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { openTerminationTab } from "@/lib/termination-handoff";
+import { parseHrRows, type HrPerson, type HrNeedsCheck } from "@/lib/hr-parser";
+import { localDateIso, REASON_CODES, reasonClash, type ReasonCode } from "@/lib/termination-reasons";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TerminationReasonBadge } from "@/components/TerminationReasonBadge";
 import { NationalIdCell } from "@/components/NationalIdCell";
 import { maskNationalId, confirmNidExport } from "@/lib/national-id";
 
@@ -43,16 +48,6 @@ export const Route = createFileRoute("/reconcile")({
   component: () => (<PageGuard permission="page_reconcile"><ReconcilePage /></PageGuard>),
 });
 
-type HrPerson = {
-  badge: string | null;
-  name: string | null;
-  status: "current" | "terminated";
-  joinDate: string | null;     // ISO yyyy-mm-dd
-  terminateDate: string | null;// ISO yyyy-mm-dd
-  workLocation: string | null;
-  gradeset: string | null;
-  department: string | null;
-};
 
 type DbRow = {
   id: string;
@@ -103,6 +98,7 @@ function ReconcilePage() {
   const [results, setResults] = useState<RowResult[] | null>(null);
   const [hrCount, setHrCount] = useState({ current: 0, terminated: 0 });
   const [dbCount, setDbCount] = useState(0);
+  const [needsCheck, setNeedsCheck] = useState<HrNeedsCheck[]>([]);
   const [tab, setTab] = useState<Bucket>("must_terminate");
   const [search, setSearch] = useState("");
   const [restored, setRestored] = useState<{ filename: string | null; savedAt: number } | null>(null);
@@ -110,6 +106,7 @@ function ReconcilePage() {
   const clearSaved = (silent = false) => {
     void clearReconcileState();
     setResults(null);
+    setNeedsCheck([]);
     setFilename(null);
     setHrCount({ current: 0, terminated: 0 });
     setDbCount(0);
@@ -137,7 +134,7 @@ function ReconcilePage() {
       const saved = await loadReconcileState<SavedState>();
       if (!saved || !saved.results) return;
       setFilename(saved.filename);
-      setResults(saved.results);
+      setResults(saved.results.map(r=>({...r,hr:r.hr?{...r.hr,reason_detail:null}:null,hrAlsoCurrent:r.hrAlsoCurrent?{...r.hrAlsoCurrent,reason_detail:null}:null})));
       setHrCount(saved.hrCount);
       setDbCount(saved.dbCount);
       if (saved.tab) setTab(saved.tab);
@@ -165,7 +162,7 @@ function ReconcilePage() {
   useEffect(() => {
     if (results === null) return;
     const savedAt = restored?.savedAt ?? Date.now();
-    const payload: SavedState = { filename, results, hrCount, dbCount, tab: tabRef.current, savedAt };
+    const payload: SavedState = { filename, results: results.map(r=>({...r,hr:r.hr?{...r.hr,reason_detail:null}:null,hrAlsoCurrent:r.hrAlsoCurrent?{...r.hrAlsoCurrent,reason_detail:null}:null})), hrCount, dbCount, tab: tabRef.current, savedAt };
     void saveReconcileState(payload, { filename, savedAt });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [results]);
@@ -222,11 +219,14 @@ function ReconcilePage() {
     setResults(null);
     setRestored(null);
     setFilename(f.name);
+    setNeedsCheck([]);
     try {
       // Yield once so the "Comparing…" indicator paints before the
       // synchronous xlsx parse + matching work begins.
       await new Promise((r) => setTimeout(r, 0));
-      const [hr, dbRows] = await Promise.all([parseHr(f, f.name), fetchActiveDb()]);
+      const [parsed, dbRows] = await Promise.all([parseHr(f, role === "admin"), fetchActiveDb()]);
+      const hr=parsed.people;
+      setNeedsCheck(parsed.needsCheck);
       setHrCount({
         current: hr.filter((p) => p.status === "current").length,
         terminated: hr.filter((p) => p.status === "terminated").length,
@@ -245,12 +245,12 @@ function ReconcilePage() {
         if (p.badge) {
           const k = normBadge(p.badge);
           if (!hrByBadge.has(k)) hrByBadge.set(k, []);
-          hrByBadge.get(k)!.push(p);
+          hrByBadge.get(k)?.push(p);
         }
         if (p.name) {
           const k = normName(p.name);
           if (!hrByName.has(k)) hrByName.set(k, []);
-          hrByName.get(k)!.push(p);
+          hrByName.get(k)?.push(p);
         }
       }
 
@@ -300,7 +300,8 @@ function ReconcilePage() {
         }
 
         // matched a terminated row
-        const term = terminated!;
+        const term = terminated;
+        if (!term) continue;
         const intakeIso = d.batch_intake;
         const intakeAfterTerm =
           intakeIso && term.terminateDate && intakeIso > term.terminateDate;
@@ -522,9 +523,12 @@ function ReconcilePage() {
                     </TabsTrigger>
                   </TabsList>
 
+                  {needsCheck.length > 0 && <div className="mt-4 border border-warning rounded-md p-3"><h3 className="font-semibold text-sm">Needs check ({needsCheck.length})</h3><ul className="mt-2 space-y-1 text-xs">{needsCheck.map(r=><li key={r.rowNumber}>Row {r.rowNumber} · {r.badge??"—"} · {r.name??"—"} · {r.issue}</li>)}</ul></div>}
                   <TabsContent value={tab} className="mt-4">
                     <ResultsTable
                       rows={filtered}
+                      isAdmin={role === "admin"}
+                      onReasonChanged={(id,code)=>setResults(prev=>prev?.map(r=>r.db.id===id && r.hr?{...r,hr:{...r.hr,reason_code:code}}:r)??null)}
                       bucket={tab}
                       navigate={navigate}
                       onRowsTerminated={(ids) => {
@@ -574,9 +578,11 @@ function formatRemaining(ms: number) {
 }
 
 function ResultsTable({
-  rows, bucket, navigate, onRowsTerminated,
+  rows, bucket, navigate, onRowsTerminated, isAdmin, onReasonChanged,
 }: {
   rows: RowResult[];
+  isAdmin: boolean;
+  onReasonChanged: (id:string,code:ReasonCode)=>void;
   bucket: Bucket;
   navigate: ReturnType<typeof useNavigate>;
   onRowsTerminated: (ids: string[]) => void;
@@ -619,13 +625,13 @@ function ResultsTable({
     setProgress({ done: 0, total: targets.length });
     const okIds: string[] = [];
     let failed = 0;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateIso();
     for (let i = 0; i < targets.length; i++) {
       const r = targets[i];
       try {
         const date = r.hr?.terminateDate || today;
         const postStatus = defaultPostTerminationStatus(r.db.key_lock);
-        await terminateLocker(r.db, date, r.reason || null, postStatus);
+        await terminateLocker(r.db, date, r.reason || null, postStatus, {termination_type:r.hr?.termination_type,reason_code:r.hr?.reason_code??"OTHER",reason_category:r.hr?.reason_category,reason_detail:isAdmin?r.hr?.reason_detail:null});
         okIds.push(r.db.id);
       } catch (e) {
         failed++;
@@ -683,7 +689,7 @@ function ResultsTable({
           </div>
         )}
         <div className="max-h-[60vh] overflow-auto">
-          <table className="hidden sm:table w-full text-sm">
+          <table className="hidden sm:table w-full min-w-[1500px] text-sm">
             <thead className="bg-muted/50 sticky top-0 z-10">
               <tr className="text-left">
                 {canBulkTerminate && (
@@ -702,7 +708,10 @@ function ResultsTable({
                 <Th>HR Name</Th>
                 <Th>Batch Intake</Th>
                 <Th>HR Termination</Th>
+                <Th>Type</Th>
                 <Th>Reason</Th>
+                <Th>Category</Th>
+                <Th>Remarks</Th>
                 <Th>Action</Th>
               </tr>
             </thead>
@@ -731,8 +740,16 @@ function ResultsTable({
                   </Td>
                   <Td mono>{formatBatchIntake(r.db.batch_intake) || "—"}</Td>
                   <Td mono>{r.hr?.terminateDate ? formatBatchIntake(r.hr.terminateDate) : "—"}</Td>
+                  <Td>{r.hr?.termination_type??"—"}</Td>
+                  <Td><div className="flex items-center gap-1">
+                    {canBulkTerminate && r.hr ? <Select value={r.hr.reason_code??"OTHER"} onValueChange={v=>onReasonChanged(r.db.id,v as ReasonCode)}><SelectTrigger className="w-24 h-8" aria-label={`Reason for ${r.db.locker_number}`}><SelectValue/></SelectTrigger><SelectContent>{REASON_CODES.map(code=><SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent></Select>:<TerminationReasonBadge code={r.hr?.status==="terminated"?r.hr.reason_code:null}/>}
+                    {r.hr?.status==="terminated" && (r.hr.reason_code==="OTHER" || reasonClash(r.hr.termination_type,r.hr.reason_code)) && <AlertTriangle className="h-3.5 w-3.5 text-warning" aria-label="Needs reason check"/>}
+                  </div></Td>
+                  <Td>{r.hr?.reason_category??"—"}</Td>
                   <Td>
                     <span className="text-xs">{r.reason}</span>
+                    {r.hr?.warnings?.map(w=><div key={w} className="text-xs text-warning">{w}</div>)}
+                    {isAdmin && r.hr?.reason_detail && <details className="mt-1 text-xs"><summary className="cursor-pointer">Details</summary><p className="max-w-64 whitespace-pre-wrap break-words">{r.hr.reason_detail}</p></details>}
                     {r.matchedBy === "name" && (
                       <Badge variant="outline" className="ml-1 text-[10px]">name match</Badge>
                     )}
@@ -744,8 +761,7 @@ function ResultsTable({
                         variant={bucket === "rehire_suspect" ? "outline" : "destructive"}
                         onClick={() => {
                           const td = r.hr?.terminateDate;
-                          const url = td ? `/terminate/${r.db.id}?date=${td}` : `/terminate/${r.db.id}`;
-                          window.open(url, "_blank");
+                          openTerminationTab(r.db.id,td,{reason_code:r.hr?.reason_code??"OTHER",termination_type:r.hr?.termination_type,reason_category:r.hr?.reason_category,reason_detail:isAdmin?r.hr?.reason_detail:null});
                         }}
                       >
                         <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate
@@ -789,8 +805,7 @@ function ResultsTable({
                         className="shrink-0"
                         onClick={() => {
                           const td = r.hr?.terminateDate;
-                          const url = td ? `/terminate/${r.db.id}?date=${td}` : `/terminate/${r.db.id}`;
-                          window.open(url, "_blank");
+                          openTerminationTab(r.db.id,td,{reason_code:r.hr?.reason_code??"OTHER",termination_type:r.hr?.termination_type,reason_category:r.hr?.reason_category,reason_detail:isAdmin?r.hr?.reason_detail:null});
                         }}
                       >
                         <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate
@@ -812,7 +827,12 @@ function ResultsTable({
                     <div><span className="text-muted-foreground">HR Term: </span><span className="font-mono font-medium">{r.hr?.terminateDate ? formatBatchIntake(r.hr.terminateDate) : "—"}</span></div>
                     <div className="col-span-2">
                       <span className="text-muted-foreground">Reason: </span>
-                      <span className="font-medium">{r.reason}</span>
+                      {canBulkTerminate && r.hr ? <Select value={r.hr.reason_code??"OTHER"} onValueChange={v=>onReasonChanged(r.db.id,v as ReasonCode)}><SelectTrigger className="h-8" aria-label={`Reason for ${r.db.locker_number}`}><SelectValue/></SelectTrigger><SelectContent>{REASON_CODES.map(code=><SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent></Select>:<TerminationReasonBadge code={r.hr?.status==="terminated"?r.hr.reason_code:null}/>}
+                      <p>Type: {r.hr?.termination_type??"—"} · Category: {r.hr?.reason_category??"—"}</p>
+                      <p>Remarks: {r.reason}</p>
+                      {r.hr?.warnings?.map(w=><p key={w} className="text-warning">{w}</p>)}
+                      {reasonClash(r.hr?.termination_type,r.hr?.reason_code)&&<p className="text-warning">Type and Reason clash</p>}
+                      {isAdmin&&r.hr?.reason_detail&&<details><summary>Details</summary><p>{r.hr.reason_detail}</p></details>}
                       {r.matchedBy === "name" && <Badge variant="outline" className="ml-1 text-[10px]">name match</Badge>}
                     </div>
                   </div>
@@ -891,7 +911,10 @@ function toExportRow(r: RowResult): Record<string, unknown> {
     hr_work_location: r.hr?.workLocation ?? "",
     hr_department: r.hr?.department ?? "",
     matched_by: r.matchedBy ?? "",
-    reason: r.reason,
+    remarks: r.reason,
+    reason: r.hr?.reason_code ?? "",
+    type: r.hr?.termination_type ?? "",
+    category: r.hr?.reason_category ?? "",
   };
 }
 
@@ -952,93 +975,20 @@ async function fetchActiveDb(): Promise<DbRow[]> {
 }
 
 
-async function parseHr(f: File, filename?: string): Promise<HrPerson[]> {
+async function parseHr(f: File, includeDetail: boolean) {
   const ext = f.name.split(".").pop()?.toLowerCase();
-  let rows: Record<string, unknown>[];
+  let rows: unknown[][];
   if (ext === "csv") {
-    rows = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
-      Papa.parse(f, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (res) => resolve(res.data as Record<string, unknown>[]),
-        error: (err) => reject(err),
-      });
-    });
+    rows = await new Promise<unknown[][]>((resolve,reject)=>Papa.parse<string[]>(f,{header:false,skipEmptyLines:true,complete:res=>resolve(res.data),error:err=>reject(err)}));
   } else {
-    const buf = await f.arrayBuffer();
-    const XLSX = await getXLSX();
-    const wb = XLSX.read(buf, { type: "array", cellDates: false });
-    // pick the sheet with the most rows (handles "grddyn" + hidden helper sheets)
-    let bestSheet = wb.SheetNames[0];
-    let bestRows = -1;
-    for (const name of wb.SheetNames) {
-      const s = wb.Sheets[name];
-      const ref = s["!ref"]; if (!ref) continue;
-      const range = XLSX.utils.decode_range(ref);
-      const nrows = range.e.r - range.s.r;
-      if (nrows > bestRows) { bestRows = nrows; bestSheet = name; }
-    }
-    // Auto-detect header row: some HR exports have title/blank rows above
-    // the real header (e.g. "Employee Code" / "Employee Name" on row 3).
-    const aoa = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[bestSheet], { header: 1, defval: "", raw: true });
-    let headerIdx = 0;
-    for (let i = 0; i < Math.min(aoa.length, 20); i++) {
-      const row = aoa[i] ?? [];
-      const norm = row.map((c) => n(String(c ?? "")));
-      const hasName = norm.some((h) => ["employeename", "name", "fullname", "legalname"].includes(h));
-      const hasCode = norm.some((h) => ["employeecode", "empcode", "employeeid", "empid", "badgenumber", "badge", "personnumber"].includes(h));
-      if (hasName || hasCode) { headerIdx = i; break; }
-    }
-    const headerRow = (aoa[headerIdx] ?? []).map((c, i) => {
-      const s = String(c ?? "").trim();
-      return s === "" ? `__col${i}` : s;
-    });
-    rows = [];
-    for (let i = headerIdx + 1; i < aoa.length; i++) {
-      const r = aoa[i] ?? [];
-      if (r.every((c) => c === "" || c === null || c === undefined)) continue;
-      const obj: Record<string, unknown> = {};
-      for (let j = 0; j < headerRow.length; j++) obj[headerRow[j]] = r[j] ?? "";
-      rows.push(obj);
-    }
+    const XLSX=await getXLSX();
+    const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:false});
+    let bestSheet=wb.SheetNames[0],bestRows=-1;
+    for(const name of wb.SheetNames){const sheet=wb.Sheets[name];const ref=sheet?.["!ref"];if(!ref)continue;const range=XLSX.utils.decode_range(ref);const nrows=range.e.r-range.s.r;if(nrows>bestRows){bestRows=nrows;bestSheet=name;}}
+    const sheet=wb.Sheets[bestSheet];if(!sheet)throw new Error("Empty HR file");
+    rows=XLSX.utils.sheet_to_json<unknown[]>(sheet,{header:1,defval:"",raw:true});
   }
-  if (rows.length === 0) throw new Error("Empty HR file");
-
-  const headers = Object.keys(rows[0]);
-  const cols = detectHrCols(headers);
-  if (!cols.badge && !cols.name) throw new Error("Couldn't find Employee Code or Employee Name in the file.");
-
-  // Filename hint: "termination list", "terminated list", etc → assume every
-  // row in the file is a terminated employee, even if no Status column exists
-  // and no Terminate Date column was detected.
-  const fnameLower = (filename ?? f.name).toLowerCase();
-  const filenameSaysTerminated = /terminat|resign|leaver|exit\s*list/.test(fnameLower);
-
-  const out: HrPerson[] = [];
-  for (const r of rows) {
-    const badge = cols.badge ? cellStr(r[cols.badge]) : null;
-    const name = cols.name ? cellStr(r[cols.name]) : null;
-    if (!badge && !name) continue;
-    const statusRaw = cols.status ? cellStr(r[cols.status])?.toLowerCase() ?? "" : "";
-    const terminateDate = cols.terminate ? parseBatchIntake(r[cols.terminate]) : null;
-    const status: HrPerson["status"] =
-      statusRaw.includes("terminat") || statusRaw === "resigned"
-        || (!!terminateDate && !statusRaw.includes("current"))
-        || (filenameSaysTerminated && !statusRaw.includes("current"))
-        ? "terminated"
-        : "current";
-    out.push({
-      badge,
-      name,
-      status,
-      joinDate: cols.join ? parseBatchIntake(r[cols.join]) : null,
-      terminateDate,
-      workLocation: cols.workLocation ? cellStr(r[cols.workLocation]) : null,
-      gradeset: cols.gradeset ? cellStr(r[cols.gradeset]) : null,
-      department: cols.department ? cellStr(r[cols.department]) : null,
-    });
-  }
-  return out;
+  return parseHrRows(rows,f.name,includeDetail);
 }
 
 function cellStr(v: unknown): string | null {
@@ -1049,36 +999,6 @@ function cellStr(v: unknown): string | null {
 
 function n(s: string): string { return s.toLowerCase().replace(/[\s_\-/+().]/g, ""); }
 
-function detectHrCols(headers: string[]): {
-  badge?: string; name?: string; status?: string;
-  terminate?: string; join?: string; workLocation?: string;
-  gradeset?: string; department?: string;
-} {
-  const out: Record<string, string> = {};
-  const map: Record<string, string[]> = {
-    badge: ["employeecode", "empcode", "employeeid", "empid", "badgenumber", "badge", "personnumber"],
-    name: ["employeename", "name", "fullname", "legalname"],
-    status: ["status", "employeestatus", "employmentstatus", "75", "57"],
-    terminate: ["t1terminatedate", "terminatedate", "terminationdate", "terminated", "termdate", "resigndate", "resignationdate", "lastworkingday", "lastworkingdate", "lwd", "exitdate", "leavingdate", "dateofleaving", "dateoftermination"],
-    join: ["joincompanydate", "joindate", "hiredate", "joiningdate", "dateofjoining"],
-    workLocation: ["worklocation", "location", "site"],
-    gradeset: ["gradeset", "grade"],
-    department: ["departmentname", "department", "deptname"],
-  };
-  for (const [k, opts] of Object.entries(map)) {
-    for (const h of headers) {
-      if (opts.includes(n(h))) { out[k] = h; break; }
-    }
-  }
-  // fallback for status column that just contains "Current"/"Terminated" values
-  if (!out.status) {
-    for (const h of headers) {
-      const sample = n(h);
-      if (sample === "75" || sample === "57") { out.status = h; break; }
-    }
-  }
-  return out;
-}
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
