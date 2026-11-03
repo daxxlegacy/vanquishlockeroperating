@@ -29,7 +29,7 @@ import { maskNationalId, fullyMaskNationalId, confirmNidExport, fetchFullNationa
 import { DeleteLocationDialog } from "@/components/DeleteLocationDialog";
 import { DeleteLockerByNumberDialog } from "@/components/DeleteLockerByNumberDialog";
 import { LOCKER_STATUSES, STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
-import { invalidateLockersCache } from "@/lib/lockers-cache";
+import { invalidateLockersCache, patchLockersInCache } from "@/lib/lockers-cache";
 import {
   useLockersPage, useLockerFacets, invalidateLockerFacets, fetchAllMatchingLockers,
   PAGE_SIZE, type LockersQuery,
@@ -45,6 +45,7 @@ import {
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
 import type { Database } from "@/integrations/supabase/types";
+import { newLockerPayload, normalizedNewLockerNumber, validNewLockerNumber } from "@/lib/add-locker";
 
 type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 
@@ -108,6 +109,10 @@ export const Route = createFileRoute("/lockers")({
   head: () => ({
     meta: [
       { title: "Lockers — LockerOps" },
+      { property: "og:title", content: "Lockers — LockerOps" },
+      { property: "og:description", content: "Search and manage locker inventory and assigned employees." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "description", content: "Searchable, filterable table of every locker and assigned employee." },
     ],
   }),
@@ -363,6 +368,7 @@ function LockersPage() {
                   onClose={() => setAddOpen(false)}
                   onCreated={() => { setAddOpen(false); invalidateLockersCache(); invalidateLockerFacets(); }}
                   existingLocations={locations}
+                  existingKeyLocks={keyLocks}
                 />
               </Dialog>
               <DeleteLockerByNumberDialog onDeleted={() => { invalidateLockersCache(); invalidateLockerFacets(); }} />
@@ -618,123 +624,93 @@ const LockerRow = memo(function LockerRow({ index, style, rows, onPick, warnings
 
 // ---------- Add Locker Dialog (manual entry) ----------
 function AddLockerDialog({
-  onClose,
-  onCreated,
-  existingLocations,
+  onClose, onCreated, existingLocations, existingKeyLocks,
 }: {
   onClose: () => void;
   onCreated: () => void;
   existingLocations: string[];
+  existingKeyLocks: string[];
 }) {
-  const [form, setForm] = useState({
-    locker_number: "",
-    location: existingLocations[0] ?? "",
-    row_label: "",
-    key_lock: "",
-    badge_number: "",
-    employee_name: "",
-    status: "empty" as Database["public"]["Enums"]["locker_status"],
-    batch_intake: "",
-    remark: "",
-  });
+  const [number, setNumber] = useState("");
+  const [location, setLocation] = useState("");
+  const [keyLock, setKeyLock] = useState("none");
   const [saving, setSaving] = useState(false);
-
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!form.locker_number.trim()) {
-      toast.error("Locker number is required");
+    if (saving) return;
+    const normalized = normalizedNewLockerNumber(number);
+    if (!validNewLockerNumber(normalized)) {
+      setErrorMessage("Enter a valid locker number, for example 12A or AA01");
       return;
     }
-    if (!form.location.trim()) {
-      toast.error("Location is required");
+    if (!existingLocations.includes(location)) {
+      setErrorMessage("Location is required");
       return;
     }
+    if (keyLock !== "none" && !existingKeyLocks.includes(keyLock)) return;
     setSaving(true);
-    const hasBadge = !!form.badge_number.trim();
-    const finalStatus = hasBadge && form.status === "empty" ? "active" : form.status;
-    const { data: inserted, error } = await supabase.from("lockers").insert({
-      locker_number: form.locker_number.trim(),
-      location: form.location.trim(),
-      row_label: form.row_label.trim() || null,
-      key_lock: form.key_lock.trim() || null,
-      badge_number: form.badge_number.trim() || null,
-      employee_name: form.employee_name.trim() || null,
-      status: finalStatus,
-      batch_intake: parseBatchIntake(form.batch_intake),
-      remark: form.remark.trim() || null,
-    }).select("*").single();
-    setSaving(false);
-    if (error) {
-      toast.error(error.message.includes("duplicate") ? "That locker number already exists" : error.message);
-      return;
+    setErrorMessage(null);
+    try {
+      const { data: existing, error: lookupError } = await supabase.from("lockers")
+        .select("id").ilike("locker_number", normalized).limit(1);
+      if (lookupError) throw lookupError;
+      if (existing?.length) {
+        setErrorMessage(`Locker ${normalized} already exists`);
+        return;
+      }
+      const { data: inserted, error } = await supabase.from("lockers")
+        .insert(newLockerPayload(normalized, location, keyLock === "none" ? null : keyLock))
+        .select("*").single();
+      if (error) {
+        if (error.code === "23505") {
+          setErrorMessage(`Locker ${normalized} already exists`);
+          return;
+        }
+        throw error;
+      }
+      if (!inserted) throw new Error("Locker could not be added");
+      patchLockersInCache([inserted]);
+      toast.success(`Locker ${normalized} added to ${location}`);
+      onCreated();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Locker could not be added");
+    } finally {
+      setSaving(false);
     }
-    if (inserted && finalStatus === "active" && (inserted.employee_name || inserted.badge_number)) {
-      const { syncActivationToOccupancy } = await import("@/lib/occupancy-sync");
-      await syncActivationToOccupancy(inserted);
-    }
-    toast.success(`Locker ${form.locker_number} added`);
-    onCreated();
   };
 
   return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
-        <DialogTitle className="font-display">Add new locker</DialogTitle>
-      </DialogHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
-        <div>
-          <Label>Locker Number *</Label>
-          <Input value={form.locker_number} onChange={(e) => set("locker_number", e.target.value)} placeholder="e.g. 1A, A01, LK01, AA01" />
+    <DialogContent className="max-w-md">
+      <DialogHeader><DialogTitle className="font-display">Add new locker</DialogTitle></DialogHeader>
+      <form onSubmit={(e) => { e.preventDefault(); void handleSave(); }} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="add-locker-number">Locker Number *</Label>
+          <Input id="add-locker-number" value={number} onChange={(e) => { setNumber(e.target.value); setErrorMessage(null); }} placeholder="e.g. 12A, A01, LK01, AA01" required disabled={saving} />
         </div>
-        <div>
-          <Label>Location *</Label>
-          <Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. Building A" list="loc-list" />
-          <datalist id="loc-list">
-            {existingLocations.map((l) => <option key={l} value={l} />)}
-          </datalist>
+        <div className="space-y-2">
+          <Label htmlFor="add-locker-location">Location *</Label>
+          <Select value={location} onValueChange={setLocation} disabled={saving}>
+            <SelectTrigger id="add-locker-location"><SelectValue placeholder="Select location" /></SelectTrigger>
+            <SelectContent>{existingLocations.filter(Boolean).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
-        <div>
-          <Label>Row</Label>
-          <Input value={form.row_label} onChange={(e) => set("row_label", e.target.value)} placeholder="e.g. Nine Row" />
-        </div>
-        <div>
-          <Label>Key Lock</Label>
-          <Input value={form.key_lock} onChange={(e) => set("key_lock", e.target.value)} placeholder="e.g. Round Lock Key" />
-        </div>
-        <div>
-          <Label>Badge Number</Label>
-          <Input value={form.badge_number} onChange={(e) => set("badge_number", e.target.value)} />
-        </div>
-        <div>
-          <Label>Employee Name</Label>
-          <Input value={form.employee_name} onChange={(e) => set("employee_name", e.target.value)} />
-        </div>
-        <div>
-          <Label>Status</Label>
-          <Select value={form.status} onValueChange={(v) => set("status", v as typeof form.status)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+        <div className="space-y-2">
+          <Label htmlFor="add-locker-key">Key Lock</Label>
+          <Select value={keyLock} onValueChange={setKeyLock} disabled={saving}>
+            <SelectTrigger id="add-locker-key"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {LOCKER_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
-              ))}
+              <SelectItem value="none">None</SelectItem>
+              {existingKeyLocks.filter(Boolean).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label>Batch Intake (dd/mm/yyyy)</Label>
-          <Input value={form.batch_intake} onChange={(e) => set("batch_intake", e.target.value)} placeholder="16/01/2026" />
-        </div>
-        <div className="sm:col-span-2">
-          <Label>Remark</Label>
-          <Input value={form.remark} onChange={(e) => set("remark", e.target.value)} />
-        </div>
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Add Locker"}</Button>
-      </DialogFooter>
+        {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Add Locker"}</Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   );
 }
-
