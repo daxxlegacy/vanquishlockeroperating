@@ -11,6 +11,6 @@
 - [x] Run 5 passing rule tests and verify isolated termination from Lockers through Occupancy history; one new terminated occupancy record, one kept card with reason/email, retry unchanged. Existing stat counts one terminated locker per locker number, not every historical row. Test fixture removed; locker total restored to 11,472. Build OK.
 
 # Simplified Add Locker
-- [ ] Three-field form with validated number, existing location/key dropdowns, and friendly duplicates.
-- [ ] Empty unassigned insert with derived unit category and immediate naturally sorted list update.
-- [ ] Test validation/defaults/sorting and verify add/duplicate flow on desktop and mobile; clean up test locker.
+- [x] Three-field form with validated number, existing location/key dropdowns, and friendly duplicates.
+- [x] Empty unassigned insert with derived unit category and immediate naturally sorted first-page update, followed by server reconciliation.
+- [x] Nine rule tests passed; signed-in invalid/duplicate/add flow and desktop/mobile dialog verified; test locker removed. Build OK.
