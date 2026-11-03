@@ -954,7 +954,7 @@ function UploadPage() {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <h1 className="font-display text-3xl font-bold">Upload Locker Data</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Sync locker assignments and run roster checks from spreadsheets.
+          Sync locker assignments, run roster checks, or update lockers from spreadsheets.
         </p>
 
         {dbQuality && dbQuality.rows.length > 0 && (

@@ -1,11 +1,10 @@
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { parseRosterSheets, rosterToken } from "./roster-parser";
-import { parseSpareKeySheets } from "./spare-key-sync";
 
-self.onmessage = async (event: MessageEvent<{ file: File; includeNationalId: boolean; mode?: "spare" }>) => {
+self.onmessage = async (event: MessageEvent<{ file: File; includeNationalId: boolean }>) => {
   try {
-    const { file, includeNationalId, mode } = event.data;
+    const { file, includeNationalId } = event.data;
     let sheets: { sheet: string; cells: unknown[][] }[];
     if (file.name.toLowerCase().endsWith(".csv")) {
       sheets = [{ sheet: "csv", cells: Papa.parse<string[]>(await file.text(), { header: false, skipEmptyLines: false }).data }];
@@ -29,7 +28,7 @@ self.onmessage = async (event: MessageEvent<{ file: File; includeNationalId: boo
         return { sheet, cells };
       });
     }
-    self.postMessage({ result: mode === "spare" ? parseSpareKeySheets(sheets) : parseRosterSheets(sheets, includeNationalId) });
+    self.postMessage({ result: parseRosterSheets(sheets, includeNationalId) });
   } catch {
     self.postMessage({ error: "Could not read roster file. Check that it is a valid Excel or CSV file." });
   }
