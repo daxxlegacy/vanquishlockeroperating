@@ -26,6 +26,7 @@ import { terminateLocker } from "@/lib/termination-actions";
 import { defaultPostTerminationStatus } from "@/lib/locker-status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { openTerminationTab } from "@/lib/termination-handoff";
 import { parseHrRows, type HrPerson, type HrNeedsCheck } from "@/lib/hr-parser";
 import { localDateIso, REASON_CODES, reasonClash, type ReasonCode } from "@/lib/termination-reasons";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -760,9 +761,7 @@ function ResultsTable({
                         variant={bucket === "rehire_suspect" ? "outline" : "destructive"}
                         onClick={() => {
                           const td = r.hr?.terminateDate;
-                          const params=new URLSearchParams(); if(td) params.set("date",td); if(r.hr?.reason_code) params.set("reason",r.hr.reason_code); if(r.hr?.termination_type) params.set("type",r.hr.termination_type); if(r.hr?.reason_category) params.set("category",r.hr.reason_category);
-                          const url = `/terminate/${r.db.id}?${params}`;
-                          window.open(url, "_blank");
+                          openTerminationTab(r.db.id,td,{reason_code:r.hr?.reason_code??"OTHER",termination_type:r.hr?.termination_type,reason_category:r.hr?.reason_category,reason_detail:isAdmin?r.hr?.reason_detail:null});
                         }}
                       >
                         <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate
@@ -806,9 +805,7 @@ function ResultsTable({
                         className="shrink-0"
                         onClick={() => {
                           const td = r.hr?.terminateDate;
-                          const params=new URLSearchParams(); if(td) params.set("date",td); if(r.hr?.reason_code) params.set("reason",r.hr.reason_code); if(r.hr?.termination_type) params.set("type",r.hr.termination_type); if(r.hr?.reason_category) params.set("category",r.hr.reason_category);
-                          const url = `/terminate/${r.db.id}?${params}`;
-                          window.open(url, "_blank");
+                          openTerminationTab(r.db.id,td,{reason_code:r.hr?.reason_code??"OTHER",termination_type:r.hr?.termination_type,reason_category:r.hr?.reason_category,reason_detail:isAdmin?r.hr?.reason_detail:null});
                         }}
                       >
                         <UserMinus className="h-3.5 w-3.5 mr-1" /> Terminate

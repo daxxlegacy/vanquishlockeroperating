@@ -95,6 +95,20 @@ function TerminatePage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!user || !window.opener) return;
+    const receive=(event:MessageEvent)=>{
+      if (event.origin!==window.location.origin || event.source!==window.opener || event.data?.type!=="termination-metadata" || event.data?.lockerId!==lockerId) return;
+      const meta=event.data.metadata as TerminationMetadata;
+      if (!meta || !meta.reason_code || !["RESIGN","AWOL","RTV","OTHER"].includes(meta.reason_code)) return;
+      setReason(meta.reason_code);
+      setMetadata({...meta,reason_detail:role==="admin"?meta.reason_detail:null});
+    };
+    window.addEventListener("message",receive);
+    window.opener.postMessage({type:"termination-metadata-request",lockerId},window.location.origin);
+    return ()=>window.removeEventListener("message",receive);
+  },[user,role,lockerId]);
+
   if (loading || !user || locker === undefined) {
     return <div className="min-h-screen"><AppHeader /><main className="max-w-2xl mx-auto px-4 sm:px-6 py-8"><Skeleton className="h-96" /></main></div>;
   }
