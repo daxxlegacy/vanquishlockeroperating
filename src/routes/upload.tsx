@@ -636,7 +636,7 @@ function UploadPage() {
           changed += rows.length;
           const { error: auditError } = rows.length ? await supabase.from("status_change_log").insert(rows.map(row => ({
             locker_id: row.id, locker_number: row.locker_number,
-            previous_status: first.prevSpare, new_status: row.spare_key_status,
+            previous_status: first.prevSpare, new_status: row.spare_key_status ?? first.spare_key_status,
             source: "spare_key_sync", changed_by: user.id, changed_by_email: user.email ?? null,
           }))) : { error: null };
           if (auditError) throw new Error(`Spare key changes saved, but the status log could not be written: ${auditError.message}`);

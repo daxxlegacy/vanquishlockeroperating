@@ -5,7 +5,7 @@ export type SpareKeySheetSummary = { sheet: string; headerRow: number | null; ro
 export type SpareKeyFileResult = { rows: { locker_number: string; spare_key_status: SpareKeyStatus }[]; summaries: SpareKeySheetSummary[]; errors: string[] };
 const LOCKERS = ["locker", "lockernumber", "lockerno", "lockerid", "combinelocker", "comblocker"];
 const SPARE = ["sparekeystatus", "sparekey"];
-const PHYSICAL = ["physicalkeystatus", "physicalkey", "statusavailablenotavailable", "statusavailable"];
+const PHYSICAL = ["physicalkeystatus", "physicalkey", "physicialkey", "statusavailablenotavailable", "statusavailable"];
 const pick = (tokens: string[], aliases: string[]) => tokens.findIndex(t => aliases.includes(t));
 const isHeader = (row: unknown[]) => {
   const tokens = row.map(headerToken);
@@ -51,6 +51,7 @@ export function parseSpareKeySheets(sheets: { sheet: string; cells: unknown[][] 
       if (!locker || !/^([0-9]+[A-Z]+|[A-Z]+[0-9]+)$/.test(locker)) continue;
       const statusRaw = row[statusIndex];
       const usePhysical = !explicit && (statusIndex < 0 || headerToken(statusRaw).includes("spare"));
+      if (usePhysical && physicalIndex < 0) { result.errors.push(`${sheet}: missing Physical Key column.`); continue; }
       const raw = usePhysical ? row[physicalIndex] : statusRaw;
       const status = String(raw ?? "").trim() === "" ? "unknown" : parseSpareKeyStatus(raw);
       summary.rows++;
