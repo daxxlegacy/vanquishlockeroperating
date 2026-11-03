@@ -1,4 +1,11 @@
 # Restore verification test lockers
+# Termination type, reason and category
+- [ ] Add safe multi-layout HR parser, reason mapping, warnings, Needs check list and local-date handling with rule tests.
+- [ ] Extend atomic termination and masked reads; add reason-filtered occupancy search and exact-only backfill.
+- [ ] Update both termination forms, HR Listing edits/details/exports and Occupancy badges/filter/history/exports.
+- [ ] Verify admin/viewer privacy, atomic behavior, search/pagination and five parsed HR samples; report counts and changed files.
+
+# Restore verification test lockers
 - [x] Restored 1000A, 1000B, 1000C, 1001A and 1001B in one transaction using equivalent admin snapshot logic; recovered national IDs from the preserved occupancy rows, reactivated those same rows without inserts, and marked all five terminations undone.
 - [x] Added one status audit note per locker: Restored after verification testing, under Farid's admin identity. Verified all five saved names/badges/statuses and matching national IDs; signed-in Occupancy shows Active 9,526 and Duplicate Terminated 0 groups, and Admin marks restored history. No browser errors.
 
