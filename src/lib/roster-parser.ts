@@ -1,4 +1,5 @@
-export const rosterToken = (value: unknown) => String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+import { findHeaderRow, headerToken } from "./tabular-header";
+export const rosterToken = headerToken;
 
 const BADGES = ["personnumber", "badgenumber", "badgeno", "badge", "badgeid", "employeecode", "employeenumber", "employeeid", "empid", "empcode", "empnum", "staffid", "vlookupocempnum", "vlookupempnum"];
 const NAMES = ["legalfullname", "legalname", "employeename", "fullname", "name", "ocname", "vlookupocname"];
@@ -22,7 +23,7 @@ const cellText = (value: unknown): string | null => String(value ?? "").trim() |
 export function parseRosterSheets(sheets: { sheet: string; cells: unknown[][] }[], includeNationalId = false): RosterFileResult {
   const result: RosterFileResult = { rows: [], summaries: [] };
   for (const { sheet, cells } of sheets) {
-    const headerIndex = cells.slice(0, 30).findIndex(row => row.filter(v => MARKERS.has(rosterToken(v))).length >= 2);
+    const headerIndex = findHeaderRow(cells, row => row.filter(v => MARKERS.has(rosterToken(v))).length >= 2);
     const summary: RosterSheetSummary = { sheet, headerRow: headerIndex < 0 ? null : headerIndex + 1, rows: 0 };
     result.summaries.push(summary);
     if (headerIndex < 0) continue;
