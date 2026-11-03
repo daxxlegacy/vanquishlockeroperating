@@ -169,15 +169,6 @@ export function DuplicateOccupantsDialog({
         .eq("id", confirmRow.id);
       if (e) throw e;
 
-      await supabase.from("status_change_log").insert({
-        locker_number: confirmRow.locker_number,
-        previous_status: `${confirmRow.status ?? "—"} (${confirmRow.category})`,
-        new_status: `Terminate (${confirmRow.category})`,
-        source: "duplicate_occupancy_review",
-        changed_by: user.id,
-        changed_by_email: user.email ?? null,
-      });
-
       invalidateOccupancyCache();
       toast.success(`Terminated ${confirmRow.locker_number}`);
       setConfirmRow(null);
