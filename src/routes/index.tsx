@@ -38,6 +38,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Locker Map — LockerOps" },
       { name: "description", content: "Interactive locker map mirroring the physical layout of each area." },
+      { property: "og:title", content: "Locker Map — LockerOps" },
+      { property: "og:description", content: "Interactive locker map mirroring the physical layout of each area." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (<PageGuard permission="page_map"><MapPage /></PageGuard>),
@@ -52,7 +56,7 @@ const STATUS_COLORS: Record<string, string> = {
 const NOT_IN_DB = "bg-background border-dashed border-border text-muted-foreground/70";
 
 /** Group key for a locker code.
- *  - Numeric series with trailing letters: "1A" -> "1", "6075B" -> "6075", "6114WX" -> "6114"
+ *  - Numeric series with trailing letters: "1A" -> "1", "6075B" -> "6075", "6114A" -> "6114"
  *  - Letter-prefixed series: "W01" -> "W", "AA18" -> "AA", "LK05" -> "LK"
  *  - Bare letter labels on the map ("W", "AA") map to themselves. */
 function prefixOf(n: string): string {
