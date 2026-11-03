@@ -1,6 +1,5 @@
 // Admin command center — dashboard overview + grouped collapsible sections.
 import { DeletionsPanel } from "@/components/operations/DeletionsPanel";
-import { RunHistoryPanel } from "@/components/operations/RunHistoryPanel";
 import { RecentTerminationsPanel } from "@/components/operations/RecentTerminationsPanel";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -17,7 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Shield, AlertCircle, UserCog, UserPlus, Trash2, Database, Download, Upload,
   ChevronDown, LayoutGrid, Table as TableIcon, Key, History, ShieldAlert,
-  Upload as UploadIcon, LifeBuoy, ClipboardCheck, Zap, FileClock, ScrollText,
+  Upload as UploadIcon, LifeBuoy, ClipboardCheck, FileClock, ScrollText,
   UsersRound, Activity, ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,7 +26,14 @@ import { createBackup, restoreBackup } from "@/lib/backup.functions";
 import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISSIONS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin — LockerOps" }] }),
+  head: () => ({ meta: [
+    { title: "Admin — LockerOps" },
+    { name: "description", content: "Manage LockerOps access, reconciliation, termination history, and deletion audits." },
+    { property: "og:title", content: "Admin — LockerOps" },
+    { property: "og:description", content: "Manage LockerOps access, reconciliation, termination history, and deletion audits." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: AdminPage,
 });
 
@@ -43,12 +49,12 @@ const CATEGORIES: { key: CategoryKey; label: string; perms: AppPermission[] }[] 
 
 // ---- Section expand-state persistence ----
 type SectionKey =
-  | "overview" | "people" | "core" | "data" | "lifecycle" | "automation" | "system";
+  | "overview" | "people" | "core" | "data" | "lifecycle" | "system";
 
 const SECTION_STATE_KEY = "lockerops.admin.sections.v1";
 const DEFAULT_EXPANDED: Record<SectionKey, boolean> = {
   overview: true, people: true, core: false, data: false,
-  lifecycle: false, automation: false, system: false,
+  lifecycle: false, system: false,
 };
 
 function useSectionState() {
@@ -57,7 +63,12 @@ function useSectionState() {
     try {
       const raw = localStorage.getItem(SECTION_STATE_KEY);
       if (!raw) return DEFAULT_EXPANDED;
-      return { ...DEFAULT_EXPANDED, ...JSON.parse(raw) };
+      const saved = JSON.parse(raw);
+      const restored = { ...DEFAULT_EXPANDED };
+      for (const key of Object.keys(DEFAULT_EXPANDED) as SectionKey[]) {
+        if (typeof saved?.[key] === "boolean") restored[key] = saved[key];
+      }
+      return restored;
     } catch { return DEFAULT_EXPANDED; }
   });
   const toggle = (k: SectionKey) => setState((prev) => {
@@ -636,7 +647,7 @@ function AdminPage() {
                     <h3 className="font-display text-base font-semibold">Backup & Restore</h3>
                   </div>
                   <p className="text-xs text-muted-foreground mb-4">
-                    <strong>Data</strong> = lockers, occupancy, terminations, automation, audits, uploads.{" "}
+                    <strong>Data</strong> = lockers, occupancy, terminations, audits, uploads.{" "}
                     <strong>System</strong> = users, roles, permissions. <strong>Full</strong> = both.
                     Restore upserts rows by id.
                   </p>
@@ -701,25 +712,6 @@ function AdminPage() {
           </Collapsible>
         </Card>
 
-        {/* ==================== AUTOMATION ==================== */}
-        <Card>
-          <Collapsible open={sections.automation}>
-            <SectionHeader
-              open={sections.automation} onToggle={() => toggleSection("automation")}
-              icon={Zap} title="Automation"
-              subtitle="Batch termination and run history"
-            />
-            <CollapsibleContent>
-              <div className="px-4 pb-4">
-                <QuickLinkGrid links={[
-                  { to: "/reconcile", label: "Automation", icon: Zap, description: "Run automated termination workflows from the Reconcile page." },
-                  { to: "/reconcile", label: "Run History", icon: FileClock, description: "Review past automation runs and their outcomes." },
-                ]} />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
-
         {/* ==================== SYSTEM ==================== */}
         <Card>
           <Collapsible open={sections.system}>
@@ -749,10 +741,6 @@ function AdminPage() {
                 <div className="pt-2">
                   <h3 className="text-sm font-semibold mb-2">Deletion Audit</h3>
                   <DeletionsPanel />
-                </div>
-                <div className="pt-2">
-                  <h3 className="text-sm font-semibold mb-2">Automation Run History</h3>
-                  <RunHistoryPanel />
                 </div>
               </div>
             </CollapsibleContent>

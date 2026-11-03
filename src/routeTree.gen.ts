@@ -13,8 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AutomationRouteImport } from './routes/automation'
-import { Route as AutomationHistoryRouteImport } from './routes/automation-history'
 import { Route as FindLockerRouteImport } from './routes/find-locker'
 import { Route as LockerIdentityUpdateRouteImport } from './routes/locker-identity-update'
 import { Route as LockersRouteImport } from './routes/lockers'
@@ -46,16 +44,6 @@ const AuditRoute = AuditRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationRoute = AutomationRouteImport.update({
-  id: '/automation',
-  path: '/automation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationHistoryRoute = AutomationHistoryRouteImport.update({
-  id: '/automation-history',
-  path: '/automation-history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FindLockerRoute = FindLockerRouteImport.update({
@@ -124,8 +112,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
-  '/automation': typeof AutomationRoute
-  '/automation-history': typeof AutomationHistoryRoute
   '/find-locker': typeof FindLockerRoute
   '/locker-identity-update': typeof LockerIdentityUpdateRoute
   '/lockers': typeof LockersRoute
@@ -144,8 +130,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
-  '/automation': typeof AutomationRoute
-  '/automation-history': typeof AutomationHistoryRoute
   '/find-locker': typeof FindLockerRoute
   '/locker-identity-update': typeof LockerIdentityUpdateRoute
   '/lockers': typeof LockersRoute
@@ -165,8 +149,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/audit': typeof AuditRoute
   '/auth': typeof AuthRoute
-  '/automation': typeof AutomationRoute
-  '/automation-history': typeof AutomationHistoryRoute
   '/find-locker': typeof FindLockerRoute
   '/locker-identity-update': typeof LockerIdentityUpdateRoute
   '/lockers': typeof LockersRoute
@@ -187,8 +169,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit'
     | '/auth'
-    | '/automation'
-    | '/automation-history'
     | '/find-locker'
     | '/locker-identity-update'
     | '/lockers'
@@ -207,8 +187,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit'
     | '/auth'
-    | '/automation'
-    | '/automation-history'
     | '/find-locker'
     | '/locker-identity-update'
     | '/lockers'
@@ -227,8 +205,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/audit'
     | '/auth'
-    | '/automation'
-    | '/automation-history'
     | '/find-locker'
     | '/locker-identity-update'
     | '/lockers'
@@ -248,8 +224,6 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuditRoute: typeof AuditRoute
   AuthRoute: typeof AuthRoute
-  AutomationRoute: typeof AutomationRoute
-  AutomationHistoryRoute: typeof AutomationHistoryRoute
   FindLockerRoute: typeof FindLockerRoute
   LockerIdentityUpdateRoute: typeof LockerIdentityUpdateRoute
   LockersRoute: typeof LockersRoute
@@ -292,20 +266,6 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automation': {
-      id: '/automation'
-      path: '/automation'
-      fullPath: '/automation'
-      preLoaderRoute: typeof AutomationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automation-history': {
-      id: '/automation-history'
-      path: '/automation-history'
-      fullPath: '/automation-history'
-      preLoaderRoute: typeof AutomationHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/find-locker': {
@@ -400,8 +360,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuditRoute: AuditRoute,
   AuthRoute: AuthRoute,
-  AutomationRoute: AutomationRoute,
-  AutomationHistoryRoute: AutomationHistoryRoute,
   FindLockerRoute: FindLockerRoute,
   LockerIdentityUpdateRoute: LockerIdentityUpdateRoute,
   LockersRoute: LockersRoute,
