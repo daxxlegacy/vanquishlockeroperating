@@ -10,3 +10,4 @@
 - Keep HR header-layout parsing and termination reason normalization in dedicated tested helpers; parsed HR data excludes national IDs, and private detail notes are stripped before Reconcile persistence.
 - Keep termination detail access behind the admin-only base table and role-masked history RPC; occupancy stores only coded reason/type/category and preserves the existing server pagination pipeline.
 - Hand off HR termination metadata to new termination tabs through source-checked, same-origin messages only; private free text must never enter URLs or browser persistence.
+- Keep Upload's three roster tools on one ephemeral Web Worker reader with per-sheet/header-block name mapping and tested normalization; background parsing avoids blocking the page and national IDs remain transient with permission-aware export masking.

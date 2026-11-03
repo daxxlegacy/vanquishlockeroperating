@@ -1,3 +1,8 @@
+# Roster Check shared reader
+- [x] Added shared header-name reader for all sheets/CSV and repeated contractor headers, safe badges, summaries and ephemeral background worker parsing; six new rule tests passed.
+- [x] All three cards use the reader; matching priorities/settings and full exports retained, permission-aware ID display/export masking and confirmations preserved, all result tables scrollable with 100 rendered rows.
+- [x] Signed-in imports passed for 11,200-row equivalent workbook, all match modes, title-row CSV and specific missing-ID feedback. Both fill downloads verified against existing locker matches without writes; no browser errors, build OK, 12 combined rule tests passed. Original October workbook absent, so exact 11,196-row sample verification remains unavailable.
+
 # Remove Reconcile Duplicates tab
 - [x] Remove the tab, content, unused imports, and its exclusive component/export helpers; preserve Occupancy duplicate tools and shared dependencies.
 - [x] Audited whole-codebase leftovers: no exclusive external helpers, i18n, links, RPCs or tables; retained historical/generated page_duplicates permission references and all shared dependencies. No database changes.
