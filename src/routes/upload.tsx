@@ -694,7 +694,7 @@ function UploadPage() {
       const roster = await readRosterFile(f);
       setCheckSummary(roster.summaries);
       const allRows = roster.rows;
-      if (allRows.length === 0) { toast.error("Roster file is empty."); setCheckBusy(false); return; }
+      if (allRows.length === 0) { toast.error(roster.summaries.some(s => s.headerRow) ? "Roster file is empty." : "No roster header found in the first 30 rows: missing badge, name or National ID columns."); setCheckBusy(false); return; }
       const badgeKey = roster.summaries.some(s => s.badgeColumn);
       const nameKey = roster.summaries.some(s => s.nameColumn);
 
@@ -844,7 +844,7 @@ function UploadPage() {
       const roster = await readRosterFile(f, true);
       setNidSummary(roster.summaries);
       const allRows = roster.rows;
-      if (allRows.length === 0) { toast.error("File is empty."); setNidBusy(false); return; }
+      if (allRows.length === 0) { toast.error(roster.summaries.some(s => s.headerRow) ? "File is empty." : "No roster header found: missing National ID and badge/name columns."); setNidBusy(false); return; }
       const badgeKey = roster.summaries.some(s => s.badgeColumn);
       const nameKey = roster.summaries.some(s => s.nameColumn);
       const nidKey = roster.summaries.some(s => s.nationalIdColumn);
@@ -958,7 +958,7 @@ function UploadPage() {
       const roster = await readRosterFile(f, true);
       setBadgeSummary(roster.summaries);
       const allRows = roster.rows;
-      if (allRows.length === 0) { toast.error("File is empty."); setBadgeBusy(false); return; }
+      if (allRows.length === 0) { toast.error(roster.summaries.some(s => s.headerRow) ? "File is empty." : "No roster header found: missing Badge Number and name/National ID columns."); setBadgeBusy(false); return; }
       const badgeKey = roster.summaries.some(s => s.badgeColumn);
       const nidKey = roster.summaries.some(s => s.nationalIdColumn);
       const hasName = roster.summaries.some(s => s.nameColumn);

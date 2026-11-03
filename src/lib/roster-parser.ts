@@ -2,7 +2,7 @@ export const rosterToken = (value: unknown) => String(value ?? "").trim().toLowe
 
 const BADGES = ["personnumber", "badgenumber", "badgeno", "badge", "badgeid", "employeecode", "employeenumber", "employeeid", "empid", "empcode", "empnum", "staffid", "vlookupocempnum", "vlookupempnum"];
 const NAMES = ["legalfullname", "legalname", "employeename", "fullname", "name", "ocname", "vlookupocname"];
-const IDS = ["nationalid", "nric", "icnumber", "ic", "identitycard", "mykad", "icno", "nationalidnumber", "nationalidno", "passport", "passportnumber", "passportno"];
+const IDS = ["nationalid", "nric", "icnumber", "ic", "identitycard", "mykad", "icno", "nationalidnumber", "nationalidno", "passport", "passportnumber", "passportno", "icpassport", "identitynumber", "identityno", "nid", "nricno", "nricnumber"];
 const MARKERS = new Set([...BADGES, ...NAMES, ...IDS, "legacyid"]);
 
 export type RosterRow = { badge: string | null; name: string | null; names: string[]; nationalId: string | null; location: string | null; jobName: string | null; assignmentType: string | null; sheet: string; rowIndex: number };
