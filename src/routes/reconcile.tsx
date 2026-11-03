@@ -688,7 +688,7 @@ function ResultsTable({
           </div>
         )}
         <div className="max-h-[60vh] overflow-auto">
-          <table className="hidden sm:table w-full text-sm">
+          <table className="hidden sm:table w-full min-w-[1500px] text-sm">
             <thead className="bg-muted/50 sticky top-0 z-10">
               <tr className="text-left">
                 {canBulkTerminate && (
