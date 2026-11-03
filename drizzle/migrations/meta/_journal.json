@@ -29,6 +29,13 @@
       "when": 1793674815130,
       "tag": "0003_guard_duplicate_terminated_occupancy",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793683716103,
+      "tag": "0004_atomic_locker_termination",
+      "breakpoints": true
     }
   ]
 }
