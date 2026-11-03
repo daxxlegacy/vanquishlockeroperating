@@ -1,3 +1,8 @@
+# Spare Key export-compatible sync
+- [ ] Accept export and legacy headers through shared title-aware multi-sheet worker; show detected columns.
+- [ ] Preview all changes including unlisted-to-missing, require Confirm, patch committed rows and audit changes.
+- [ ] Run rule tests and signed-in sample/confirmation verification without mass-changing live inventory.
+
 # Roster Check shared reader
 - [x] Added shared header-name reader for all sheets/CSV and repeated contractor headers, safe badges, summaries and ephemeral background worker parsing; six new rule tests passed.
 - [x] All three cards use the reader; matching priorities/settings and full exports retained, permission-aware ID display/export masking and confirmations preserved, all result tables scrollable with 100 rendered rows.
