@@ -26,6 +26,10 @@ type Event = TerminationIdentity & {
   date: string | null;
   remarks: string | null;
   by: string | null;
+  reason_code?: string | null;
+  termination_type?: string | null;
+  reason_category?: string | null;
+  reason_detail?: string | null;
 };
 
 /** Display-only deduplication: retained event IDs still address their own records. */
@@ -53,6 +57,10 @@ export function deduplicateTerminationEvents<T extends Event>(events: T[]): T[] 
       ...keep,
       remarks: keep.remarks?.trim() ? keep.remarks : other.remarks,
       by: keep.by?.trim() ? keep.by : other.by,
+      reason_code: keep.reason_code ?? other.reason_code,
+      termination_type: keep.termination_type ?? other.termination_type,
+      reason_category: keep.reason_category ?? other.reason_category,
+      reason_detail: keep.reason_detail ?? other.reason_detail,
     };
   }
   return retained;

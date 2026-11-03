@@ -26,6 +26,9 @@ export type OccupancyRow = {
   department: string | null;
   remarks: string | null;
   source_filename: string | null;
+  termination_type?: string | null;
+  reason_code?: string | null;
+  reason_category?: string | null;
 };
 
 type State = { data: OccupancyRow[] | null; loading: boolean; refreshing: boolean };

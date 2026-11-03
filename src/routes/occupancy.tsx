@@ -33,6 +33,8 @@ import {
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
 import { deriveOccCategoryOr } from "@/lib/locker-category";
+import { REASON_CODES } from "@/lib/termination-reasons";
+import { TerminationReasonBadge } from "@/components/TerminationReasonBadge";
 import { deduplicateTerminationEvents, isTerminatedStatus } from "@/lib/termination-history";
 import { invalidateOccupancyCache, type OccupancyRow, type OccCategory } from "@/lib/occupancy-cache";
 import {
@@ -120,6 +122,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 180);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [reasonFilter, setReasonFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | OccCategory>("all");
   const [locFilter, setLocFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -198,6 +201,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       setStatusFilter(x.status ?? "all");
       setCategoryFilter((x.cat as "all" | OccCategory) ?? "all");
       setLocFilter(x.loc ?? "all");
+      setReasonFilter(x.reason ?? "all");
       setColFilters(objToColFilters(s.cf));
       setSort(s.sort ?? null);
     }
@@ -210,20 +214,20 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
       cf: colFiltersToObj(colFilters),
       q: search,
       sort,
-      x: { status: statusFilter, cat: categoryFilter, loc: locFilter },
+      x: { status: statusFilter, cat: categoryFilter, loc: locFilter, reason: reasonFilter },
     });
     writeFilterParam(encoded, urlKey);
-  }, [hydrated, colFilters, search, sort, statusFilter, categoryFilter, locFilter]);
+  }, [hydrated, colFilters, search, sort, statusFilter, categoryFilter, locFilter, reasonFilter]);
 
   const hasAnyFilter =
     !!search ||
-    statusFilter !== "all" ||
+    statusFilter !== "all" || reasonFilter !== "all" ||
     categoryFilter !== "all" ||
     locFilter !== "all" ||
     sort !== null;
 
   const clearAllFilters = () => {
-    setSearch(""); setStatusFilter("all"); setCategoryFilter("all"); setLocFilter("all");
+    setSearch(""); setStatusFilter("all"); setCategoryFilter("all"); setLocFilter("all"); setReasonFilter("all");
     setColFilters({}); setSort(null);
   };
 
@@ -234,11 +238,12 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
     page,
     search: debouncedSearch,
     statusFilter,
+    reasonFilter,
     categoryFilter,
     locFilter,
     sortCol: sort?.col ?? "locker",
     sortDir: sort?.dir ?? "asc",
-  }), [page, debouncedSearch, statusFilter, categoryFilter, locFilter, sort]);
+  }), [page, debouncedSearch, statusFilter, reasonFilter, categoryFilter, locFilter, sort]);
 
   const {
     rows: pageRows, total, stats, loading: loadingData, refreshing, stale, refresh,
@@ -246,7 +251,7 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   } = useOccupancyPage(query, OCC_PAGE_SIZE);
 
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, categoryFilter, locFilter, sort]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, reasonFilter, categoryFilter, locFilter, sort]);
 
   const filtered: Row[] = useMemo(() => (pageRows ?? []) as unknown as Row[], [pageRows]);
 
@@ -305,21 +310,21 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
   const buildExportRows = async () => {
     // Exports cover every matching locker, streamed from the server in chunks.
     const all = (await fetchAllMatchingOccupancy(query)) as unknown as Row[];
-    // Only rows that map to a real occupancy record (not synthetic locker rows) have valid ids for reveal.
-    const realIds = all.filter((r) => !r.__synthetic).map((r) => r.id);
-    const nidMap = canRevealNid ? await fetchFullNationalIds("locker_occupancy", realIds) : new Map<string, string>();
     return all.map((r) => ({
       "Locker Number": r.locker_number,
       "Status": r.status ?? "",
       "Badge Number": r.badge_number ?? "",
       "Employee Name": r.employee_name ?? "",
-      "National ID": canRevealNid ? (nidMap.get(r.id) ?? maskNationalId(r.national_id)) : fullyMaskNationalId(r.national_id),
+      "National ID": canRevealNid ? maskNationalId(r.national_id) : fullyMaskNationalId(r.national_id),
       "Work Location": r.work_location ?? "",
       "Locker Location": r.locker_location_by_row ?? "",
       "Key Lock": r.key_lock_type ?? "",
       "Batch Intake": fmtDate(r.batch_intake_date),
       "Termination Date": fmtDate(r.termination_date),
       "Terminated Reason": reasons.get(r.locker_number) ?? "",
+      "Reason": isTerminatedStatus(r.status) ? r.reason_code ?? "" : "",
+      "Type": isTerminatedStatus(r.status) ? r.termination_type ?? "" : "",
+      "Category": isTerminatedStatus(r.status) ? r.reason_category ?? "" : "",
       "Remarks": r.remarks ?? "",
       "Source File": r.source_filename ?? "",
     }));
@@ -587,6 +592,8 @@ function CombinedView({ isAdmin }: { isAdmin: boolean }) {
           </SelectContent>
         </Select>
 
+        <Select value={reasonFilter} onValueChange={setReasonFilter}><SelectTrigger className="w-full sm:w-36" aria-label="Reason filter"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All reasons</SelectItem>{REASON_CODES.map(code=><SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent></Select>
+
         {isAdmin && (
           <>
             <input
@@ -809,9 +816,7 @@ const OccupancyRow = memo(function OccupancyRow({ index, style, rows, onViewHist
       <div className="px-3 truncate font-mono text-xs text-muted-foreground"><NationalIdCell value={row.national_id} recordId={row.__synthetic ? null : row.id} table="locker_occupancy" /></div>
       <div className="px-3 truncate text-muted-foreground text-xs">{fmtDate(row.batch_intake_date)}</div>
       <div className="px-3 truncate text-muted-foreground text-xs">{fmtDate(row.termination_date)}</div>
-      <div className="px-3 truncate text-muted-foreground text-xs" title={(!isActive ? (row.remarks || reason || "") : "") || undefined}>
-        {!isActive ? (row.remarks || reason || "—") : "—"}
-      </div>
+      <div className="px-3 text-xs">{isTerminatedStatus(row.status) ? <TerminationReasonBadge code={row.reason_code} type={row.termination_type} category={row.reason_category}/> : "—"}</div>
       <div className="px-3 truncate text-muted-foreground text-xs">{row.work_location ?? "—"}</div>
       <div className="px-3">
         {isFirst && (
@@ -917,7 +922,7 @@ function MobileLockerGroup({ lockerNumber, group, reason, onViewHistory }: { loc
               <MField label="Intake" value={fmtDate(r.batch_intake_date)} />
               <MField label="Terminated" value={fmtDate(r.termination_date)} />
               <MField label="Work" value={r.work_location} wide />
-              {!isActive && <MField label="Reason" value={r.remarks || reason || "—"} wide />}
+              {isTerminatedStatus(r.status) && <div className="col-span-2">Reason: <TerminationReasonBadge code={r.reason_code} type={r.termination_type} category={r.reason_category}/></div>}
             </div>
           </div>
         );
@@ -948,6 +953,10 @@ type HistoryEvent = {
   date_label: string;
   remarks: string | null;
   by: string | null;
+  reason_code?: string | null;
+  termination_type?: string | null;
+  reason_category?: string | null;
+  reason_detail?: string | null;
   /** Movement (transfer/swap) events only: extra line describing the move. */
   movement_detail?: string | null;
 };
@@ -980,7 +989,7 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
       setEvents(null);
       const [{ data: occ }, { data: term }, { data: moves }] = await Promise.all([
         supabase.from("locker_occupancy").select("*").eq("locker_number", lockerNumber).order("updated_at", { ascending: false }),
-        supabase.from("terminations").select("*").eq("locker_number", lockerNumber).is("undone_at", null).order("termination_date", { ascending: false }),
+        supabase.rpc("get_termination_history_masked", {_locker_number:lockerNumber}),
         supabase
           .from("transfer_swap_history")
           .select("*")
@@ -1007,11 +1016,12 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
           nid_record_id: r.id,
           date: (r.status ?? "").toLowerCase() === "active" ? r.batch_intake_date : r.termination_date,
           date_label: (r.status ?? "").toLowerCase() === "active" ? "Intake" : "Terminated",
+          reason_code:r.reason_code,termination_type:r.termination_type,reason_category:r.reason_category,
           remarks: r.remarks,
           by: isTerminatedStatus(r.status) ? null : r.source_filename,
         });
       }
-      for (const t of term ?? []) {
+      for (const t of (term ?? []) as unknown as Database["public"]["Tables"]["terminations"]["Row"][]) {
         const match = nidByBadge.get((t.badge_number ?? "").trim().toLowerCase());
         out.push({
           id: `t-${t.id}`,
@@ -1023,6 +1033,7 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
           nid_record_id: match?.id ?? null,
           date: t.termination_date,
           date_label: "Terminated",
+          reason_code:t.reason_code,termination_type:t.termination_type,reason_category:t.reason_category,reason_detail:isAdmin?t.reason_detail:null,
           remarks: t.reason,
           by: t.terminated_by_email,
         });
@@ -1083,7 +1094,7 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
       );
       setEvents(meaningful);
     })();
-  }, [lockerNumber, tick]);
+  }, [lockerNumber, tick, isAdmin]);
 
   const openConfirm = (ev: HistoryEvent) => {
     setConfirmEvent(ev);
@@ -1197,6 +1208,8 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
                   {isMovement && e.movement_detail && (
                     <div className="mt-1 text-xs text-muted-foreground">{e.movement_detail}</div>
                   )}
+                  {isTerminatedStatus(e.status) && <div className="mt-2 flex flex-wrap gap-2 items-center text-xs"><TerminationReasonBadge code={e.reason_code} type={e.termination_type} category={e.reason_category}/>{e.reason_category && <span>{e.reason_category}</span>}</div>}
+                  {isAdmin && isTerminatedStatus(e.status) && e.reason_detail && <p className="mt-1 text-xs whitespace-pre-wrap break-words">{e.reason_detail}</p>}
                   {!isMovement && (e.remarks || e.by) && (
                     <div className="mt-1 text-xs text-muted-foreground">
                       {[e.remarks, e.by ? `By ${e.by}` : null].filter(Boolean).join(" · ")}
