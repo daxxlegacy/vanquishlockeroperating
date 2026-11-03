@@ -23,10 +23,12 @@ import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers, NATIONAL_ID_KEYS } from "@/lib/locker-utils";
 import { normalizeLockerStatus } from "@/lib/locker-status";
 import { Progress } from "@/components/ui/progress";
-import { pauseLockersRealtime, invalidateLockersCache } from "@/lib/lockers-cache";
+import { pauseLockersRealtime, invalidateLockersCache, patchLockersInCache } from "@/lib/lockers-cache";
 import { saveBatchIntakeWarnings, clearBatchIntakeWarnings } from "@/lib/batch-intake-warnings";
 import { terminateLocker } from "@/lib/termination-actions";
-import { readRosterFile } from "@/lib/roster-reader";
+import { readRosterFile, readSpareKeyFile } from "@/lib/roster-reader";
+import { planSpareKeySync } from "@/lib/spare-key-sync";
+import type { SpareKeyChange, SpareKeySheetSummary } from "@/lib/spare-key-sync";
 import type { RosterSheetSummary } from "@/lib/roster-parser";
 import { confirmNidExport, maskNationalId, useCanRevealNationalId } from "@/lib/national-id";
 
@@ -138,7 +140,10 @@ interface SpareSyncResult {
   fileCount: number;
   matched: number;
   unmatched: { locker_number: string; status: string }[];
-  updates: { locker_number: string; spare_key_status: LockerRow["spare_key_status"]; prevSpare: string | null }[];
+  updates: SpareKeyChange[];
+  summaries: SpareKeySheetSummary[];
+  appliedIds: string[];
+  duplicateOverrides: number;
 }
 
 function UploadPage() {
@@ -569,49 +574,20 @@ function UploadPage() {
     }
   };
 
-  const runSpareKeySync = async (f: File, apply: boolean) => {
+  const runSpareKeySync = async (f: File) => {
     setSpareBusy(true);
-    if (!apply) setSpareResult(null);
+    setSpareResult(null);
     try {
-      const buf = await f.arrayBuffer();
-      const XLSX = await getXLSX();
-      const wb = XLSX.read(buf, { type: "array", cellDates: false });
-      const allRows: Record<string, unknown>[] = [];
-      for (const sn of wb.SheetNames) {
-        const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sn], { defval: "", raw: true });
-        allRows.push(...json);
-      }
-      if (allRows.length === 0) { toast.error("Spare key file is empty."); setSpareBusy(false); return; }
-
-      const detected = detectColumns(Object.keys(allRows[0]));
-      const lockerKey = detected.locker_number;
-      const physKey = detected.physical_key_status;
-      const spareKey = detected.spare_key_status ?? detected.status;
-      if (!lockerKey) {
-        toast.error("Couldn't find a locker column (e.g. 'Combine Locker').");
-        setSpareBusy(false);
-        return;
-      }
-
-      const incoming = new Map<string, { spare: LockerRow["spare_key_status"] }>();
-      for (const r of allRows) {
-        const ln = getStr(r, lockerKey);
-        if (!ln) continue;
-        const spareRaw = spareKey ? getStr(r, spareKey) : null;
-        const physRaw = physKey ? getStr(r, physKey) : null;
-        // Sheet "Status" col = "Spare Key" (presence). Fall back to the physical-key column for the live state.
-        const physMapped = mapKeyStatus(physRaw);
-        const hasSpareMarker = !!spareRaw && spareRaw.toLowerCase().includes("spare");
-        const spare: LockerRow["spare_key_status"] = hasSpareMarker ? physMapped : mapKeyStatus(spareRaw);
-        incoming.set(ln.trim().toUpperCase(), { spare });
-      }
-
-      const dbLockers: { locker_number: string; spare_key_status: string | null }[] = [];
+      const parsed = await readSpareKeyFile(f);
+      if (parsed.errors.length) throw new Error(parsed.errors.slice(0, 3).join(" "));
+      if (!parsed.rows.length) throw new Error("No spare key rows found. Expected Locker # / Spare Key Status, or Combine Locker / Status / Physical Key headers in the first 30 rows.");
+      const dbLockers: { id: string; locker_number: string; spare_key_status: string | null }[] = [];
       let from = 0;
       while (true) {
         const { data, error } = await supabase.from("lockers")
-          .select("locker_number, spare_key_status")
+          .select("id, locker_number, spare_key_status")
           .is("deleted_at", null)
+          .order("id")
           .range(from, from + 999);
         if (error) throw error;
         if (!data || data.length === 0) break;
@@ -619,71 +595,64 @@ function UploadPage() {
         if (data.length < 1000) break;
         from += 1000;
       }
-      const dbMap = new Map(dbLockers.map((l) => [l.locker_number.trim().toUpperCase(), l]));
-
-      const updates: SpareSyncResult["updates"] = [];
-      const unmatched: SpareSyncResult["unmatched"] = [];
-      for (const [ln, v] of incoming) {
-        const db = dbMap.get(ln);
-        if (!db) { unmatched.push({ locker_number: ln, status: "not in DB" }); continue; }
-        updates.push({
-          locker_number: db.locker_number,
-          spare_key_status: v.spare,
-          prevSpare: db.spare_key_status,
-        });
-      }
-
-      if (apply) {
-        const resume = pauseLockersRealtime();
-        try {
-          const incomingKeys = new Set(incoming.keys());
-          const noSpare = dbLockers
-            .filter((l) => !incomingKeys.has(l.locker_number.trim().toUpperCase()) && l.spare_key_status !== "missing")
-            .map((l) => l.locker_number);
-          const totalSteps = updates.length + noSpare.length;
-          let doneSteps = 0;
-          setSpareProgress({ done: 0, total: totalSteps, phase: "Updating spare key statuses" });
-          // Batch updates by status value so we can use .in() instead of one round-trip per locker
-          const byStatus = new Map<LockerRow["spare_key_status"], string[]>();
-          for (const u of updates) {
-            const arr = byStatus.get(u.spare_key_status) ?? [];
-            arr.push(u.locker_number);
-            byStatus.set(u.spare_key_status, arr);
-          }
-          for (const [status, lockers] of byStatus) {
-            for (let i = 0; i < lockers.length; i += 500) {
-              const slice = lockers.slice(i, i + 500);
-              const { error } = await supabase.from("lockers")
-                .update({ spare_key_status: status })
-                .in("locker_number", slice);
-              if (error) throw error;
-              doneSteps += slice.length;
-              setSpareProgress({ done: doneSteps, total: totalSteps, phase: "Updating spare key statuses" });
-            }
-          }
-          for (let i = 0; i < noSpare.length; i += 500) {
-            const slice = noSpare.slice(i, i + 500);
-            const { error } = await supabase.from("lockers").update({ spare_key_status: "missing" }).in("locker_number", slice);
-            if (error) throw error;
-            doneSteps += slice.length;
-            setSpareProgress({ done: doneSteps, total: totalSteps, phase: "Marking unlisted as missing" });
-          }
-
-          toast.success(`Spare keys synced — ${updates.length} updated, ${noSpare.length} marked missing.`);
-          setSpareResult(null);
-          setSpareFile(null);
-        } finally {
-          resume();
-          setSpareProgress(null);
-        }
-      } else {
-        setSpareResult({ filename: f.name, fileCount: incoming.size, matched: updates.length, unmatched, updates });
-        toast.success(`Preview — ${updates.length} matched, ${unmatched.length} not in DB.`);
-      }
+      const plan = planSpareKeySync(parsed.rows, dbLockers);
+      setSpareResult({ filename: f.name, fileCount: parsed.rows.length, matched: plan.matched,
+        unmatched: plan.unmatched.map(r => ({ locker_number: r.locker_number, status: "not in DB" })),
+        updates: plan.changes, summaries: parsed.summaries, appliedIds: [], duplicateOverrides: parsed.duplicateOverrides });
+      toast.success(`Preview — ${plan.changes.length} lockers will change. Nothing applied yet.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Spare key sync failed");
     }
     setSpareBusy(false);
+  };
+
+  const applySpareKeySync = async () => {
+    if (!spareResult || !user || spareBusy) return;
+    setSpareBusy(true);
+    const resume = pauseLockersRealtime();
+    const appliedIds = new Set(spareResult.appliedIds);
+    const pending = spareResult.updates.filter(u => !appliedIds.has(u.id));
+    let changed = 0;
+    try {
+      const groups = new Map<string, SpareKeyChange[]>();
+      for (const change of pending) {
+        const key = JSON.stringify([change.prevSpare, change.spare_key_status]);
+        groups.set(key, [...(groups.get(key) ?? []), change]);
+      }
+      setSpareProgress({ done: 0, total: pending.length, phase: "Updating spare key statuses" });
+      for (const group of groups.values()) {
+        for (let i = 0; i < group.length; i += 200) {
+          const batch = group.slice(i, i + 200);
+          const first = batch[0];
+          if (!first) continue;
+          let query = supabase.from("lockers").update({ spare_key_status: first.spare_key_status })
+            .in("id", batch.map(u => u.id)).is("deleted_at", null);
+          query = first.prevSpare === null ? query.is("spare_key_status", null) : query.eq("spare_key_status", first.prevSpare as LockerRow["spare_key_status"]);
+          const { data, error } = await query.select("*");
+          if (error) throw error;
+          const rows = data ?? [];
+          patchLockersInCache(rows);
+          for (const row of rows) appliedIds.add(row.id);
+          setSpareResult(prev => prev ? { ...prev, appliedIds: [...appliedIds] } : prev);
+          changed += rows.length;
+          const { error: auditError } = rows.length ? await supabase.from("status_change_log").insert(rows.map(row => ({
+            locker_id: row.id, locker_number: row.locker_number,
+            previous_status: first.prevSpare, new_status: row.spare_key_status ?? first.spare_key_status,
+            source: "spare_key_sync", changed_by: user.id, changed_by_email: user.email ?? null,
+          }))) : { error: null };
+          if (auditError) throw new Error(`Spare key changes saved, but the status log could not be written: ${auditError.message}`);
+          if (rows.length !== batch.length) throw new Error("Some lockers changed since this preview. Upload the file again to review the remaining changes.");
+          setSpareProgress({ done: changed, total: pending.length, phase: "Updating spare key statuses" });
+        }
+      }
+      toast.success(`Spare keys synced — ${changed} lockers changed and logged.`);
+      setSpareResult(null); setSpareFile(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Spare key sync failed");
+    } finally {
+      resume(); setSpareProgress(null); setSpareBusy(false);
+      invalidateLockersCache();
+    }
   };
 
   const runRosterCheck = async (f: File) => {
@@ -1831,11 +1800,11 @@ function UploadPage() {
               <h2 className="font-display text-xl font-bold">Spare key sync</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              Upload your <code className="bg-muted px-1 rounded">Spare_Key_Physical.xlsx</code> (multiple sheets supported). The system matches by <code className="bg-muted px-1 rounded">Combine Locker</code> and updates each locker's <strong>Spare Key Status</strong>. Lockers not listed are marked spare-key <em>missing</em>.
+              Upload the file exported from the Spare Keys page (multiple sheets supported). Matches each locker by locker number and updates its Spare Key Status. Lockers not listed are marked spare-key missing.
             </p>
             <div className="flex gap-3 items-center flex-wrap">
-              <Input type="file" accept=".csv,.xlsx,.xls" className="cursor-pointer max-w-sm"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) { setSpareFile(f); runSpareKeySync(f, false); } }} />
+              <Input type="file" accept=".csv,.xlsx,.xls" aria-label="Spare key file" disabled={spareBusy} className="cursor-pointer max-w-sm"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) { setSpareFile(f); runSpareKeySync(f); } }} />
               {spareBusy && <Badge variant="secondary">Working…</Badge>}
               {spareFile && !spareBusy && <span className="text-xs text-muted-foreground">{spareFile.name}</span>}
             </div>
@@ -1848,15 +1817,29 @@ function UploadPage() {
                   <Stat icon={AlertCircle} label="Not in DB" value={spareResult.unmatched.length} accent="text-warning" />
                 </div>
 
+                <div className="text-sm space-y-1" aria-label="Spare key detected columns">
+                  <h3 className="font-semibold">Detected columns</h3>
+                  {spareResult.summaries.map(s => <p key={s.sheet} className="text-muted-foreground">{s.sheet}: {s.headerRow ? `header row ${s.headerRow} · ${s.rows.toLocaleString()} rows · Locker: ${s.lockerColumn} · Status: ${s.statusColumn ?? "—"}${s.physicalColumn ? ` · Physical: ${s.physicalColumn}` : ""}` : "No spare key headers found; sheet skipped"}</p>)}
+                  {spareResult.duplicateOverrides > 0 && <p className="text-warning">{spareResult.duplicateOverrides} conflicting duplicate rows: last listed status used.</p>}
+                </div>
+                <Alert variant="default">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>{spareResult.updates.length.toLocaleString()} lockers will change</AlertTitle>
+                  <AlertDescription>{spareResult.updates.filter(u => u.unlisted).length.toLocaleString()} unlisted lockers will be marked missing. No changes are saved until you confirm.</AlertDescription>
+                </Alert>
+                <div className="flex flex-wrap gap-3 text-sm">
+                  {[...new Set(spareResult.updates.map(u => `${u.prevSpare ?? "unknown"} → ${u.spare_key_status}`))].map(label => <span key={label}>{label.replace(/_/g, " ")}: <strong>{spareResult.updates.filter(u => `${u.prevSpare ?? "unknown"} → ${u.spare_key_status}` === label).length.toLocaleString()}</strong></span>)}
+                </div>
                 <div className="border rounded-md max-h-72 overflow-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Locker</Th><Th>Spare key</Th><Th>Was</Th></tr></thead>
+                    <thead className="bg-muted/50 sticky top-0"><tr><Th>Locker</Th><Th>Spare key</Th><Th>Was</Th><Th>In file</Th></tr></thead>
                     <tbody>
                       {spareResult.updates.slice(0, 200).map((u) => (
                         <tr key={u.locker_number} className="border-t">
                           <td className="px-3 py-1.5 font-medium">{u.locker_number}</td>
                           <td className="px-3 py-1.5"><Badge variant="outline">{u.spare_key_status}</Badge></td>
                           <td className="px-3 py-1.5 text-xs text-muted-foreground">{u.prevSpare ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-xs">{u.unlisted ? "Not listed" : "Listed"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1888,8 +1871,8 @@ function UploadPage() {
 
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => { setSpareResult(null); setSpareFile(null); }} disabled={spareBusy}>Cancel</Button>
-                  <Button onClick={() => spareFile && runSpareKeySync(spareFile, true)} disabled={spareBusy}>
-                    {spareBusy ? "Applying…" : "Apply spare key sync"}
+                  <Button onClick={applySpareKeySync} disabled={spareBusy || spareResult.updates.length === spareResult.appliedIds.length}>
+                    {spareBusy ? "Applying…" : "Confirm"}
                   </Button>
                 </div>
               </div>

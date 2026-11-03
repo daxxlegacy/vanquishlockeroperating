@@ -11,3 +11,4 @@
 - Keep termination detail access behind the admin-only base table and role-masked history RPC; occupancy stores only coded reason/type/category and preserves the existing server pagination pipeline.
 - Hand off HR termination metadata to new termination tabs through source-checked, same-origin messages only; private free text must never enter URLs or browser persistence.
 - Keep Upload's three roster tools on one ephemeral Web Worker reader with per-sheet/header-block name mapping and tested normalization; background parsing avoids blocking the page and national IDs remain transient with permission-aware export masking.
+- Spare Key uploads share the ephemeral worker and title-aware header detector; keep status parsing/change planning in a tested helper, apply only confirmed changes with prior-status guards, patch returned committed rows, and audit the spare-key transitions without touching occupancy.
