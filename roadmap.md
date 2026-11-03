@@ -1,7 +1,7 @@
 # Spare Key export-compatible sync
-- [ ] Accept export and legacy headers through shared title-aware multi-sheet worker; show detected columns.
-- [ ] Preview all changes including unlisted-to-missing, require Confirm, patch committed rows and audit changes.
-- [ ] Run rule tests and signed-in sample/confirmation verification without mass-changing live inventory.
+- [x] Accept export and legacy headers (including source typo Physicial Key) through shared title-aware multi-sheet worker; show detected columns and legacy last-row-wins duplicate overrides.
+- [x] Preview all changes including unlisted-to-missing, require Confirm, apply with previous-status guards, patch returned committed rows and audit spare-key transitions; no Occupancy writes or page/cache modifications.
+- [x] Eleven rule tests passed; signed-in original sample detects row 3 on both sheets (2,191 + 97 rows), previews 1,273 changes including 492 unlisted-to-missing without applying. Full export/title-row CSV confirms one isolated change, reads it back, then restores original status; audit rows verified with admin email. Browser errors absent, build OK; logic lint clean excluding repository formatting conventions.
 
 # Roster Check shared reader
 - [x] Added shared header-name reader for all sheets/CSV and repeated contractor headers, safe badges, summaries and ephemeral background worker parsing; six new rule tests passed.
