@@ -8,10 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserMinus, AlertCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { parseBatchIntake } from "@/lib/locker-utils";
-import { terminateLocker, buildTerminationClearPayload } from "@/lib/termination-actions";
-import { patchLockersInCache, invalidateLockersCache } from "@/lib/lockers-cache";
+import { terminateLocker } from "@/lib/termination-actions";
+import { invalidateLockersCache } from "@/lib/lockers-cache";
 import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
 import { KeyBadge, isCombinationLock } from "@/components/KeyBadge";
 import type { Database } from "@/integrations/supabase/types";
@@ -44,7 +43,6 @@ export function TerminateUserDialog({ open, onOpenChange, locker, onTerminated }
     setBusy(true);
     try {
       await terminateLocker(locker, iso, reason, newStatus);
-      patchLockersInCache([{ ...locker, ...buildTerminationClearPayload(newStatus) }]);
       invalidateLockersCache();
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       onOpenChange(false);

@@ -34,6 +34,10 @@ export const Route = createFileRoute("/reconcile")({
     meta: [
       { title: "Reconcile HR roster — LockerOps" },
       { name: "description", content: "Compare HR listing against active locker occupants to find users who must be terminated, rehired, or are missing from HR." },
+      { property: "og:title", content: "Reconcile HR roster — LockerOps" },
+      { property: "og:description", content: "Compare HR listing against active locker occupants." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (<PageGuard permission="page_reconcile"><ReconcilePage /></PageGuard>),
@@ -626,6 +630,7 @@ function ResultsTable({
       } catch (e) {
         failed++;
         console.error("Terminate failed for", r.db.locker_number, e);
+        toast.error(e instanceof Error ? e.message : `Locker ${r.db.locker_number}: termination failed`);
       }
       setProgress({ done: i + 1, total: targets.length });
     }
@@ -638,7 +643,7 @@ function ResultsTable({
       onRowsTerminated(okIds);
     }
     if (failed === 0) toast.success(`Terminated ${okIds.length} locker${okIds.length === 1 ? "" : "s"}.`);
-    else toast.warning(`Terminated ${okIds.length}, failed ${failed}. See console for details.`);
+    else toast.warning(`Terminated ${okIds.length}, failed ${failed}. Failed lockers were not changed.`);
   };
 
   if (rows.length === 0) {

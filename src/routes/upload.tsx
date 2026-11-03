@@ -32,6 +32,10 @@ export const Route = createFileRoute("/upload")({
     meta: [
       { title: "Upload Locker Data — LockerOps" },
       { name: "description", content: "Upload locker data file. The system auto-detects columns and syncs records." },
+      { property: "og:title", content: "Upload Locker Data — LockerOps" },
+      { property: "og:description", content: "Upload and synchronize locker data files." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (<PageGuard permission="page_upload"><UploadPage /></PageGuard>),
@@ -481,7 +485,7 @@ function UploadPage() {
           try {
             await terminateLocker(row, terminationDateIso, "Auto-resigned via upload", "empty");
           } catch (e) {
-            console.error("terminateLocker failed for", row.locker_number, e);
+            throw new Error(e instanceof Error ? e.message : `Locker ${row.locker_number}: termination failed`);
           }
           done += 1;
           setApplyProgress({ done, total: totalUnits, phase: "Logging terminations" });

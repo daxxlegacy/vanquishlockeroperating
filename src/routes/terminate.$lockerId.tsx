@@ -13,8 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserMinus, ArrowLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { terminateLocker, buildTerminationClearPayload } from "@/lib/termination-actions";
-import { patchLockersInCache, invalidateLockersCache } from "@/lib/lockers-cache";
+import { terminateLocker } from "@/lib/termination-actions";
+import { invalidateLockersCache } from "@/lib/lockers-cache";
 import { LOCKER_STATUSES, STATUS_LABEL, defaultPostTerminationStatus } from "@/lib/locker-status";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -25,6 +25,10 @@ export const Route = createFileRoute("/terminate/$lockerId")({
     meta: [
       { title: "Terminate user — LockerOps" },
       { name: "description", content: "Confirm termination of a locker user with date and reason." },
+      { property: "og:title", content: "Terminate user — LockerOps" },
+      { property: "og:description", content: "Confirm termination of a locker user with date and reason." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: TerminatePage,
@@ -105,7 +109,6 @@ function TerminatePage() {
     setBusy(true);
     try {
       await terminateLocker(locker, iso, reason, newStatus);
-      patchLockersInCache([{ ...locker, ...buildTerminationClearPayload(newStatus) }]);
       invalidateLockersCache();
       toast.success(`Terminated ${locker.employee_name} from ${locker.locker_number}`);
       setDone(true);
