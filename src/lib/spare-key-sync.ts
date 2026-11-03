@@ -2,7 +2,7 @@ import { findHeaderRow, headerToken } from "./tabular-header";
 
 export type SpareKeyStatus = "available" | "missing" | "with_employee" | "damaged" | "unknown" | "taken" | "taken_for_cleaning";
 export type SpareKeySheetSummary = { sheet: string; headerRow: number | null; rows: number; lockerColumn?: string; statusColumn?: string; physicalColumn?: string };
-export type SpareKeyFileResult = { rows: { locker_number: string; spare_key_status: SpareKeyStatus }[]; summaries: SpareKeySheetSummary[]; errors: string[] };
+export type SpareKeyFileResult = { rows: { locker_number: string; spare_key_status: SpareKeyStatus }[]; summaries: SpareKeySheetSummary[]; errors: string[]; duplicateOverrides: number };
 const LOCKERS = ["locker", "lockernumber", "lockerno", "lockerid", "combinelocker", "comblocker"];
 const SPARE = ["sparekeystatus", "sparekey"];
 const PHYSICAL = ["physicalkeystatus", "physicalkey", "physicialkey", "statusavailablenotavailable", "statusavailable"];
@@ -25,7 +25,7 @@ export function parseSpareKeyStatus(raw: unknown): SpareKeyStatus | null {
 }
 
 export function parseSpareKeySheets(sheets: { sheet: string; cells: unknown[][] }[]): SpareKeyFileResult {
-  const result: SpareKeyFileResult = { rows: [], summaries: [], errors: [] };
+  const result: SpareKeyFileResult = { rows: [], summaries: [], errors: [], duplicateOverrides: 0 };
   const incoming = new Map<string, SpareKeyStatus>();
   for (const { sheet, cells } of sheets) {
     const start = findHeaderRow(cells, isHeader);
@@ -57,7 +57,8 @@ export function parseSpareKeySheets(sheets: { sheet: string; cells: unknown[][] 
       summary.rows++;
       if (!status) { result.errors.push(`${sheet}, row ${i + 1}: unrecognized Spare Key Status for ${locker}.`); continue; }
       const previous = incoming.get(locker);
-      if (previous && previous !== status) result.errors.push(`${locker} has conflicting statuses across file rows.`);
+      // Preserve the legacy last-row-wins behavior; surface overrides in preview.
+      if (previous && previous !== status) result.duplicateOverrides++;
       incoming.set(locker, status);
     }
   }

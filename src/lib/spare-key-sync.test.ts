@@ -22,7 +22,8 @@ test("plan includes unlisted-to-missing, excludes unchanged and matches by numbe
   assert.deepEqual(p.changes.map(c=>[c.locker_number,c.prevSpare,c.spare_key_status,c.unlisted]), [["1a","available","taken",false],["2A","available","missing",true]]);
   assert.equal(p.matched,1); assert.equal(p.unmatched[0].locker_number,"9A");
 });
-test("invalid status and conflicting duplicate rows block a safe preview", () => {
+test("invalid statuses block preview and duplicates preserve legacy last-row-wins", () => {
   const r = parseSpareKeySheets([{sheet:"S",cells:[["Locker #","Spare Key Status"],["1A","available"],["1A","missing"],["2A","nonsense"]]}]);
-  assert.equal(r.errors.length,2);
+  assert.equal(r.errors.length,1); assert.equal(r.duplicateOverrides,1);
+  assert.equal(r.rows[0].spare_key_status,"missing");
 });
