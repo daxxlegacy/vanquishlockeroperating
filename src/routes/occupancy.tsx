@@ -33,6 +33,7 @@ import {
   colFiltersToObj, objToColFilters, cycleSort,
 } from "@/lib/url-filter-state";
 import { deriveOccCategoryOr } from "@/lib/locker-category";
+import { deduplicateTerminationEvents, isTerminatedStatus } from "@/lib/termination-history";
 import { invalidateOccupancyCache, type OccupancyRow, type OccCategory } from "@/lib/occupancy-cache";
 import {
   useOccupancyPage, useOccupancyLocations, fetchAllMatchingOccupancy,
@@ -81,6 +82,10 @@ export const Route = createFileRoute("/occupancy")({
     meta: [
       { title: "Occupancy History — LockerOps" },
       { name: "description", content: "Combined occupancy history for every locker (Full, Staff, Shoe), including current holders, previous owners and terminations." },
+      { property: "og:title", content: "Occupancy History — LockerOps" },
+      { property: "og:description", content: "Current holders, previous owners and termination history for every locker." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (<PageGuard permission="page_occupancy"><OccupancyPage /></PageGuard>),
@@ -1003,7 +1008,7 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
           date: (r.status ?? "").toLowerCase() === "active" ? r.batch_intake_date : r.termination_date,
           date_label: (r.status ?? "").toLowerCase() === "active" ? "Intake" : "Terminated",
           remarks: r.remarks,
-          by: r.source_filename,
+          by: isTerminatedStatus(r.status) ? null : r.source_filename,
         });
       }
       for (const t of term ?? []) {
@@ -1059,12 +1064,12 @@ function HistoryDialog({ lockerNumber, isAdmin, onClose }: { lockerNumber: strin
 
       // Two-tier ordering: Active / Transfer / Swap events first (newest first),
       // then Terminate events below them (also newest first).
-      const isTerminateEvent = (e: HistoryEvent) =>
-        (e.status ?? "").trim().toLowerCase() === "terminate";
+      const deduplicated = deduplicateTerminationEvents(out);
+      const isTerminateEvent = (e: HistoryEvent) => isTerminatedStatus(e.status);
       const byDateDesc = (a: HistoryEvent, b: HistoryEvent) =>
         (b.date ?? "").localeCompare(a.date ?? "");
-      const tierOne = out.filter((e) => !isTerminateEvent(e)).sort(byDateDesc);
-      const tierTwo = out.filter(isTerminateEvent).sort(byDateDesc);
+      const tierOne = deduplicated.filter((e) => !isTerminateEvent(e)).sort(byDateDesc);
+      const tierTwo = deduplicated.filter(isTerminateEvent).sort(byDateDesc);
       out.length = 0;
       out.push(...tierOne, ...tierTwo);
 
