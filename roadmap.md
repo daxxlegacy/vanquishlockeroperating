@@ -1,3 +1,8 @@
+# Roster Check shared reader
+- [ ] Add tested header-name reader for all sheets/CSV, safe badges, summaries and background parsing.
+- [ ] Use it in all three cards, retain matching/exports/privacy and cap scrollable results at 100 rows.
+- [ ] Verify signed-in imports/exports with 11,200-row equivalent fixture; original October workbook is not uploaded.
+
 # Remove Reconcile Duplicates tab
 - [x] Remove the tab, content, unused imports, and its exclusive component/export helpers; preserve Occupancy duplicate tools and shared dependencies.
 - [x] Audited whole-codebase leftovers: no exclusive external helpers, i18n, links, RPCs or tables; retained historical/generated page_duplicates permission references and all shared dependencies. No database changes.
