@@ -1,7 +1,7 @@
-# Move Spare Key sync and remove Upload History
-- [ ] Extract the existing sync into an admin-only Spare Keys dialog; preserve parsing, preview, guarded writes, auditing and cache updates.
-- [ ] Add tested large-change confirmation thresholds and remove Upload's Spare Key/History UI and exclusive state; preserve history writes.
-- [ ] Verify export preview, remaining Upload tabs, mobile dialog, and passing tests/build; list changed files.
+# Remove Spare Key sync and Upload History (replacement request)
+- [ ] Remove the added Spare Keys upload button/dialog and exclusive sync helpers; keep the original listing/export unchanged.
+- [ ] Retain exactly five Upload tabs, update the exact subtitle, and remove exclusive history reads/UI while preserving database data and roster history writes.
+- [ ] Verify the remaining tabs, shared roster parsing, Spare Keys listing/export, build and unused imports; confirm the prior isolated test status is restored.
 
 # Spare Key export-compatible sync
 - [x] Accept export and legacy headers (including source typo Physicial Key) through shared title-aware multi-sheet worker; show detected columns and legacy last-row-wins duplicate overrides.
