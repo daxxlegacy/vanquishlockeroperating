@@ -1,4 +1,9 @@
 # WX locker rename
+# Restore verification test lockers
+- [ ] Restore 1000A, 1000B, 1000C, 1001A and 1001B using equivalent admin snapshot restore, reactivating the existing occupancy rows without inserts and marking terminations undone.
+- [ ] Add the requested restoration audit note under Farid's admin identity; verify five saved occupants, national IDs, Active total 9,526 and Duplicate Terminated 0 in the signed-in app.
+
+# WX locker rename
 - [x] Preview 216 lockers and confirm no collisions.
 - [x] Rename all 216 lockers and exact linked references atomically, preserving unit_type, categories, dates, and audit mapping.
 - [x] Rename 36 map labels without changing positions and refresh all three caches plus saved map layout.
