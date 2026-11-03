@@ -143,6 +143,7 @@ interface SpareSyncResult {
   updates: SpareKeyChange[];
   summaries: SpareKeySheetSummary[];
   appliedIds: string[];
+  duplicateOverrides: number;
 }
 
 function UploadPage() {
@@ -597,7 +598,7 @@ function UploadPage() {
       const plan = planSpareKeySync(parsed.rows, dbLockers);
       setSpareResult({ filename: f.name, fileCount: parsed.rows.length, matched: plan.matched,
         unmatched: plan.unmatched.map(r => ({ locker_number: r.locker_number, status: "not in DB" })),
-        updates: plan.changes, summaries: parsed.summaries, appliedIds: [] });
+        updates: plan.changes, summaries: parsed.summaries, appliedIds: [], duplicateOverrides: parsed.duplicateOverrides });
       toast.success(`Preview — ${plan.changes.length} lockers will change. Nothing applied yet.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Spare key sync failed");
@@ -1819,6 +1820,7 @@ function UploadPage() {
                 <div className="text-sm space-y-1" aria-label="Spare key detected columns">
                   <h3 className="font-semibold">Detected columns</h3>
                   {spareResult.summaries.map(s => <p key={s.sheet} className="text-muted-foreground">{s.sheet}: {s.headerRow ? `header row ${s.headerRow} · ${s.rows.toLocaleString()} rows · Locker: ${s.lockerColumn} · Status: ${s.statusColumn ?? "—"}${s.physicalColumn ? ` · Physical: ${s.physicalColumn}` : ""}` : "No spare key headers found; sheet skipped"}</p>)}
+                  {spareResult.duplicateOverrides > 0 && <p className="text-warning">{spareResult.duplicateOverrides} conflicting duplicate rows: last listed status used.</p>}
                 </div>
                 <Alert variant="default">
                   <AlertTriangle className="h-4 w-4" />
