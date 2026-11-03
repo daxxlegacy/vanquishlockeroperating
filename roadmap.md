@@ -23,4 +23,4 @@
 # Status log cleanup noise
 - [x] Remove status-log writes from duplicate-history and duplicate-occupant cleanup; confirm terminated cleanup RPC logs only deletion audit.
 - [x] Hide duplicate-removed entries in the viewer without touching Lockers/Occupancy search, pagination, or caching.
-- [ ] Delete existing matching log noise and report the count; verify the viewer and filter rule test.
+- [x] Deleted 2,262 matching status-log entries; zero remain. Filter rule test passed, signed-in viewer excludes cleanup noise, no browser errors, and build OK. Applied as a one-time data cleanup, not a schema migration.
