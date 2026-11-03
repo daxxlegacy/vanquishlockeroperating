@@ -1,8 +1,8 @@
 # Termination type, reason and category
-- [ ] Add safe multi-layout HR parser, reason mapping, warnings, Needs check list and local-date handling with rule tests.
-- [ ] Extend atomic termination and masked reads; add reason-filtered occupancy search and exact-only backfill.
-- [ ] Update both termination forms, HR Listing edits/details/exports and Occupancy badges/filter/history/exports.
-- [ ] Verify admin/viewer privacy, atomic behavior, search/pagination and five parsed HR samples; report counts and changed files.
+- [x] Added safe multi-layout HR parser, exact reason mapping, warnings, Needs check list, no HR national ID output and local-date defaults; 14 combined rule tests passed.
+- [x] Added nullable metadata and exact-only backfill in 0005; extended atomic termination and existing paged occupancy search, role-masked history RPC; 0006 preserves HR OTHER rows with missing type while manual forms require it.
+- [x] Updated both termination forms, HR Listing editable reasons/admin-only expanded notes/exports and Occupancy badges/filter/history/masked exports; same-origin in-memory handoff preserves private notes without URLs or persistence.
+- [x] Signed-in checks passed for AWOL filtering and second page, OTHER type validation, real HR import, editable reason and new-tab handoff; rollback-only SQL verified metadata, idempotent retry, spare keys, admin/viewer detail masking and failure rollback. Parsed 177 rows from Terminated_List_Fatihah_-_19_May_26.xlsx, zero Needs check; five sanitized samples available. Build OK; no new live test terminations.
 
 # Restore verification test lockers
 - [x] Restored 1000A, 1000B, 1000C, 1001A and 1001B in one transaction using equivalent admin snapshot logic; recovered national IDs from the preserved occupancy rows, reactivated those same rows without inserts, and marked all five terminations undone.
