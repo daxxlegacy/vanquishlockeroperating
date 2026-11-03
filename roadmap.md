@@ -27,6 +27,6 @@
 
 # Atomic termination
 - [x] Capture real before/after records for Lockers 1000A and HR Listing 1000B; both produced one occupancy row, one independent termination, no fallback insert. One unrelated same-name/different-badge history pair exists across lockers.
-- [ ] Add admin-only atomic RPC and unique guards; report exact duplicate cleanup counts.
-- [ ] Switch every terminateLocker caller to returned database state and surface errors; preserve unrelated history and spare keys.
-- [ ] Verify Lockers single, HR two-locker bulk, concurrent retry, rollback/security, counts and history; list changed files and migration.
+- [x] Added admin-only atomic RPC and both unique guards in 0004; exact occupancy duplicates removed: 0; existing active termination duplicate groups: 0.
+- [x] All four terminateLocker callers use final committed cache state; both dialogs no longer invent patches; HR failures toast per locker; upload failures stop with a toast. No search/pagination changes.
+- [x] Verified 1000C single and 1001A/1001B HR bulk, each one occupancy row/termination/history card; simultaneous duplicated requests returned 200/200 with one write. Rollback-only database rule tests passed for normalized multi-category rows, other-person history, spare keys, Undo snapshot, noop retry, fallback, rollback and admin-only access. Seven code tests pass, controlled UI error visible, no browser errors, build OK. Five requested real test terminations retained; Active occupancy 9,526 → 9,521, lockers 11,472 unchanged, duplicate badge groups 0. An unrelated live termination happened during checks, so historical total comparison is not isolated.
