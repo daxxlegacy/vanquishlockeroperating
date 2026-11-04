@@ -15,6 +15,16 @@ test("approved 6796–6798 groups exist once on the Phase 3 map without overlaps
   }
 });
 
+test("new units replace WUXI immediately after 6631–6633 on the same row", () => {
+  const sheet = layout["Phase 3 Locker Room"];
+  const row = sheet.cells.filter((cell) => cell.r === 9 && cell.c >= 2 && cell.c <= 7)
+    .sort((a, b) => a.c - b.c);
+  assert.deepEqual(row.map((cell) => [cell.c, cell.n]), [
+    [2, "6631"], [3, "6632"], [4, "6633"], [5, "6796"], [6, "6797"], [7, "6798"],
+  ]);
+  assert.equal(sheet.cells.some((cell) => cell.n === "WUXI"), false);
+});
+
 test("approved Numeric Lock has no spare key, including with null status", () => {
   assert.equal(isCombinationLock("Numeric Lock"), true);
   assert.equal(isCombinationLock("Round Lock Key"), false);
