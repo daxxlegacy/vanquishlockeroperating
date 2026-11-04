@@ -1,5 +1,5 @@
 # Add 18 lockers 6796A–6798F
-- [ ] Preview collisions, exact Phase 3 Locker Room spelling, neighbouring-series defaults, 18 proposed rows and map placement; no inserts before approval.
+- [x] Preview checked: no target collisions, exact Phase 3 Locker Room exists; 6794/6795 are Parking Manager, so proposed defaults come from all 648 Phase 3 numeric lockers. Visible total 11,472 (11,481 including 9 soft-deleted); location 648. Await confirmation before insertion.
 - [ ] After approval, insert 18 empty unassigned lockers atomically with one admin audit entry, no Occupancy rows, and matching Phase 3 map placement.
 - [ ] Publish committed rows to existing caches and verify natural order, map visibility, total 11,490 and Phase 3 count +18.
 
