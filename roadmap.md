@@ -1,7 +1,7 @@
 # Add 18 lockers 6796A–6798F
 - [x] Preview checked: no target collisions, exact Phase 3 Locker Room exists; 6794/6795 are Parking Manager, so proposed defaults come from all 648 Phase 3 numeric lockers. Visible total 11,472 (11,481 including 9 soft-deleted); location 648. Await confirmation before insertion.
 - [x] Revised numeric-lock preview: exact key_lock and unit_type Numeric Lock, row_label Phase 3 Locker Room from closest series 6633. Propose explicit spare_key_status null (existing numeric rows incorrectly retain missing/available; do not copy those). Existing spare query/export/summary and combination-lock warnings exclude numeric locks; missing identity filters count only active lockers. No inserts or existing-row changes.
-- [ ] After approval, insert 18 empty unassigned lockers atomically with one admin audit entry, no Occupancy rows, and matching Phase 3 map placement.
+- [ ] Approved: insert 18 empty unassigned Numeric Lock lockers atomically with null spare-key status, confirmed Phase 3 row label, one admin audit entry, no Occupancy rows, and matching Phase 3 map placement.
 - [ ] Publish committed rows to existing caches and verify natural order, map visibility, total 11,490, Phase 3 count +18 and unchanged Spare Keys totals.
 
 # Remove Spare Key sync and Upload History (replacement request)
