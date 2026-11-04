@@ -1,3 +1,8 @@
+# Add 18 lockers 6796A–6798F
+- [ ] Preview collisions, exact Phase 3 Locker Room spelling, neighbouring-series defaults, 18 proposed rows and map placement; no inserts before approval.
+- [ ] After approval, insert 18 empty unassigned lockers atomically with one admin audit entry, no Occupancy rows, and matching Phase 3 map placement.
+- [ ] Publish committed rows to existing caches and verify natural order, map visibility, total 11,490 and Phase 3 count +18.
+
 # Remove Spare Key sync and Upload History (replacement request)
 - [x] Removed the added Spare Keys upload button/dialog and deleted exclusive sync helper/tests; original listing/export unchanged. Shared reader no longer has spare mode; roster parser/header helper retained.
 - [x] Upload has exactly the five requested tabs in order and the exact subtitle; no history UI/reads or stale links remain. Roster Sync's upload_history insert, backups, generated types, database records and migrations retained. Tabs are not persisted; stale URLs open Roster Sync.
