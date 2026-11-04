@@ -216,6 +216,14 @@ export function LockerDetail({ lockerId, open, onClose, onUpdated, mode = "full"
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
               <Field label="Location" value={locker.location} onChange={(v) => update("location", v)} disabled={!isAdmin} />
               <Field label="Key Lock" value={locker.key_lock ?? ""} onChange={(v) => update("key_lock", v)} disabled={!isAdmin} />
+              {isCombinationLock(locker.key_lock) && (
+                <div>
+                  <Label>Spare Key</Label>
+                  <div className="h-9 flex items-center">
+                    <KeyBadge status={locker.spare_key_status} keyLock={locker.key_lock} />
+                  </div>
+                </div>
+              )}
               <Field label="Badge Number" value={locker.badge_number ?? ""} onChange={(v) => update("badge_number", v)} disabled={!isAdmin} />
               <Field label="Employee Name" value={locker.employee_name ?? ""} onChange={(v) => update("employee_name", v)} disabled={!isAdmin} />
               <Field label="Work Location" value={locker.work_location ?? ""} onChange={(v) => update("work_location", v)} disabled={!isAdmin} />
