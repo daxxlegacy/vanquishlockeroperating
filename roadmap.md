@@ -1,6 +1,6 @@
 # Correct Phase 3 map placement
-- [ ] Preview the live 6631/6632/6633/WUXI row and check space before saving; ask for placement choice if blocked.
-- [ ] Update only Phase 3 in the live saved layout and default; verify unit counts, empty occupancy and locker-list click.
+- [x] Previewed live row: 6631 | 6632 | 6633 | WUXI | empty | empty → 6631 | 6632 | 6633 | 6796 | 6797 | 6798; columns 6/7 free, no grid expansion needed.
+- [x] Updated only Phase 3 saved cells with guarded transaction and matched the default to the saved Phase 3 sheet. Preserved other cells and locations; removed prior below-row duplicates and WUXI. Signed-in verification: new units green, 0/6, clicking 6796 opens 6796A–F; three tests pass. Count discrepancy explained: tab previously 112 including WUXI plus the already-added three units; now 111 real units (108 original +3), not the requested 112.
 
 # Add 18 lockers 6796A–6798F
 - [x] Preview checked: no target collisions, exact Phase 3 Locker Room exists; 6794/6795 are Parking Manager, so proposed defaults come from all 648 Phase 3 numeric lockers. Visible total 11,472 (11,481 including 9 soft-deleted); location 648. Await confirmation before insertion.

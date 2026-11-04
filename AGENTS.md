@@ -6,6 +6,7 @@
 - Keep new-locker validation and empty defaults in `src/lib/add-locker.ts`; derive new unit labels through the canonical category helper without changing existing inventory types.
 - Publish locker patches to paginated views for immediate first-page natural-sort insertion; reconcile custom sorts and other page boundaries through the existing server refresh rather than appending out-of-order rows.
 - Use the shared combination-lock predicate and KeyBadge for numeric-lock spare-key detail display so null statuses remain N/A rather than missing or unknown.
+- Treat the saved current map layout as authoritative for targeted placement corrections and mirror only the affected default sheet; preserve other locations and report placeholder-count discrepancies instead of inventing units.
 - Keep reconciliation reachable through its canonical `/reconcile` route with HR Listing as its unpersisted default and duplicate checks only on Occupancy; Admin's System section retains termination history and deletion audits without a separate automation rollback panel.
 - Keep the Status Change Log's duplicate-noise predicate in `src/lib/status-change-log.ts` with its rule test; apply it alongside the server query filter so returned cleanup noise cannot render.
 - Keep HR header-layout parsing and termination reason normalization in dedicated tested helpers; parsed HR data excludes national IDs, and private detail notes are stripped before Reconcile persistence.
