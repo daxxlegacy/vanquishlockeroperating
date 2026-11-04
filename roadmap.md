@@ -1,8 +1,8 @@
 # Add 18 lockers 6796A–6798F
 - [x] Preview checked: no target collisions, exact Phase 3 Locker Room exists; 6794/6795 are Parking Manager, so proposed defaults come from all 648 Phase 3 numeric lockers. Visible total 11,472 (11,481 including 9 soft-deleted); location 648. Await confirmation before insertion.
 - [x] Revised numeric-lock preview: exact key_lock and unit_type Numeric Lock, row_label Phase 3 Locker Room from closest series 6633. Propose explicit spare_key_status null (existing numeric rows incorrectly retain missing/available; do not copy those). Existing spare query/export/summary and combination-lock warnings exclude numeric locks; missing identity filters count only active lockers. No inserts or existing-row changes.
-- [ ] Approved: insert 18 empty unassigned Numeric Lock lockers atomically with null spare-key status, confirmed Phase 3 row label, one admin audit entry, no Occupancy rows, and matching Phase 3 map placement.
-- [ ] Publish committed rows to existing caches and verify natural order, map visibility, total 11,490, Phase 3 count +18 and unchanged Spare Keys totals.
+- [x] Inserted all 18 approved empty unassigned Numeric Lock lockers atomically with null spare-key status and confirmed Phase 3 row label; one Farid audit entry and zero Occupancy rows. Saved map groups placed below 6631–6633 without overlaps; default map extended without moving existing cells.
+- [x] Published 18 committed rows through existing cache patch and map refresh; signed-in map opens all three six-compartment groups and detail shows N/A. Verified total 11,490, Phase 3 648 → 666, Spare Keys 6,035 total / 3,763 missing unchanged; searches exclude all three series and actual Excel export has 6,035 rows with zero new lockers. Six rule tests pass and build OK.
 
 # Remove Spare Key sync and Upload History (replacement request)
 - [x] Removed the added Spare Keys upload button/dialog and deleted exclusive sync helper/tests; original listing/export unchanged. Shared reader no longer has spare mode; roster parser/header helper retained.
