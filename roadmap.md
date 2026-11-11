@@ -1,7 +1,7 @@
 # Copyright and proprietary license
 - [x] Add exact owner license, private package metadata, ownership-only README and non-generated source headers.
 - [x] Add shared non-overlapping footer, root author/copyright metadata and authenticated leaf noindex, nofollow without hiding public QR pages.
-- [ ] Verify source-only changes, existing rule tests, signed-in/public footer, mobile layout and preview compilation.
+- [x] Verified 108 source headers with no library/component code changes, 28 existing rule tests, authenticated footers and noindex on eight pages, public QR footers without noindex at 1280/375/320px, unchanged Lockers/Occupancy content positions, no runtime errors and passing preview compilation; complete 114-file list supplied.
 
 # Correct Phase 3 map placement
 - [x] Previewed live row: 6631 | 6632 | 6633 | WUXI | empty | empty → 6631 | 6632 | 6633 | 6796 | 6797 | 6798; columns 6/7 free, no grid expansion needed.
