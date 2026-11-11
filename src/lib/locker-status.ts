@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Centralized locker status metadata so colors / labels / options stay in sync.
 export const LOCKER_STATUSES = [
   "active",

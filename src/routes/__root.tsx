@@ -1,4 +1,6 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { CopyrightFooter } from "@/components/CopyrightFooter";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
@@ -26,6 +28,8 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
+      { name: "author", content: "Farid Asnawi" },
+      { name: "copyright", content: "© 2026 Farid Asnawi. All rights reserved." },
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" },
       { title: "VanquishCapital — LockerOps" },
       {
@@ -41,16 +45,6 @@ export const Route = createRootRoute({
       {
         name: "twitter:description",
         content: "Manage 10,000+ lockers, track occupancy, and sync employee status from a single file upload.",
-      },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1e34e11e-fdbb-4ee9-9e79-bbb1f3fa43d1/id-preview-11c5aeba--5d64ac73-9092-43d3-84f9-061c781c7a0c.lovable.app-1778143678341.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1e34e11e-fdbb-4ee9-9e79-bbb1f3fa43d1/id-preview-11c5aeba--5d64ac73-9092-43d3-84f9-061c781c7a0c.lovable.app-1778143678341.png",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
@@ -97,6 +91,7 @@ function RootComponent() {
     <AuthProvider>
       <CachePrewarm />
       <Outlet />
+      <CopyrightFooter />
       <Toaster richColors position="top-right" />
     </AuthProvider>
   );

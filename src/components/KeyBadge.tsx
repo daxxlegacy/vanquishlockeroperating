@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { Badge } from "@/components/ui/badge";
 
 export const SPARE_KEY_SWATCH: Record<string, string> = {

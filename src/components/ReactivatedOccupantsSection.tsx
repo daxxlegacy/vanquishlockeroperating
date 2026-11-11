@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Read-only report: employees with a Terminate event followed by a later Active
 // event (same locker = likely re-issue, different locker = reassignment).
 // Purely for review — no fix actions, since a legitimate rehire looks identical

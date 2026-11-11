@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -82,6 +83,7 @@ const GRID_TOTAL_WIDTH = COLS.reduce((s, c) => s + c.w, 0);
 export const Route = createFileRoute("/occupancy")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Occupancy History — LockerOps" },
       { name: "description", content: "Combined occupancy history for every locker (Full, Staff, Shoe), including current holders, previous owners and terminations." },
       { property: "og:title", content: "Occupancy History — LockerOps" },

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Soft-delete + audit logging + undo helpers (15-minute window).
 import { supabase } from "@/integrations/supabase/client";
 

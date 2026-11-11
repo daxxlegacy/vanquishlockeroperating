@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Renders a masked National ID with an optional Reveal button (eye icon)
 // that only appears for users with admin or `view_national_id` permission.
 // The revealed value automatically re-masks after 10 seconds.

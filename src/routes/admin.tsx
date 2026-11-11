@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Admin command center — dashboard overview + grouped collapsible sections.
 import { DeletionsPanel } from "@/components/operations/DeletionsPanel";
 import { RecentTerminationsPanel } from "@/components/operations/RecentTerminationsPanel";
@@ -27,6 +28,7 @@ import { type AppPermission, PERMISSION_LABELS, PAGE_PERMISSIONS, ACTION_PERMISS
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [
+      { name: "robots", content: "noindex, nofollow" },
     { title: "Admin — LockerOps" },
     { name: "description", content: "Manage LockerOps access, reconciliation, termination history, and deletion audits." },
     { property: "og:title", content: "Admin — LockerOps" },

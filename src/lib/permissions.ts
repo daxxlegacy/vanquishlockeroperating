@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Granular permission helpers — admins implicitly have everything.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";

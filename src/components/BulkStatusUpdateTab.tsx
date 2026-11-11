@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Bulk Status Update tab — updates ONLY locker_number + status.
 // Never touches employee_name, badge_number, or national_id.
 import { useMemo, useState } from "react";

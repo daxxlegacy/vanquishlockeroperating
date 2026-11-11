@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 export type SortState = { col: string; dir: "asc" | "desc" } | null;

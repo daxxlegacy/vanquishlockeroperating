@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Lazy-loaded SheetJS. Import handlers call `await getXLSX()` so the
 // ~1 MB library only downloads when a user actually imports or exports.
 let promise: Promise<typeof import("xlsx")> | null = null;

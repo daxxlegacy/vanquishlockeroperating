@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Admin panel: QR code linking to /locker-identity-update plus a list of
 // submitted identity claims. Independent from the Locker Inquiry QR.
 // View-only: no approve/reject workflow — admins consume submissions directly.

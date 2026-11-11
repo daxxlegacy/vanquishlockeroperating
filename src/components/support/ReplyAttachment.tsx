@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Renders a reply attachment thumbnail using a short-lived signed URL.
 // Clicking it either opens the URL directly (fallback) or triggers a
 // caller-provided lightbox handler so the modal can display a fresh URL and

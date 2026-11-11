@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Normalize a phone number to E.164-ish digits for wa.me links.
 // Defaults to Malaysia (60) when no country code is present.
 export function normalizeWhatsAppNumber(raw: string | null | undefined): string | null {

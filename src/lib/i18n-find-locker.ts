@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // i18n dictionary for the public Locker Inquiry (/find-locker) page.
 // Keep all user-facing strings for the page + its help menu / forms here so
 // translations are easy to review and edit in one file.

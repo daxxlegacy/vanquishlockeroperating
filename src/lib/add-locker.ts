@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { deriveOccCategory, OCC_CATEGORY_SHORT } from "@/lib/locker-category";
 
 export function normalizedNewLockerNumber(raw: string): string {

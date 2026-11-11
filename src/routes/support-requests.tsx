@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -65,6 +66,12 @@ import { formatDateTime } from "@/lib/format-date";
 export const Route = createFileRoute("/support-requests")({
   head: () => ({
     meta: [
+      { property: "og:title", content: "Support Requests — LockerOps" },
+      { property: "og:description", content: "Review, reply to, and resolve support requests from Locker Inquiry." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Support Requests — LockerOps" },
       { name: "description", content: "Review, reply to, and resolve support requests from Locker Inquiry." },
     ],

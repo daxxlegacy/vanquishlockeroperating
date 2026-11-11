@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { Badge } from "@/components/ui/badge";
 import { Tooltip,TooltipContent,TooltipTrigger,TooltipProvider } from "@/components/ui/tooltip";
 export function TerminationReasonBadge({code,type,category}:{code?:string|null;type?:string|null;category?:string|null}) {

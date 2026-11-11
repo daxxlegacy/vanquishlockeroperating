@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Support Requests helpers: typed row + realtime count hook for the AppHeader badge.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";

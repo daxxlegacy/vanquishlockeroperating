@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Stores the set of locker numbers whose batch intake failed to parse during
 // the most recent upload. Used by the map and lockers table to surface a
 // visual warning on the affected cells/rows.

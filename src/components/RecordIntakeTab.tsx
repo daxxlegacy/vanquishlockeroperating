@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Record Intake upload tab — parses locker intake Excel files
 // (e.g. "Locker_List_at_09_June_2026__FW__128_.xlsx") and applies them to
 // the lockers table. Self-contained; pulled in by /upload.

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Status Change Log panel (Reconcile page).
 //
 // REQUIREMENT: the manual, date-range scoped "Clear History" action below is the

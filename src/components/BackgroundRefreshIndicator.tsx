@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { Loader2 } from "lucide-react";
 import { useLockersRefreshing } from "@/lib/lockers-cache";
 import { useOccupancyRefreshing } from "@/lib/occupancy-cache";

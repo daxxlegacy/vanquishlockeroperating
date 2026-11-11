@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Admin-only cleanup for duplicate TERMINATED occupancy rows.
 // Detection + deletion run server-side via RPCs; Active rows are never touched.
 import { useEffect, useMemo, useState } from "react";

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Lock, Upload, LayoutGrid, Table as TableIcon, LogOut, Shield, Key, UserCog, History, ShieldAlert, Menu, LifeBuoy } from "lucide-react";

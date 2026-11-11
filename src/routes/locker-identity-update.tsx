@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -13,6 +14,11 @@ import lockerDiagram from "@/assets/locker-diagram.png.asset.json";
 export const Route = createFileRoute("/locker-identity-update")({
   head: () => ({
     meta: [
+      { property: "og:title", content: "Kemas Kini Identiti Loker" },
+      { property: "og:description", content: "Daftarkan identiti pemilik loker semasa." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+
       { title: "Kemas Kini Identiti Loker" },
       { name: "description", content: "Daftarkan identiti pemilik loker semasa." },
     ],

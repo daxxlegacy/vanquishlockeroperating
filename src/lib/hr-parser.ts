@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { parseBatchIntake } from "@/lib/locker-utils";
 import { mapHrReason, mapTerminationType, reasonClash, type TerminationMetadata } from "./termination-reasons";
 

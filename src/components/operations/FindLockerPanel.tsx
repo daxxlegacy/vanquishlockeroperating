@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Admin panel: shows a QR code linking to /find-locker plus recent lookup attempts.
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";

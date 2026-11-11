@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Full backup + restore server functions (admin-only).
 // "Data" = operational locker tables. "System" = users/roles/permissions.
 import { createServerFn } from "@tanstack/react-start";

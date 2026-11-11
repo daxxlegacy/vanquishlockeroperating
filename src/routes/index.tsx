@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState } from "react";
@@ -36,6 +37,7 @@ type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Locker Map — LockerOps" },
       { name: "description", content: "Interactive locker map mirroring the physical layout of each area." },
       { property: "og:title", content: "Locker Map — LockerOps" },

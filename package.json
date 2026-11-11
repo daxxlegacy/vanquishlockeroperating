@@ -1,6 +1,8 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
+  "license": "UNLICENSED",
+  "author": "Farid Asnawi",
   "sideEffects": false,
   "type": "module",
   "scripts": {

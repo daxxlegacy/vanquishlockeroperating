@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Shared helper for signing a ticket attachment path into a short-lived URL.
 // Admin (signed-in) path signs directly against Supabase storage; public
 // ticket viewers go through the support-ticket edge function.

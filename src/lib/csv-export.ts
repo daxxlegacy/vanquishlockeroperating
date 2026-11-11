@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Tiny CSV downloader used across automation/preview exports.
 export function downloadCsv(filename: string, rows: Record<string, unknown>[]): void {
   if (rows.length === 0) {

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState, memo } from "react";
@@ -46,6 +47,7 @@ const SPARE_OPTIONS = [
 export const Route = createFileRoute("/spare-keys")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Spare Keys — LockerOps" },
       { name: "description", content: "Listing of every locker's spare key status, synced from the spare key sheet." },
       { property: "og:title", content: "Spare Keys — LockerOps" },

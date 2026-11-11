@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -33,6 +34,11 @@ export const Route = createFileRoute("/ticket")({
   validateSearch: (s) => searchSchema.parse(s),
   head: () => ({
     meta: [
+      { property: "og:title", content: "Check ticket status" },
+      { property: "og:description", content: "View updates and reply to your support ticket." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+
       { title: "Check ticket status" },
       { name: "description", content: "View updates and reply to your support ticket." },
     ],

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Full-dataset lockers cache.
 //
 // IMPORTANT: list views (Lockers, Spare Keys, Occupancy) no longer use this —
