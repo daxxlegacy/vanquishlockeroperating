@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Click a locker label on the map → see all its compartments and pick one.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { STATUS_CELL, STATUS_SWATCH, STATUS_LABEL, LOCKER_STATUSES, type LockerStatus } from "@/lib/locker-status";

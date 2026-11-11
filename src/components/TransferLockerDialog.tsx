@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";

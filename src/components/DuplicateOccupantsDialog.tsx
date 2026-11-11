@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Report tool: finds employees who appear as an Active occupant in more than
 // one locker. Read-only report + manual per-locker actions — never auto-fixes.
 import { useCallback, useEffect, useMemo, useState } from "react";

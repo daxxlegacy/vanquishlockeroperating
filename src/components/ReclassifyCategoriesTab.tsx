@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Reclassify Categories — one-time admin tool. Scans every locker_occupancy
 // row, derives the correct category from the locker number pattern, and lets
 // an admin review mismatches before applying them.

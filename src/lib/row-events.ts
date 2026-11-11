@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Tiny cross-module event bus so paginated list views can react to single-row
 // mutations performed by dialogs (Save, Terminate, Swap, Transfer, Delete…)
 // without holding the whole table in memory.

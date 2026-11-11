@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Server-side paginated access to the combined occupancy view.
 //
 // The database function search_occupancy() unions locker_occupancy with any

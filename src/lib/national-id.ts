@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Client helpers for National ID masking + on-demand reveal.
 // The database enforces masking through the `lockers_masked` /
 // `locker_occupancy_masked` views; these helpers keep the frontend consistent.

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import type { TerminationMetadata } from "./termination-reasons";
 /** Pass private HR notes only in memory to the same-origin termination tab. */
 export function openTerminationTab(lockerId:string,date:string|null|undefined,metadata:TerminationMetadata) {

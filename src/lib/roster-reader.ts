@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import type { RosterFileResult } from "./roster-parser";
 
 /** Ephemeral worker: file contents never enter storage or the server. */

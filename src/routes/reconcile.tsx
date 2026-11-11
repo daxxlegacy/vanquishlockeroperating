@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -36,6 +37,7 @@ import { confirmNidExport } from "@/lib/national-id";
 export const Route = createFileRoute("/reconcile")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Reconcile HR roster — LockerOps" },
       { name: "description", content: "Compare HR listing against active locker occupants to find users who must be terminated, rehired, or are missing from HR." },
       { property: "og:title", content: "Reconcile HR roster — LockerOps" },

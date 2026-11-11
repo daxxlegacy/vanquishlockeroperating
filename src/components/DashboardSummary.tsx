@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Admin/staff dashboard summary — live stat cards for key operational KPIs.
 // Reuses count_occupancy_drift() RPC and simple head+count queries for
 // support requests, pending identity claims, spare-key issues, and recent

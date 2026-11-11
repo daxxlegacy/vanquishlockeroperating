@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Server-side paginated access to the lockers table.
 //
 // Only the current page (100 rows by default) is ever fetched and held in

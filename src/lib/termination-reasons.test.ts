@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mapHrReason,mapTerminationType,suggestedType,reasonClash,validTerminationMetadata,localDateIso } from "./termination-reasons";

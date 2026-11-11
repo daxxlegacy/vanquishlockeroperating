@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Dedicated Transfer & Swap history log shown on the Reconcile page.
 // Intentionally separate from `terminations` and `locker_occupancy` so that
 // clearing this history never touches termination or occupancy data.

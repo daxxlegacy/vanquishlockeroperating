@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +26,7 @@ type Locker = Database["public"]["Tables"]["lockers"]["Row"];
 export const Route = createFileRoute("/terminate/$lockerId")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Terminate user — LockerOps" },
       { name: "description", content: "Confirm termination of a locker user with date and reason." },
       { property: "og:title", content: "Terminate user — LockerOps" },

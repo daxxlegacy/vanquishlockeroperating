@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Canonical locker category derivation from the physical numbering convention.
 //
 //  - main  (Full Locker)  : digits followed by one or more letters — 1A, 1B, 1411E

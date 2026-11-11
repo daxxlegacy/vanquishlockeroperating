@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Sync locker mutations from the /lockers page into the locker_occupancy
 // history. Operates across ALL categories (main, staff, shoe) because a
 // single locker_number can live in any category. Maintains the invariant

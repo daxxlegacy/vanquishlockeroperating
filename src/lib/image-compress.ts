@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Client-side image compression for ticket attachments.
 // Downscales to max 1600px on the longest side and re-encodes as JPEG q=0.85.
 export async function compressImage(file: File, maxSide = 1600, quality = 0.85): Promise<Blob> {

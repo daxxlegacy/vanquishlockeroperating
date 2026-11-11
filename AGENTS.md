@@ -14,3 +14,4 @@
 - Hand off HR termination metadata to new termination tabs through source-checked, same-origin messages only; private free text must never enter URLs or browser persistence.
 - Keep Upload's three roster tools on one ephemeral Web Worker reader with per-sheet/header-block name mapping and tested normalization; background parsing avoids blocking the page and national IDs remain transient with permission-aware export masking.
 - Upload retains only roster sync/check, intake, bulk status and category reclassification; its ephemeral reader serves roster tools only, while legacy upload-history writes stay separate from presentation to preserve audit data without showing a history tab.
+- Mount the copyright footer once after the root outlet and select its visibility from route and existing auth state; normal document flow preserves page layouts and leaf robots metadata avoids hiding public QR pages.

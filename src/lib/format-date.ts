@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Format dates as dd/mm/yyyy or dd/mm/yyyy HH:mm (24h) for user-facing display.
 export function formatDate(input: string | Date): string {
   const d = typeof input === "string" ? new Date(input) : input;

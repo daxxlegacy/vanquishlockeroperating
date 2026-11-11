@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Shared in-memory occupancy cache (per category) with localStorage warm
 // cache and realtime patching. Makes switching between Full/Staff/Shoe tabs
 // and re-visiting the Occupancy page instant.

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Detection + cleanup surface for duplicate history entries: the same event
 // (badge + name + status + date) recorded more than once for one locker,
 // across locker_occupancy and terminations. Report + one-click de-dupe.

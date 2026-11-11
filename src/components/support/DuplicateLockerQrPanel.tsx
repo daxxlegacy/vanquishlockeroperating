@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Admin panel: QR code for the public "Duplicate Locker" notice poster.
 // Points at /locker-identity-update?type=multiple_locker&source=duplicate_notice
 // so approval releases the non-selected lockers to 'repair' (not 'empty').

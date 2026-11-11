@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import type { Database } from "@/integrations/supabase/types";
 import type { OccupancyRow } from "@/lib/occupancy-cache";
 

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PageGuard } from "@/components/PageGuard";
@@ -108,6 +109,7 @@ function writeLockerFilters(filters: LockerFilterState) {
 export const Route = createFileRoute("/lockers")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Lockers — LockerOps" },
       { property: "og:title", content: "Lockers — LockerOps" },
       { property: "og:description", content: "Search and manage locker inventory and assigned employees." },

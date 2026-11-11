@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Shared full-screen image lightbox used across the app (support ticket
 // composer preview, admin conversation thread, public ticket view, and any
 // future places that show image attachments).

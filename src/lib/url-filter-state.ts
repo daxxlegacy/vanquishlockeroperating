@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Helpers to encode/decode page filter state into a single `f` URL param so
 // users can bookmark / share a filtered view. We base64-JSON encode to keep
 // the URL short and to avoid escaping headaches with checkbox value lists.

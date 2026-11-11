@@ -1,3 +1,8 @@
+# Copyright and proprietary license
+- [x] Add exact owner license, private package metadata, ownership-only README and non-generated source headers.
+- [x] Add shared non-overlapping footer, root author/copyright metadata and authenticated leaf noindex, nofollow without hiding public QR pages.
+- [ ] Verify source-only changes, existing rule tests, signed-in/public footer, mobile layout and preview compilation.
+
 # Correct Phase 3 map placement
 - [x] Previewed live row: 6631 | 6632 | 6633 | WUXI | empty | empty → 6631 | 6632 | 6633 | 6796 | 6797 | 6798; columns 6/7 free, no grid expansion needed.
 - [x] Updated only Phase 3 saved cells with guarded transaction and matched the default to the saved Phase 3 sheet. Preserved other cells and locations; removed prior below-row duplicates and WUXI. Signed-in verification: new units green, 0/6, clicking 6796 opens 6796A–F; three tests pass. Count discrepancy explained: tab previously 112 including WUXI plus the already-added three units; now 111 real units (108 original +3), not the requested 112.

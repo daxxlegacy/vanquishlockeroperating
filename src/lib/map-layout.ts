@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { getXLSX } from "@/lib/xlsx-lazy";
 import defaultLayoutData from "@/data/locker-map-layout.json";
 import { supabase } from "@/integrations/supabase/client";

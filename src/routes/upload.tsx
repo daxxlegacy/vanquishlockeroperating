@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageGuard } from "@/components/PageGuard";
 import { useEffect, useMemo, useState } from "react";
@@ -33,6 +34,7 @@ import { confirmNidExport, maskNationalId, useCanRevealNationalId } from "@/lib/
 export const Route = createFileRoute("/upload")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Upload Locker Data — LockerOps" },
       { name: "description", content: "Upload locker data file. The system auto-detects columns and syncs records." },
       { property: "og:title", content: "Upload Locker Data — LockerOps" },

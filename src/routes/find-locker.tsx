@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,11 @@ import { t, useLang, type Lang } from "@/lib/i18n-find-locker";
 export const Route = createFileRoute("/find-locker")({
   head: () => ({
     meta: [
+      { property: "og:title", content: "Locker Inquiry" },
+      { property: "og:description", content: "Look up your assigned locker." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+
       { title: "Locker Inquiry" },
       { name: "description", content: "Look up your assigned locker." },
     ],

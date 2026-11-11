@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Undo a recent termination (15 minute window) — restores employee, badge, and prior status.
 // Also exposes terminateLocker() for one-shot terminations (used by bulk + dialog flows).
 import { supabase } from "@/integrations/supabase/client";

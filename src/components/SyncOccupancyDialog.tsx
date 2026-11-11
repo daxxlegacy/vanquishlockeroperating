@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // One-time reconciliation tool: fixes drift between locker_occupancy and lockers.
 // Preview → Apply pattern. Operates across ALL categories (main, staff, shoe).
 import { deriveOccCategoryOr } from "@/lib/locker-category";

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { useEffect, useMemo, useState } from "react";
 import { getXLSX } from "@/lib/xlsx-lazy";
 import Papa from "papaparse";

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // Server-side paginated access to the Spare Keys listing.
 // Numeric / numerical (combination) locks have no spare key and are excluded
 // inside the database function, together with the four status counts and the

@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 // IndexedDB-backed persistence for the Reconcile page.
 //
 // Why not localStorage: a reconciled HR roster easily exceeds the ~5 MB

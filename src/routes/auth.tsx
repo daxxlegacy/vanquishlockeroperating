@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
@@ -11,7 +12,12 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
-    meta: [{ title: "Sign in — LockerOps" }, { name: "description", content: "Sign-in and access request for LockerOps." }],
+    meta: [
+      { property: "og:title", content: "Sign in — LockerOps" },
+      { property: "og:description", content: "Sign-in and access request for LockerOps." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+{ title: "Sign in — LockerOps" }, { name: "description", content: "Sign-in and access request for LockerOps." }],
   }),
   component: AuthPage,
 });

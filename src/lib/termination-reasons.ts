@@ -1,3 +1,4 @@
+// © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 export const REASON_CODES = ["RESIGN", "AWOL", "RTV", "OTHER"] as const;
 export type ReasonCode = typeof REASON_CODES[number];
 export type TerminationType = "Voluntary" | "Involuntary";
