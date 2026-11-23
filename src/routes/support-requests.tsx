@@ -301,7 +301,7 @@ function SupportRequestsPage() {
         </div>
 
         <Tabs defaultValue="requests" className="mb-6">
-          <TabsList>
+          <TabsList className="max-w-full overflow-x-auto justify-start">
             <TabsTrigger value="requests" className="gap-1.5">
               <LifeBuoy className="h-4 w-4" /> Requests
             </TabsTrigger>

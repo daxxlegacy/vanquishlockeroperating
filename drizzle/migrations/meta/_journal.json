@@ -57,6 +57,13 @@
       "when": 1795411980712,
       "tag": "0007_bulk_spare_key_status",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795412676157,
+      "tag": "0008_lookup_attempt_admin_visibility",
+      "breakpoints": true
     }
   ]
 }

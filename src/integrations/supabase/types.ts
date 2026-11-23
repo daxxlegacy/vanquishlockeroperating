@@ -295,23 +295,35 @@ export type Database = {
       locker_lookup_attempts: {
         Row: {
           attempted_at: string
+          entered_badge: string | null
+          failure_reason: string | null
           id: string
           ip_address: string | null
           locker_number: string | null
+          owner_badge_snapshot: string | null
+          owner_name_snapshot: string | null
           success: boolean
         }
         Insert: {
           attempted_at?: string
+          entered_badge?: string | null
+          failure_reason?: string | null
           id?: string
           ip_address?: string | null
           locker_number?: string | null
+          owner_badge_snapshot?: string | null
+          owner_name_snapshot?: string | null
           success?: boolean
         }
         Update: {
           attempted_at?: string
+          entered_badge?: string | null
+          failure_reason?: string | null
           id?: string
           ip_address?: string | null
           locker_number?: string | null
+          owner_badge_snapshot?: string | null
+          owner_name_snapshot?: string | null
           success?: boolean
         }
         Relationships: []
@@ -1243,6 +1255,10 @@ export type Database = {
       }
       locker_facets: { Args: never; Returns: Json }
       locker_sort_text: { Args: { _raw: string }; Returns: string }
+      lookup_ip_needs_review: {
+        Args: { _at: string; _ip: string }
+        Returns: boolean
+      }
       mask_national_id: { Args: { _nid: string }; Returns: string }
       occupancy_facets: { Args: never; Returns: Json }
       reveal_national_id: {
@@ -1263,6 +1279,16 @@ export type Database = {
           _sort_dir?: string
           _status?: string
           _status_in?: string[]
+        }
+        Returns: Json
+      }
+      search_lookup_attempts: {
+        Args: {
+          _before?: string
+          _from?: string
+          _offset?: number
+          _result?: string
+          _search?: string
         }
         Returns: Json
       }

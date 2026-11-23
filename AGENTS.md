@@ -1,4 +1,5 @@
 # Architecture rules
+- Keep inquiry log presentation in an admin-only paginated RPC/card and explicit ID-free logging allowlist; throttled log rows are excluded from existing shared rate-limit counters so audit visibility never extends lockouts.
 
 - Keep termination identity matching and display-only history deduplication in `src/lib/termination-history.ts`, with rule tests beside it, so synchronization and history rendering share normalization without coupling delete targets.
 - Insert fallback terminated occupancy through the authenticated, security-invoker database RPC with `ON CONFLICT DO NOTHING`; the partial expression index cannot be targeted safely by the browser client's ordinary upsert.

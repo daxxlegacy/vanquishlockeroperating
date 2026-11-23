@@ -46,6 +46,8 @@ Deno.serve(async (req) => {
       .select("*", { count: "exact", head: true })
       .eq("ip_address", ip)
       .eq("success", false)
+      // New throttled lookup logs must not extend this existing shared rate limit.
+      .or('failure_reason.is.null,failure_reason.neq.rate_limited')
       .gte("attempted_at", since);
     if ((count ?? 0) >= 10) {
       return json({ error: "Too many attempts, try again later" }, 429);

@@ -1,3 +1,7 @@
+# Lookup attempt visibility
+- [x] Added private ID-free snapshots, admin-only 50-row search/filter/export, trailing-hour review flags and shared Locker Detail; deployed existing lookup/ticket services while excluding throttle logs from their unchanged rate-limit counters.
+- [x] Daily 02:00 UTC 90-day cleanup active; rollback-only threshold/retention/privacy rules and eight focused tests pass. Verified live success/four generic failures, five enriched sample rows, pagination, exports, standard detail, desktop/mobile and build OK. No Lockers/Occupancy/public-page edits; user-agent not already logged, ID checks not added. First scheduled cleanup awaits its normal daily run.
+
 # Bulk spare key status card
 - [x] Added isolated admin-only card, shared title-aware reader, tested preview/normalization, downloads and 100-row paging; original status card and Lockers/Occupancy pages unchanged.
 - [x] Added admin-only guarded 500-row RPC with atomic spare-key audit, optimistic/cache reconciliation and clearly marked Spare key log entries; numeric and stale rows skipped and unsigned/501-row calls rejected.

@@ -4,6 +4,7 @@
 // per IP based on failed attempts.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { attemptLog, type FailureReason } from './logging.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,31 +42,39 @@ Deno.serve(async (req) => {
   const fwd = req.headers.get("x-forwarded-for") ?? "";
   const ip = (fwd.split(",")[0] || req.headers.get("cf-connecting-ip") || "unknown").trim();
 
+  let body: any = {};
+  try { body = await req.json(); } catch { /* ignore */ }
+  const badge_number = clean(body.badge_number);
+  const badge_digits = digitsOnly(badge_number);
+  const locker_number = clean(body.locker_number);
+  const logAttempt = async (success: boolean, locker_num: string | null, reason: FailureReason | null, matched?: any) => {
+    let owner = matched ?? null;
+    if (locker_num) {
+      const { data } = await supabase.from('lockers').select('employee_name,badge_number,status').eq('locker_number',locker_num).is('deleted_at',null).maybeSingle();
+      if (data) owner = data;
+    }
+    const failure = reason === 'badge_mismatch' && locker_num
+      ? !owner ? 'locker_not_found' : owner.status === 'empty' ? 'empty_locker' : reason
+      : reason;
+    await supabase.from('locker_lookup_attempts').insert(attemptLog({ip,locker:locker_num,badge:badge_number,success,owner,reason:failure}));
+  };
+
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const { count } = await supabase
     .from("locker_lookup_attempts")
     .select("*", { count: "exact", head: true })
     .eq("ip_address", ip)
     .eq("success", false)
+    // Throttled requests were previously unlogged; exclude them to keep the same lockout window.
+    .or('failure_reason.is.null,failure_reason.neq.rate_limited')
     .gte("attempted_at", since);
   if ((count ?? 0) >= 10) {
+    await logAttempt(false, locker_number || null, 'rate_limited');
     return json({ error: "Too many attempts, try again later" }, 429);
   }
 
-  let body: any = {};
-  try { body = await req.json(); } catch { /* ignore */ }
-  const badge_number = clean(body.badge_number);
-  const badge_digits = digitsOnly(badge_number);
-  const locker_number = clean(body.locker_number);
-
-  const logAttempt = async (success: boolean, locker_num: string | null) => {
-    await supabase.from("locker_lookup_attempts").insert({
-      ip_address: ip, locker_number: locker_num, success,
-    });
-  };
-
   if (!badge_number) {
-    await logAttempt(false, null);
+    await logAttempt(false, null, 'badge_mismatch');
     return json({ error: "No matching record found" }, 404);
   }
 
@@ -115,12 +124,12 @@ Deno.serve(async (req) => {
   const results = actives.length ? actives : deduped;
 
   if (results.length === 0) {
-    await logAttempt(false, locker_number || null);
+    await logAttempt(false, locker_number || null, 'badge_mismatch');
     return json({ error: "No matching record found" }, 404);
   }
 
   // Log a single successful attempt per search request.
-  await logAttempt(true, results[0].locker_number ?? null);
+  await logAttempt(true, results[0].locker_number ?? null, null, results[0]);
 
   const payload = results.map((m: any) => ({
     employee_name: m.employee_name ?? null,
