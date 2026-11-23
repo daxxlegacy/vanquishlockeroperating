@@ -1,3 +1,8 @@
+# Bulk spare key status card
+- [x] Added isolated admin-only card, shared title-aware reader, tested preview/normalization, downloads and 100-row paging; original status card and Lockers/Occupancy pages unchanged.
+- [x] Added admin-only guarded 500-row RPC with atomic spare-key audit, optimistic/cache reconciliation and clearly marked Spare key log entries; numeric and stale rows skipped and unsigned/501-row calls rejected.
+- [x] Verified five distinct lockers / six input rows: one change, two unchanged, three problems; sample 1B changed Missing → Unknown and restored Missing through the same card, all other fields unchanged, Spare Keys and Spare key audit UI readback passed. 301-change typed confirmation and pagination verified; 14 tests and compilation pass. New card fits mobile; pre-existing Upload tab strip overflows at 375px and was left unchanged. Four verification audit entries remain (two apply/restore runs).
+
 # Copyright and proprietary license
 - [x] Add exact owner license, private package metadata, ownership-only README and non-generated source headers.
 - [x] Add shared non-overlapping footer, root author/copyright metadata and authenticated leaf noindex, nofollow without hiding public QR pages.

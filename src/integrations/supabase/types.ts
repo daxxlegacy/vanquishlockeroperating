@@ -1146,6 +1146,7 @@ export type Database = {
         }
         Returns: string
       }
+      bulk_spare_key_status: { Args: { _changes: Json }; Returns: Json }
       can_access_lockers: { Args: { _user_id: string }; Returns: boolean }
       can_view_national_id: { Args: { _user_id: string }; Returns: boolean }
       count_occupancy_drift: { Args: never; Returns: Json }

@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle, UserMinus, UserCheck, Plus, RefreshCw, Download, Search, Settings2, Layers, GitMerge, ChevronDown, ChevronRight, ClipboardList, ListChecks } from "lucide-react";
 import { RecordIntakeTab } from "@/components/RecordIntakeTab";
 import { BulkStatusUpdateTab } from "@/components/BulkStatusUpdateTab";
+import { BulkSpareKeyStatusCard } from "@/components/BulkSpareKeyStatusCard";
 import { ReclassifyCategoriesTab } from "@/components/ReclassifyCategoriesTab";
 import { toast } from "sonner";
 import { parseBatchIntake, formatBatchIntake, compareLockerNumbers, NATIONAL_ID_KEYS } from "@/lib/locker-utils";
@@ -1023,6 +1024,7 @@ function UploadPage() {
 
           <TabsContent value="bulk-status" className="space-y-6">
             <BulkStatusUpdateTab />
+            <BulkSpareKeyStatusCard />
           </TabsContent>
 
           <TabsContent value="reclassify" className="space-y-6">

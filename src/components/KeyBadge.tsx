@@ -1,5 +1,7 @@
 // © 2026 Farid Asnawi. All rights reserved. Proprietary. See LICENSE.
 import { Badge } from "@/components/ui/badge";
+import { isCombinationLock } from "@/lib/combination-lock";
+export { isCombinationLock } from "@/lib/combination-lock";
 
 export const SPARE_KEY_SWATCH: Record<string, string> = {
   missing: "bg-destructive",
@@ -16,9 +18,6 @@ export const SPARE_KEY_SWATCH: Record<string, string> = {
  * spare-key tracking does not apply to them at all. Stored variants seen in
  * the lockers table: "Numeric Lock", "Numerical Lock".
  */
-export function isCombinationLock(keyLock: string | null | undefined): boolean {
-  return /numeric/i.test(keyLock ?? "");
-}
 
 export function KeyBadge({ status, keyLock }: { status: string | null; keyLock?: string | null }) {
   if (isCombinationLock(keyLock)) {

@@ -29,6 +29,7 @@ import { formatDateTime } from "@/lib/format-date";
 import { formatBatchIntake } from "@/lib/locker-utils";
 import { STATUS_LABEL, STATUS_SWATCH, type LockerStatus } from "@/lib/locker-status";
 import { visibleStatusChangeRows } from "@/lib/status-change-log";
+import { KeyBadge } from "@/components/KeyBadge";
 
 type Row = {
   id: string;
@@ -43,6 +44,7 @@ type Row = {
 const SOURCE_LABEL: Record<string, string> = {
   locker_detail_manual: "Manual edit",
   bulk_status_update: "Bulk update",
+  bulk_spare_key: "Spare key",
   transfer: "Transfer",
   reclassify: "Reclassify",
   force_terminate: "Force terminate",
@@ -206,9 +208,9 @@ export function StatusChangeLogPanel() {
                 {filtered.map((r) => (
                   <div key={r.id} className={`${GRID} px-4 py-2.5 text-sm`}>
                     <span className="font-mono font-semibold truncate">{r.locker_number}</span>
-                    <StatusPill value={r.previous_status} />
+                    {r.source === "bulk_spare_key" ? <KeyBadge status={r.previous_status} /> : <StatusPill value={r.previous_status} />}
                     <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                    <StatusPill value={r.new_status} />
+                    {r.source === "bulk_spare_key" ? <KeyBadge status={r.new_status} /> : <StatusPill value={r.new_status} />}
                     <span className="text-xs text-muted-foreground truncate" title={r.source}>
                       {SOURCE_LABEL[r.source] ?? r.source}
                     </span>
