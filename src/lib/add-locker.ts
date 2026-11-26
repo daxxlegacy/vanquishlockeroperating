@@ -15,6 +15,7 @@ export function newLockerPayload(number: string, location: string, keyLock: stri
   return {
     locker_number,
     location,
+    map_location: location,
     key_lock: keyLock,
     unit_type: category ? OCC_CATEGORY_SHORT[category] : null,
     status: "empty" as const,

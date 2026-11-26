@@ -29,6 +29,7 @@ import {
 import { useBatchIntakeWarningSet } from "@/lib/batch-intake-warnings";
 import { useLockers, invalidateLockersCache } from "@/lib/lockers-cache";
 import { DashboardSummary } from "@/components/DashboardSummary";
+import { groupLockersByMapLocation } from "@/lib/map-location";
 
 import type { Database } from "@/integrations/supabase/types";
 
@@ -114,10 +115,16 @@ function MapPage() {
   const byPrefix = useMemo(() => {
     const m = new Map<string, Locker[]>();
     if (lockers) {
-      for (const l of lockers) {
-        const p = prefixOf(l.locker_number);
-        if (!m.has(p)) m.set(p, []);
-        m.get(p)!.push(l);
+      // Saved sheets can span several old locations (notably Phase 2).
+      // Preserve their global number lookup, but group by physical Map
+      // location first; operational location changes never re-key a sheet.
+      for (const group of groupLockersByMapLocation(lockers).values()) {
+        for (const l of group) {
+          const p = prefixOf(l.locker_number);
+          const compartments = m.get(p) ?? [];
+          compartments.push(l);
+          m.set(p, compartments);
+        }
       }
     }
     return m;

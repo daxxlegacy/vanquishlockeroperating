@@ -64,6 +64,20 @@
       "when": 1795412676157,
       "tag": "0008_lookup_attempt_admin_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795653940998,
+      "tag": "0009_preserve_map_locations_for_relocation",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795654030232,
+      "tag": "0010_relocation_batch_audit_and_current_location_choices",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,9 @@
+# Approved permanent relocation with preserved Map
+- [x] Captured all nine signed-in Map tabs/counts and cells; category/status and location totals saved in private batch audit.
+- [x] Backfilled map_location for all 11,499 records and masked view; new-locker payload and insert trigger initialize placement. Saved/default layouts untouched.
+- [x] Atomically relocated 5,670 lockers and 6,176 Occupancy rows with reversible mapping and Farid audit; protected fields, 5,820 outside-range lockers and historical snapshots verified unchanged. Refreshed all requested caches and current location choices.
+- [x] Ten range rules and ten JS tests pass; signed-in examples verified on both pages, 1516A absent before/after. Map tabs/counts/order/positions and category table identical; separate live transfer changed cells 416/970 between captures. Latest build OK, no runtime errors; report lists all 15 changed files.
+
 # Lookup attempt visibility
 - [x] Added private ID-free snapshots, admin-only 50-row search/filter/export, trailing-hour review flags and shared Locker Detail; deployed existing lookup/ticket services while excluding throttle logs from their unchanged rate-limit counters.
 - [x] Daily 02:00 UTC 90-day cleanup active; rollback-only threshold/retention/privacy rules and eight focused tests pass. Verified live success/four generic failures, five enriched sample rows, pagination, exports, standard detail, desktop/mobile and build OK. No Lockers/Occupancy/public-page edits; user-agent not already logged, ID checks not added. First scheduled cleanup awaits its normal daily run.

@@ -1,0 +1,13 @@
+LOCK TABLE public.lockers_masked, public.lockers IN ACCESS EXCLUSIVE MODE;
+ALTER TABLE public.lockers ADD COLUMN map_location text;
+UPDATE public.lockers SET map_location = location;
+COMMENT ON COLUMN public.lockers.map_location IS 'Map-only physical placement retained during approved relocation; all other pages use location.';
+CREATE OR REPLACE FUNCTION public.initialize_locker_map_location() RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$ BEGIN NEW.map_location := COALESCE(NEW.map_location, NEW.location); RETURN NEW; END $$;
+CREATE TRIGGER initialize_locker_map_location BEFORE INSERT ON public.lockers FOR EACH ROW EXECUTE FUNCTION public.initialize_locker_map_location();
+CREATE OR REPLACE VIEW public.lockers_masked WITH (security_invoker = true) AS SELECT id, locker_number, unit_type, key_lock, location, row_label, badge_number, employee_name, status, physical_key_status, spare_key_status, remark, batch_intake, created_at, updated_at, deleted_at, deletion_reason, deleted_by, work_location, CASE WHEN (SELECT public.can_view_national_id(auth.uid())) THEN national_id ELSE public.mask_national_id(national_id) END AS national_id, custom_status, map_location FROM public.lockers l;
+CREATE TABLE public.locker_location_relocation_audit (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), batch_id uuid NOT NULL, locker_id uuid NOT NULL, locker_number text NOT NULL, old_location text NOT NULL, new_location text NOT NULL, changed_at timestamptz NOT NULL DEFAULT now(), changed_by uuid NOT NULL, changed_by_email text NOT NULL, UNIQUE(batch_id, locker_id));
+GRANT SELECT ON public.locker_location_relocation_audit TO authenticated;
+GRANT ALL ON public.locker_location_relocation_audit TO service_role;
+ALTER TABLE public.locker_location_relocation_audit ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins read reversible relocation mapping" ON public.locker_location_relocation_audit FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+CREATE INDEX locker_location_relocation_batch_idx ON public.locker_location_relocation_audit (batch_id);

@@ -16,6 +16,7 @@ describe("Add Locker rules", () => {
     for (const key of ["employee_name", "badge_number", "national_id", "batch_intake", "remark"] as const) assert.equal(payload[key], null);
     assert.equal(payload.key_lock, null);
     assert.equal(payload.location, "Walkway Café");
+    assert.equal(payload.map_location, "Walkway Café");
   });
   test("derives unit type from existing category helper for new lockers only", () => {
     for (const [n, unit] of [["12A", "Full Locker"], ["A01", "Shoe Locker"], ["AA01", "Staff Locker"], ["LK01", "HR Locker"]]) assert.equal(newLockerPayload(n, "Test", "Numeric Lock").unit_type, unit);

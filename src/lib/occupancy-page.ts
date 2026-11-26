@@ -96,7 +96,21 @@ export async function fetchOccupancyLocations(force = false): Promise<string[]> 
 
 export function useOccupancyLocations(): string[] {
   const [locations, setLocations] = useState<string[]>(locCache?.value ?? []);
-  useEffect(() => { void fetchOccupancyLocations().then(setLocations); }, []);
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = (force = false) => {
+      void fetchOccupancyLocations(force).then((next) => { if (active) setLocations(next); });
+    };
+    refresh();
+    const off = subscribeRowsChanged((table) => {
+      if (table !== "lockers" && table !== "locker_occupancy") return;
+      locCache = null;
+      clearTimeout(timer);
+      timer = setTimeout(() => refresh(true), 150);
+    });
+    return () => { active = false; clearTimeout(timer); off(); };
+  }, []);
   return locations;
 }
 

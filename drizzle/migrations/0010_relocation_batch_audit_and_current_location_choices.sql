@@ -1,0 +1,7 @@
+CREATE TABLE public.locker_location_relocation_batches (id uuid PRIMARY KEY, description text NOT NULL, locker_count integer NOT NULL, performed_by uuid NOT NULL, performed_by_email text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), verification jsonb NOT NULL DEFAULT '{}'::jsonb);
+GRANT SELECT ON public.locker_location_relocation_batches TO authenticated;
+GRANT ALL ON public.locker_location_relocation_batches TO service_role;
+ALTER TABLE public.locker_location_relocation_batches ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins read relocation batch audit" ON public.locker_location_relocation_batches FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+ALTER TABLE public.locker_location_relocation_audit ADD CONSTRAINT relocation_batch_fk FOREIGN KEY (batch_id) REFERENCES public.locker_location_relocation_batches(id);
+CREATE OR REPLACE FUNCTION public.occupancy_facets() RETURNS jsonb LANGUAGE sql STABLE SET search_path = public, pg_temp AS $$ SELECT jsonb_build_object('locations', coalesce((SELECT jsonb_agg(v ORDER BY v) FROM (SELECT DISTINCT location AS v FROM public.lockers WHERE deleted_at IS NULL AND coalesce(btrim(location),'') <> '') s), '[]'::jsonb)); $$;

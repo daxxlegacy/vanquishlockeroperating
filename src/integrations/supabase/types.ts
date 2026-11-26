@@ -292,6 +292,80 @@ export type Database = {
         }
         Relationships: []
       }
+      locker_location_relocation_audit: {
+        Row: {
+          batch_id: string
+          changed_at: string
+          changed_by: string
+          changed_by_email: string
+          id: string
+          locker_id: string
+          locker_number: string
+          new_location: string
+          old_location: string
+        }
+        Insert: {
+          batch_id: string
+          changed_at?: string
+          changed_by: string
+          changed_by_email: string
+          id?: string
+          locker_id: string
+          locker_number: string
+          new_location: string
+          old_location: string
+        }
+        Update: {
+          batch_id?: string
+          changed_at?: string
+          changed_by?: string
+          changed_by_email?: string
+          id?: string
+          locker_id?: string
+          locker_number?: string
+          new_location?: string
+          old_location?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relocation_batch_fk"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "locker_location_relocation_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      locker_location_relocation_batches: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          locker_count: number
+          performed_by: string
+          performed_by_email: string
+          verification: Json
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id: string
+          locker_count: number
+          performed_by: string
+          performed_by_email: string
+          verification?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          locker_count?: number
+          performed_by?: string
+          performed_by_email?: string
+          verification?: Json
+        }
+        Relationships: []
+      }
       locker_lookup_attempts: {
         Row: {
           attempted_at: string
@@ -456,6 +530,7 @@ export type Database = {
           key_lock: string | null
           location: string
           locker_number: string
+          map_location: string | null
           national_id: string | null
           physical_key_status: Database["public"]["Enums"]["key_status"] | null
           remark: string | null
@@ -479,6 +554,7 @@ export type Database = {
           key_lock?: string | null
           location: string
           locker_number: string
+          map_location?: string | null
           national_id?: string | null
           physical_key_status?: Database["public"]["Enums"]["key_status"] | null
           remark?: string | null
@@ -502,6 +578,7 @@ export type Database = {
           key_lock?: string | null
           location?: string
           locker_number?: string
+          map_location?: string | null
           national_id?: string | null
           physical_key_status?: Database["public"]["Enums"]["key_status"] | null
           remark?: string | null
@@ -1081,6 +1158,7 @@ export type Database = {
           key_lock: string | null
           location: string | null
           locker_number: string | null
+          map_location: string | null
           national_id: string | null
           physical_key_status: Database["public"]["Enums"]["key_status"] | null
           remark: string | null
@@ -1104,6 +1182,7 @@ export type Database = {
           key_lock?: string | null
           location?: string | null
           locker_number?: string | null
+          map_location?: string | null
           national_id?: never
           physical_key_status?: Database["public"]["Enums"]["key_status"] | null
           remark?: string | null
@@ -1127,6 +1206,7 @@ export type Database = {
           key_lock?: string | null
           location?: string | null
           locker_number?: string | null
+          map_location?: string | null
           national_id?: never
           physical_key_status?: Database["public"]["Enums"]["key_status"] | null
           remark?: string | null

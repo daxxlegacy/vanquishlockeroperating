@@ -1,4 +1,5 @@
 # Architecture rules
+- Keep retained physical placement in Map-only map_location grouping; saved multi-location sheets resolve global number prefixes, while operational pages use location and new lockers initialize map_location on insert.
 - Keep inquiry log presentation in an admin-only paginated RPC/card and explicit ID-free logging allowlist; throttled log rows are excluded from existing shared rate-limit counters so audit visibility never extends lockouts.
 
 - Keep termination identity matching and display-only history deduplication in `src/lib/termination-history.ts`, with rule tests beside it, so synchronization and history rendering share normalization without coupling delete targets.
